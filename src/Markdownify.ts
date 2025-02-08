@@ -5,6 +5,8 @@ import fs from "fs";
 import os from "os";
 import { fileURLToPath } from "url";
 
+const VENV_DIR = '.venv';
+
 const execAsync = promisify(exec);
 
 const __filename = fileURLToPath(import.meta.url);
@@ -16,20 +18,37 @@ export type MarkdownResult = {
 };
 
 export class Markdownify {
-  private static async _markitdown(
-    filePath: string,
-    projectRoot: string,
-    uvPath: string,
-  ): Promise<string> {
-    const venvPath = path.join(projectRoot, ".venv");
-    const markitdownPath = path.join(venvPath, "bin", "markitdown");
+  private static getVenvPythonPath(projectRoot: string): string {
+    const isWindows = process.platform === 'win32';
+    const venvPath = path.join(projectRoot, VENV_DIR);
+    const pythonExecutable = isWindows ? 'python.exe' : 'python';
+    return path.join(venvPath, isWindows ? 'Scripts' : 'bin', pythonExecutable);
+  }
 
-    if (!fs.existsSync(markitdownPath)) {
-      throw new Error("markitdown executable not found");
+  private static async ensureVenvExists(projectRoot: string): Promise<void> {
+    const venvPath = path.join(projectRoot, VENV_DIR);
+    const pythonPath = this.getVenvPythonPath(projectRoot);
+
+    if (!fs.existsSync(pythonPath)) {
+      // Create virtual environment if it doesn't exist
+      const isWindows = process.platform === 'win32';
+      const uvCommand = isWindows ? 'uv' : '~/.local/bin/uv';
+      await execAsync(`${uvCommand} venv ${venvPath}`);
     }
+  }
 
+  private static async runInVenv(command: string, projectRoot: string): Promise<string> {
+    const venvPath = path.join(projectRoot, VENV_DIR);
+    const isWindows = process.platform === 'win32';
+    const venvPythonPath = this.getVenvPythonPath(projectRoot);
+    
+    // Check if virtual environment exists
+    await this.ensureVenvExists(projectRoot);
+
+    // Run command using the virtual environment's Python
     const { stdout, stderr } = await execAsync(
-      `${uvPath} run ${markitdownPath} "${filePath}"`,
+      `"${venvPythonPath}" -m ${command}`,
+      { cwd: projectRoot }
     );
 
     if (stderr) {
@@ -37,6 +56,25 @@ export class Markdownify {
     }
 
     return stdout;
+  }
+
+  private static async _markitdown(
+    filePath: string,
+    projectRoot: string,
+    uvPath: string,
+  ): Promise<string> {
+    try {
+      // Run markitdown command in the virtual environment
+      return await this.runInVenv(
+        `markitdown "${filePath}"`,
+        projectRoot
+      );
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Error running markitdown: ${error.message}`);
+      }
+      throw error;
+    }
   }
 
   private static async saveToTempFile(content: string): Promise<string> {
@@ -52,7 +90,7 @@ export class Markdownify {
     filePath,
     url,
     projectRoot = path.resolve(__dirname, ".."),
-    uvPath = "~/.local/bin/uv",
+    uvPath = process.platform === 'win32' ? 'uv' : '~/.local/bin/uv',
   }: {
     filePath?: string;
     url?: string;

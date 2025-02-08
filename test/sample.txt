@@ -1,0 +1,20 @@
+# Sample Document for Testing
+
+## Introduction
+This is a sample document to test the markdownify MCP tool. It contains various formatting elements.
+
+### Features to Test:
+1. Headers
+2. Lists
+3. Text formatting
+
+## Main Content
+Here's a *formatted* piece of text with some **bold** content.
+
+- First bullet point
+- Second bullet point
+  - Sub-bullet point
+  - Another sub-point
+
+## Conclusion
+This concludes our test document. [Here's a link](https://example.com).
