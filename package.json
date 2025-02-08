@@ -17,7 +17,7 @@
     "build": "tsc && shx chmod +x dist/*.js",
     "prepare": "npm run build",
     "dev": "tsc --watch",
-    "preinstall": "./setup.sh",
+    "preinstall": "node -e \"if (process.platform === 'win32') { require('child_process').execSync('setup.bat', { stdio: 'inherit' }); } else { require('child_process').execSync('./setup.sh', { stdio: 'inherit' }); }\"",
     "start": "node dist/index.js",
     "test": "bun test",
     "test:watch": "bun test --watch"
@@ -29,7 +29,6 @@
   "devDependencies": {
     "@types/node": "^22.9.3",
     "bun": "^1.1.41",
-    "sdk": "link:@types/modelcontextprotocol/sdk",
     "shx": "^0.3.4",
     "ts-jest": "^29.2.5",
     "typescript": "^5.6.2"

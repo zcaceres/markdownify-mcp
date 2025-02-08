@@ -5,3 +5,4 @@ dist/
 .env
 .venv/
 __pycache__/
+.llm-context/
