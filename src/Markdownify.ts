@@ -22,7 +22,11 @@ export class Markdownify {
     uvPath: string,
   ): Promise<string> {
     const venvPath = path.join(projectRoot, ".venv");
-    const markitdownPath = path.join(venvPath, "bin", "markitdown");
+    const markitdownPath = path.join(
+      venvPath, 
+      process.platform === 'win32' ? 'Scripts' : 'bin', 
+      `markitdown${process.platform === 'win32' ? '.exe' : ''}`
+    );
 
     if (!fs.existsSync(markitdownPath)) {
       throw new Error("markitdown executable not found");

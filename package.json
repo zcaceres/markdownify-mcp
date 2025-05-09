@@ -17,7 +17,7 @@
     "build": "tsc && shx chmod +x dist/*.js",
     "prepare": "npm run build",
     "dev": "tsc --watch",
-    "preinstall": "./setup.sh",
+    "preinstall": "node preinstall.js",
     "start": "node dist/index.js",
     "test": "bun test",
     "test:watch": "bun test --watch"
