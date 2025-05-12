@@ -12,14 +12,13 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package.json pnpm-lock.yaml pyproject.toml ./
+# Copy all files
+COPY . /app/
 
 # Install pnpm
 RUN npm install -g pnpm@10.10.0
 
 # Setup uv and install Python dependencies
-COPY setup.sh ./
 RUN chmod +x setup.sh && ./setup.sh
 # Make sure uv is in PATH
 ENV PATH="/root/.local/bin:${PATH}"
@@ -27,13 +26,10 @@ ENV PATH="/root/.local/bin:${PATH}"
 RUN uv sync
 
 # Install Node.js dependencies
-RUN pnpm install
+RUN pnpm install --ignore-scripts
 
-# Copy application code
-COPY . /app/
-
-# Build TypeScript
-RUN pnpm build
+# Build TypeScript manually without running lifecycle scripts
+RUN npx tsc && npx shx chmod +x dist/*.js
 
 # Set environment variables
 ENV PORT=8080
