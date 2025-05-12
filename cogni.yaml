@@ -1,0 +1,33 @@
+name: Markdownify MCP Server
+short_name: markdownify-mcp
+service_name: "aroff/markdownify-mcp"
+image-name: mcp_aroff_markdownify-mcp
+description: A Model Context Protocol server for converting various file types and web content to Markdown format
+version: 0.1.0
+
+build:
+  type: "node"
+  package-json: "package.json"
+  node-version: "18"
+  pre-build-commands:
+    - "npm install -g pnpm@10.10.0"
+    - "curl -LsSf https://astral.sh/uv/install.sh | sh"
+    - "uv sync"
+  dockerfile: "Dockerfile"
+
+runtime:
+  entry-point: "pnpm start"
+  port: 8080
+  memory: "512Mi"
+  cpu: "0.5"
+  min-replicas: 1
+  max-replicas: 3
+  scaling-metric: "connections"
+
+environment:
+  variables:
+    NODE_ENV: "production"
+  secrets:
+    - name: "MD_SHARE_DIR"
+      description: "Optional directory to restrict where markdown files can be retrieved from"
+      required: false 
