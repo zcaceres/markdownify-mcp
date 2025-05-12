@@ -21,6 +21,10 @@ RUN npm install -g pnpm@10.10.0
 # Setup uv and install Python dependencies
 COPY setup.sh ./
 RUN chmod +x setup.sh && ./setup.sh
+# Make sure uv is in PATH
+ENV PATH="/root/.local/bin:${PATH}"
+# Install Python dependencies
+RUN uv sync
 
 # Install Node.js dependencies
 RUN pnpm install
