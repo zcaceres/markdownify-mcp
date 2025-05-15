@@ -43,10 +43,15 @@ export class Markdownify {
     return stdout;
   }
 
-  private static async saveToTempFile(content: string): Promise<string> {
+  private static async saveToTempFile(content: string | Buffer, suggestedExtension?: string | null): Promise<string> {
+    let outputExtension = "md";
+    if (suggestedExtension != null) {
+      outputExtension = suggestedExtension;
+    }
+
     const tempOutputPath = path.join(
       os.tmpdir(),
-      `markdown_output_${Date.now()}.md`,
+      `markdown_output_${Date.now()}.${outputExtension}`,
     );
     fs.writeFileSync(tempOutputPath, content);
     return tempOutputPath;
@@ -80,8 +85,17 @@ export class Markdownify {
 
       if (url) {
         const response = await fetch(url);
-        const content = await response.text();
-        inputPath = await this.saveToTempFile(content);
+
+        let extension = null;
+
+        if (url.endsWith(".pdf")) {
+          extension = "pdf";
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        const content = Buffer.from(arrayBuffer);
+
+        inputPath = await this.saveToTempFile(content, extension);
         isTemporary = true;
       } else if (filePath) {
         inputPath = filePath;
