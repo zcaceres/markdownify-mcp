@@ -42,7 +42,7 @@ export class Markdownify {
       process.platform === 'win32' ? 'Scripts' : 'bin',
       process.platform === 'win32' ? 'python.exe' : 'python3'
     );
-    const command = `"${pythonPath}" -m markitdown "${filePath}"`;
+    const command = `"${pythonPath}" -W ignore -m markitdown "${filePath}"`;
     
     const { stdout, stderr } = await execAsync(command);
 
