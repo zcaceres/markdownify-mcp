@@ -25,9 +25,6 @@ RUN pnpm install
 # Build the project
 RUN pnpm run build
 
-# Set the entry point
-ENTRYPOINT ["node", "dist/index.js"]
-
 # Final stage for the image (doing the build separately saves about 100MB)
 FROM base AS runner
 
