@@ -1,6 +1,7 @@
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
-const execAsync = promisify(exec);
+import { expandHome } from "./utils";
+const execFileAsync = promisify(execFile);
 
 export default class UVX {
   uvxPath: string;
@@ -30,10 +31,15 @@ export default class UVX {
     return new UVX("/Users/zachcaceres/.local/bin/uvx");
   }
 
+
   async installDeps() {
     // This is a hack to make sure that markitdown is installed before it's called in the OCRProcessor
     try {
-      await execAsync(`${this.uvxPath} markitdown example.pdf`);
+      // Expand tilde in uvxPath if present
+      const expandedUvxPath = expandHome(this.uvxPath);
+      
+      // Use execFile to prevent command injection
+      await execFileAsync(expandedUvxPath, ["markitdown", "example.pdf"]);
     } catch {
       console.log("UVX markitdown should be ready now");
     }
