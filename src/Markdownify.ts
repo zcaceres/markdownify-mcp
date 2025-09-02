@@ -1,11 +1,12 @@
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 import path from "path";
 import fs from "fs";
 import os from "os";
 import { fileURLToPath } from "url";
+import { expandHome } from "./utils.js";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,18 +24,24 @@ export class Markdownify {
   ): Promise<string> {
     const venvPath = path.join(projectRoot, ".venv");
     const markitdownPath = path.join(
-      venvPath, 
-      process.platform === 'win32' ? 'Scripts' : 'bin', 
-      `markitdown${process.platform === 'win32' ? '.exe' : ''}`
+      venvPath,
+      process.platform === "win32" ? "Scripts" : "bin",
+      `markitdown${process.platform === "win32" ? ".exe" : ""}`,
     );
 
     if (!fs.existsSync(markitdownPath)) {
       throw new Error("markitdown executable not found");
     }
 
-    const { stdout, stderr } = await execAsync(
-      `${uvPath} run ${markitdownPath} "${filePath}"`,
-    );
+    // Expand tilde in uvPath if present
+    const expandedUvPath = expandHome(uvPath);
+
+    // Use execFile to prevent command injection
+    const { stdout, stderr } = await execFileAsync(expandedUvPath, [
+      "run",
+      markitdownPath,
+      filePath,
+    ]);
 
     if (stderr) {
       throw new Error(`Error executing command: ${stderr}`);
@@ -43,7 +50,10 @@ export class Markdownify {
     return stdout;
   }
 
-  private static async saveToTempFile(content: string | Buffer, suggestedExtension?: string | null): Promise<string> {
+  private static async saveToTempFile(
+    content: string | Buffer,
+    suggestedExtension?: string | null,
+  ): Promise<string> {
     let outputExtension = "md";
     if (suggestedExtension != null) {
       outputExtension = suggestedExtension;
@@ -59,13 +69,6 @@ export class Markdownify {
 
   private static normalizePath(p: string): string {
     return path.normalize(p);
-  }
-  
-  private static expandHome(filepath: string): string {
-    if (filepath.startsWith('~/') || filepath === '~') {
-      return path.join(os.homedir(), filepath.slice(1));
-    }
-    return filepath;
   }
 
   static async toMarkdown({
@@ -126,14 +129,16 @@ export class Markdownify {
     filePath: string;
   }): Promise<MarkdownResult> {
     // Check file type is *.md or *.markdown
-    const normPath = this.normalizePath(path.resolve(this.expandHome(filePath)));
+    const normPath = this.normalizePath(path.resolve(expandHome(filePath)));
     const markdownExt = [".md", ".markdown"];
-    if (!markdownExt.includes(path.extname(normPath))){
+    if (!markdownExt.includes(path.extname(normPath))) {
       throw new Error("Required file is not a Markdown file.");
     }
 
     if (process.env?.MD_SHARE_DIR) {
-      const allowedShareDir = this.normalizePath(path.resolve(this.expandHome(process.env.MD_SHARE_DIR)));
+      const allowedShareDir = this.normalizePath(
+        path.resolve(expandHome(process.env.MD_SHARE_DIR)),
+      );
       if (!normPath.startsWith(allowedShareDir)) {
         throw new Error(`Only files in ${allowedShareDir} are allowed.`);
       }
