@@ -1,6 +1,6 @@
 {
   "name": "mcp-markdownify-server",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "MCP Markdownify Server - Model Context Protocol Server for Converting Almost Anything to Markdown",
   "license": "MIT",
   "author": "@zcaceres (@zachcaceres | zach.dev)",
