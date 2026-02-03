@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.1.0",
-    "@types/private-ip": "^1.0.3",
+    "@types/private-ip": "^2.3.3",
     "bun": "^1.1.41",
     "sdk": "link:@types/modelcontextprotocol/sdk",
     "shx": "^0.3.4",
