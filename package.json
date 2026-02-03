@@ -27,7 +27,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/node": "^22.9.3",
+    "@types/node": "^25.1.0",
     "@types/private-ip": "^1.0.3",
     "bun": "^1.1.41",
     "sdk": "link:@types/modelcontextprotocol/sdk",
