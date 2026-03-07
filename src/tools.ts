@@ -14,6 +14,11 @@ export const YouTubeToMarkdownTool = ToolSchema.parse({
     },
     required: ["url"],
   },
+  annotations: {
+    title: "YouTube to Markdown",
+    readOnlyHint: true,
+    openWorldHint: true,
+  },
 });
 
 export const PDFToMarkdownTool = ToolSchema.parse({
@@ -28,6 +33,10 @@ export const PDFToMarkdownTool = ToolSchema.parse({
       },
     },
     required: ["filepath"],
+  },
+  annotations: {
+    title: "PDF to Markdown",
+    readOnlyHint: true,
   },
 });
 
@@ -44,6 +53,11 @@ export const BingSearchResultToMarkdownTool = ToolSchema.parse({
     },
     required: ["url"],
   },
+  annotations: {
+    title: "Bing Search to Markdown",
+    readOnlyHint: true,
+    openWorldHint: true,
+  },
 });
 
 export const WebpageToMarkdownTool = ToolSchema.parse({
@@ -58,6 +72,11 @@ export const WebpageToMarkdownTool = ToolSchema.parse({
       },
     },
     required: ["url"],
+  },
+  annotations: {
+    title: "Webpage to Markdown",
+    readOnlyHint: true,
+    openWorldHint: true,
   },
 });
 
@@ -75,6 +94,10 @@ export const ImageToMarkdownTool = ToolSchema.parse({
     },
     required: ["filepath"],
   },
+  annotations: {
+    title: "Image to Markdown",
+    readOnlyHint: true,
+  },
 });
 
 export const AudioToMarkdownTool = ToolSchema.parse({
@@ -91,6 +114,10 @@ export const AudioToMarkdownTool = ToolSchema.parse({
     },
     required: ["filepath"],
   },
+  annotations: {
+    title: "Audio to Markdown",
+    readOnlyHint: true,
+  },
 });
 
 export const DocxToMarkdownTool = ToolSchema.parse({
@@ -105,6 +132,10 @@ export const DocxToMarkdownTool = ToolSchema.parse({
       },
     },
     required: ["filepath"],
+  },
+  annotations: {
+    title: "DOCX to Markdown",
+    readOnlyHint: true,
   },
 });
 
@@ -121,6 +152,10 @@ export const XlsxToMarkdownTool = ToolSchema.parse({
     },
     required: ["filepath"],
   },
+  annotations: {
+    title: "XLSX to Markdown",
+    readOnlyHint: true,
+  },
 });
 
 export const PptxToMarkdownTool = ToolSchema.parse({
@@ -136,6 +171,10 @@ export const PptxToMarkdownTool = ToolSchema.parse({
     },
     required: ["filepath"],
   },
+  annotations: {
+    title: "PPTX to Markdown",
+    readOnlyHint: true,
+  },
 });
 
 export const GetMarkdownFileTool = ToolSchema.parse({
@@ -150,5 +189,9 @@ export const GetMarkdownFileTool = ToolSchema.parse({
       },
     },
     required: ["filepath"],
+  },
+  annotations: {
+    title: "Get Markdown File",
+    readOnlyHint: true,
   },
 });
