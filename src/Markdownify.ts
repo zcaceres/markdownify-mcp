@@ -89,10 +89,13 @@ export class Markdownify {
       if (url) {
         const response = await fetch(url);
 
-        let extension = null;
+        let extension: string | null = null;
 
         if (url.endsWith(".pdf")) {
           extension = "pdf";
+        } else {
+          // Default to .html so markitdown knows to convert HTML content
+          extension = "html";
         }
 
         const arrayBuffer = await response.arrayBuffer();
