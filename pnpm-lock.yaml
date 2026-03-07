@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@modelcontextprotocol/sdk':
-        specifier: 1.26.0
-        version: 1.26.0(zod@4.3.6)
+        specifier: 1.27.1
+        version: 1.27.1(zod@4.3.6)
       private-ip:
         specifier: ^3.0.2
         version: 3.0.2
@@ -21,15 +21,9 @@ importers:
       '@types/node':
         specifier: ^25.1.0
         version: 25.2.1
-      '@types/private-ip':
-        specifier: ^2.3.3
-        version: 2.3.3
       bun:
         specifier: ^1.1.41
         version: 1.3.8
-      sdk:
-        specifier: link:@types/modelcontextprotocol/sdk
-        version: link:@types/modelcontextprotocol/sdk
       shx:
         specifier: ^0.4.0
         version: 0.4.0
@@ -306,8 +300,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@modelcontextprotocol/sdk@1.26.0':
-    resolution: {integrity: sha512-Y5RmPncpiDtTXDbLKswIJzTqu2hyBKxTNsgKqKclDbhIgg1wgtf1fRuvxgTnRfcnxtvvgbIEcqUOzZrJ6iSReg==}
+  '@modelcontextprotocol/sdk@1.27.1':
+    resolution: {integrity: sha512-sr6GbP+4edBwFndLbM60gf07z0FQ79gaExpnsjMGePXqFcSSb7t6iscpjk9DhFhwd+mTEQrzNafGP8/iGGFYaA==}
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
@@ -419,10 +413,6 @@ packages:
   '@types/node@25.2.1':
     resolution: {integrity: sha512-CPrnr8voK8vC6eEtyRzvMpgp3VyVRhgclonE7qYi6P9sXwYb59ucfrnmFBTaP0yUi8Gk4yZg/LlTJULGxvTNsg==}
 
-  '@types/private-ip@2.3.3':
-    resolution: {integrity: sha512-68C36hqWAPR2CvAN8JAaJc3lSsLe4ez5m5ZtS3oBHCOuHH0TdxfesIpAzU13HawOufKZslWSJQyjxDplc/dDSw==}
-    deprecated: This is a stub types definition. private-ip provides its own type definitions, so you do not need this installed.
-
   '@types/stack-utils@2.0.3':
     resolution: {integrity: sha512-9aEbYZ3TbYMznPdcdr3SmIrLXwC/AKZXQeCf9Pgao5CKb8CyHuEX5jzWPTkvregvhRJHcpRO6BFoGW9ycaOkYw==}
 
@@ -530,7 +520,6 @@ packages:
 
   bun@1.3.8:
     resolution: {integrity: sha512-TmmtMGQSXY3o0enSMMkvR5g7Dw/2n2oylAUprLVdqA8pDPBoKbzgOmmgHOtvnfRznFppl+Gu2cid3vgAjcNoSg==}
-    cpu: [arm64, x64]
     os: [darwin, linux, win32]
     hasBin: true
 
@@ -2097,7 +2086,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@modelcontextprotocol/sdk@1.26.0(zod@4.3.6)':
+  '@modelcontextprotocol/sdk@1.27.1(zod@4.3.6)':
     dependencies:
       '@hono/node-server': 1.19.9(hono@4.11.7)
       ajv: 8.17.1
@@ -2212,10 +2201,6 @@ snapshots:
   '@types/node@25.2.1':
     dependencies:
       undici-types: 7.16.0
-
-  '@types/private-ip@2.3.3':
-    dependencies:
-      private-ip: 3.0.2
 
   '@types/stack-utils@2.0.3': {}
 
