@@ -2,9 +2,6 @@
 
 echo 'prepare Unix preinstall'
 echo 'Installing Python dependencies for OCR...'
-echo 'Installing uv'
-curl -LsSf https://astral.sh/uv/install.sh | sh
-source $HOME/.local/bin/env
-echo 'Using uv to install markitdown'
-uv sync
-echo 'Finished install Python dependencies'
+python3 -m venv .venv
+.venv/bin/pip install "markitdown>=0.1.5"
+echo 'Finished installing Python dependencies'
