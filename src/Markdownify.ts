@@ -40,6 +40,15 @@ export class Markdownify {
       throw new Error(`Error executing command: ${stderr}`);
     }
 
+    // Detect when markitdown returns unconverted HTML (e.g. JS-rendered SPAs)
+    const trimmed = stdout.trimStart();
+    if (trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html")) {
+      throw new Error(
+        "Conversion failed: the page returned raw HTML that could not be converted to Markdown. " +
+          "This typically happens with JavaScript-rendered pages (SPAs) that require a browser to load content.",
+      );
+    }
+
     return stdout;
   }
 
