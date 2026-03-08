@@ -11,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export type MarkdownResult = {
-  path: string;
+  path?: string;
   text: string;
 };
 
@@ -110,13 +110,12 @@ export class Markdownify {
       }
 
       const text = await this._markitdown(inputPath, projectRoot);
-      const outputPath = await this.saveToTempFile(text);
 
       if (isTemporary) {
         fs.unlinkSync(inputPath);
       }
 
-      return { path: outputPath, text };
+      return { text };
     } catch (e: unknown) {
       if (e instanceof Error) {
         throw new Error(`Error processing to Markdown: ${e.message}`);
