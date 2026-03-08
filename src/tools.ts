@@ -177,6 +177,38 @@ export const PptxToMarkdownTool = ToolSchema.parse({
   },
 });
 
+export const GitRepoToMarkdownTool = ToolSchema.parse({
+  name: "git-repo-to-markdown",
+  description:
+    "Convert a git repository into a single markdown document containing the file tree and source code. Supports GitHub URLs and shorthand (e.g. 'owner/repo').",
+  inputSchema: {
+    type: "object",
+    properties: {
+      url: {
+        type: "string",
+        description:
+          "Git repository URL or GitHub shorthand (e.g. 'https://github.com/owner/repo' or 'owner/repo')",
+      },
+      branch: {
+        type: "string",
+        description:
+          "Branch, tag, or commit to use (default: repo default branch)",
+      },
+      compress: {
+        type: "boolean",
+        description:
+          "Use Tree-sitter compression to reduce output size (~70% reduction). Default: false",
+      },
+    },
+    required: ["url"],
+  },
+  annotations: {
+    title: "Git Repo to Markdown",
+    readOnlyHint: true,
+    openWorldHint: true,
+  },
+});
+
 export const GetMarkdownFileTool = ToolSchema.parse({
   name: "get-markdown-file",
   description: "Get a markdown file by absolute file path",

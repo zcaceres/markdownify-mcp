@@ -11,6 +11,8 @@ const RequestPayloadSchema = z.object({
   filepath: z.string().optional(),
   url: z.string().optional(),
   projectRoot: z.string().optional(),
+  branch: z.string().optional(),
+  compress: z.boolean().optional(),
 });
 
 export function createServer() {
@@ -66,6 +68,17 @@ export function createServer() {
             result = await Markdownify.toMarkdown({
               filePath: validatedArgs.filepath,
               projectRoot: validatedArgs.projectRoot,
+            });
+            break;
+
+          case tools.GitRepoToMarkdownTool.name:
+            if (!validatedArgs.url) {
+              throw new Error("URL is required for this tool");
+            }
+            result = await Markdownify.fromRepo({
+              repoUrl: validatedArgs.url,
+              branch: validatedArgs.branch,
+              compress: validatedArgs.compress,
             });
             break;
 

@@ -116,6 +116,56 @@ test("Markdownify.get throws error for non-existent file", async () => {
   );
 });
 
+test("Markdownify.fromRepo converts a git repo to markdown via shorthand", async () => {
+  const result = await Markdownify.fromRepo({
+    repoUrl: "octocat/Hello-World",
+  });
+
+  expect(result).toBeDefined();
+  expect(result.text).toContain("File: README");
+  expect(result.text).toContain("Hello World!");
+}, 60_000);
+
+test("Markdownify.fromRepo works with full GitHub URL", async () => {
+  const result = await Markdownify.fromRepo({
+    repoUrl: "https://github.com/octocat/Hello-World",
+  });
+
+  expect(result).toBeDefined();
+  expect(result.text).toContain("README");
+}, 60_000);
+
+test("Markdownify.fromRepo supports branch parameter", async () => {
+  const result = await Markdownify.fromRepo({
+    repoUrl: "octocat/Hello-World",
+    branch: "master",
+  });
+
+  expect(result).toBeDefined();
+  expect(result.text).toContain("README");
+}, 60_000);
+
+test("Markdownify.fromRepo supports compress parameter", async () => {
+  const normal = await Markdownify.fromRepo({
+    repoUrl: "octocat/Hello-World",
+  });
+  const compressed = await Markdownify.fromRepo({
+    repoUrl: "octocat/Hello-World",
+    compress: true,
+  });
+
+  expect(compressed).toBeDefined();
+  expect(compressed.text).toBeTruthy();
+  // Compressed output should differ from normal (may be shorter or structured differently)
+  expect(compressed.text).not.toEqual(normal.text);
+}, 120_000);
+
+test("Markdownify.fromRepo throws error for invalid repo", async () => {
+  await expect(
+    Markdownify.fromRepo({ repoUrl: "not-a-real-owner/not-a-real-repo-xyz" }),
+  ).rejects.toThrow();
+}, 30_000);
+
 test("Markdownify.toMarkdown handles error from _markitdown method", async () => {
   const originalMarkitdown = Markdownify["_markitdown"];
   Markdownify["_markitdown"] = mock(() => {
