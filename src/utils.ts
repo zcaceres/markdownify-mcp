@@ -2,6 +2,7 @@ import path from "path";
 import os from "os";
 import { URL } from "node:url";
 import is_ip_private from "private-ip";
+import { isValidRemoteValue } from "repomix";
 
 export function expandHome(filepath: string): string {
   if (filepath.startsWith("~/") || filepath === "~") {
@@ -19,6 +20,24 @@ export function validateUrl(url: string): void {
     throw new Error(
       `Fetching ${url} is potentially dangerous, aborting.`,
     );
+  }
+}
+
+export function validateRepoUrl(repoUrl: string): void {
+  if (!repoUrl || !repoUrl.trim()) {
+    throw new Error("Repository URL is required");
+  }
+  if (!isValidRemoteValue(repoUrl)) {
+    throw new Error(
+      `Invalid repository URL or shorthand: ${repoUrl}. Use a GitHub URL (https://github.com/owner/repo) or shorthand (owner/repo).`,
+    );
+  }
+  // Block non-http(s) explicit URLs (e.g. file://, ssh:// for SSRF prevention)
+  if (repoUrl.includes("://")) {
+    const parsed = new URL(repoUrl);
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      throw new Error("Only http: and https: repository URLs are allowed.");
+    }
   }
 }
 

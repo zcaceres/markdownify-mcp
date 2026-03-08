@@ -166,6 +166,24 @@ test("Markdownify.fromRepo throws error for invalid repo", async () => {
   ).rejects.toThrow();
 }, 30_000);
 
+test("Markdownify.fromRepo rejects empty URL", async () => {
+  await expect(
+    Markdownify.fromRepo({ repoUrl: "" }),
+  ).rejects.toThrow("Repository URL is required");
+});
+
+test("Markdownify.fromRepo rejects file:// URLs", async () => {
+  await expect(
+    Markdownify.fromRepo({ repoUrl: "file:///etc/passwd" }),
+  ).rejects.toThrow("Only http: and https: repository URLs are allowed");
+});
+
+test("Markdownify.fromRepo rejects shell metacharacters in URL", async () => {
+  await expect(
+    Markdownify.fromRepo({ repoUrl: "owner/repo; rm -rf /" }),
+  ).rejects.toThrow("Invalid repository URL or shorthand");
+});
+
 test("Markdownify.toMarkdown handles error from _markitdown method", async () => {
   const originalMarkitdown = Markdownify["_markitdown"];
   Markdownify["_markitdown"] = mock(() => {

@@ -7,6 +7,7 @@ import { fileURLToPath } from "url";
 import {
   expandHome,
   validateUrl,
+  validateRepoUrl,
   isUnconvertedHtml,
   inferExtensionFromUrl,
   isMarkdownFile,
@@ -151,6 +152,8 @@ export class Markdownify {
     branch?: string;
     compress?: boolean;
   }): Promise<MarkdownResult> {
+    validateRepoUrl(repoUrl);
+
     const repomixPath = path.join(
       __dirname,
       "..",
