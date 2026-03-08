@@ -14,7 +14,6 @@ const RequestPayloadSchema = z.object({
   filepath: z.string().optional(),
   url: z.string().optional(),
   projectRoot: z.string().optional(),
-  uvPath: z.string().optional(),
 });
 
 export function createServer() {
@@ -65,7 +64,6 @@ export function createServer() {
             result = await Markdownify.toMarkdown({
               url: validatedArgs.url,
               projectRoot: validatedArgs.projectRoot,
-              uvPath: validatedArgs.uvPath || process.env.UV_PATH,
             });
             break;
 
@@ -81,7 +79,6 @@ export function createServer() {
             result = await Markdownify.toMarkdown({
               filePath: validatedArgs.filepath,
               projectRoot: validatedArgs.projectRoot,
-              uvPath: validatedArgs.uvPath || process.env.UV_PATH,
             });
             break;
 

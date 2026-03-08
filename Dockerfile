@@ -3,7 +3,7 @@ FROM oven/bun:debian AS base
 WORKDIR /app
 
 # Install dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends python3 curl bash && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv bash && rm -rf /var/lib/apt/lists/*
 
 # Copy the source code
 COPY . .
@@ -11,7 +11,7 @@ COPY . .
 RUN rm .python-version
 
 # Install Python dependencies
-RUN ./setup.sh
+RUN python3 -m venv .venv && .venv/bin/pip install "markitdown>=0.1.5"
 
 # Use a separate stage for building to save space
 FROM base AS builder

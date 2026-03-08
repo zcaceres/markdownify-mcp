@@ -5,7 +5,6 @@ import fs from "fs";
 import os from "os";
 import { fileURLToPath } from "url";
 import { expandHome } from "./utils.js";
-
 const execFileAsync = promisify(execFile);
 
 const __filename = fileURLToPath(import.meta.url);
@@ -20,7 +19,6 @@ export class Markdownify {
   private static async _markitdown(
     filePath: string,
     projectRoot: string,
-    uvPath: string,
   ): Promise<string> {
     const venvPath = path.join(projectRoot, ".venv");
     const markitdownPath = path.join(
@@ -33,13 +31,8 @@ export class Markdownify {
       throw new Error("markitdown executable not found");
     }
 
-    // Expand tilde in uvPath if present
-    const expandedUvPath = expandHome(uvPath);
-
     // Use execFile to prevent command injection
-    const { stdout, stderr } = await execFileAsync(expandedUvPath, [
-      "run",
-      markitdownPath,
+    const { stdout, stderr } = await execFileAsync(markitdownPath, [
       filePath,
     ]);
 
@@ -75,12 +68,10 @@ export class Markdownify {
     filePath,
     url,
     projectRoot = path.resolve(__dirname, ".."),
-    uvPath = "~/.local/bin/uv",
   }: {
     filePath?: string;
     url?: string;
     projectRoot?: string;
-    uvPath?: string;
   }): Promise<MarkdownResult> {
     try {
       let inputPath: string;
@@ -109,7 +100,7 @@ export class Markdownify {
         throw new Error("Either filePath or url must be provided");
       }
 
-      const text = await this._markitdown(inputPath, projectRoot, uvPath);
+      const text = await this._markitdown(inputPath, projectRoot);
       const outputPath = await this.saveToTempFile(text);
 
       if (isTemporary) {
