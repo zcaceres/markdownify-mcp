@@ -32,9 +32,9 @@ export class Markdownify {
     }
 
     // Use execFile to prevent command injection
-    const { stdout, stderr } = await execFileAsync(markitdownPath, [
-      filePath,
-    ]);
+    const { stdout, stderr } = await execFileAsync(markitdownPath, [filePath], {
+      maxBuffer: 50 * 1024 * 1024, // 50 MB
+    });
 
     if (stderr) {
       throw new Error(`Error executing command: ${stderr}`);
