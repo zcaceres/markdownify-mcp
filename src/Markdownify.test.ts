@@ -29,7 +29,6 @@ test("Markdownify.toMarkdown converts PDF file to Markdown", async () => {
   const result = await Markdownify.toMarkdown({ filePath: pdfPath });
 
   expect(result).toBeDefined();
-  expect(result.path).toContain("markdown_output_");
   expect(result.text).toContain("Test PDF content");
 });
 
@@ -38,7 +37,6 @@ test("Markdownify.toMarkdown converts DOCX file to Markdown", async () => {
   const result = await Markdownify.toMarkdown({ filePath: docxPath });
 
   expect(result).toBeDefined();
-  expect(result.path).toContain("markdown_output_");
   expect(result.text).toContain("Test DOCX content");
 });
 
@@ -47,7 +45,6 @@ test("Markdownify.toMarkdown converts XLSX file to Markdown", async () => {
   const result = await Markdownify.toMarkdown({ filePath: xlsxPath });
 
   expect(result).toBeDefined();
-  expect(result.path).toContain("markdown_output_");
   expect(result.text).toContain("Test XLSX content");
 });
 
@@ -56,7 +53,6 @@ test("Markdownify.toMarkdown converts PPTX file to Markdown", async () => {
   const result = await Markdownify.toMarkdown({ filePath: pptxPath });
 
   expect(result).toBeDefined();
-  expect(result.path).toContain("markdown_output_");
   expect(result.text).toContain("Test PPTX content");
 });
 
@@ -65,7 +61,6 @@ test("Markdownify.toMarkdown converts image file to Markdown", async () => {
   const result = await Markdownify.toMarkdown({ filePath: imagePath });
 
   expect(result).toBeDefined();
-  expect(result.path).toContain("markdown_output_");
   // markitdown returns only whitespace for images without LLM vision config
   expect(result.text.trim()).toBe("");
 });
@@ -84,7 +79,6 @@ test("Markdownify.toMarkdown converts URL content to Markdown", async () => {
   const result = await Markdownify.toMarkdown({ url: testUrl });
 
   expect(result).toBeDefined();
-  expect(result.path).toContain("markdown_output_");
   expect(result.text).toContain("# Example Domain");
 });
 

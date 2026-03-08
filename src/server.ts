@@ -97,8 +97,9 @@ export function createServer() {
 
         return {
           content: [
-            { type: "text", text: `Output file: ${result.path}` },
-            { type: "text", text: `Converted content:` },
+            ...(result.path
+              ? [{ type: "text" as const, text: `Output file: ${result.path}` }]
+              : []),
             { type: "text", text: result.text },
           ],
           isError: false,
