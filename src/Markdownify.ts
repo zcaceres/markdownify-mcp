@@ -4,6 +4,8 @@ import path from "path";
 import fs from "fs";
 import os from "os";
 import { fileURLToPath } from "url";
+import { URL } from "node:url";
+import is_ip_private from "private-ip";
 import { expandHome } from "./utils.js";
 const execFileAsync = promisify(execFile);
 
@@ -69,6 +71,42 @@ export class Markdownify {
     return tempOutputPath;
   }
 
+  private static validateUrl(url: string): void {
+    const parsed = new URL(url);
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      throw new Error("Only http: and https: schemes are allowed.");
+    }
+    if (is_ip_private(parsed.hostname)) {
+      throw new Error(
+        `Fetching ${url} is potentially dangerous, aborting.`,
+      );
+    }
+  }
+
+  private static async safeFetch(
+    url: string,
+    maxRedirects = 10,
+  ): Promise<Response> {
+    let currentUrl = url;
+    for (let i = 0; i < maxRedirects; i++) {
+      this.validateUrl(currentUrl);
+      const response = await fetch(currentUrl, { redirect: "manual" });
+      if (
+        response.status >= 300 &&
+        response.status < 400 &&
+        response.headers.get("location")
+      ) {
+        currentUrl = new URL(
+          response.headers.get("location")!,
+          currentUrl,
+        ).toString();
+        continue;
+      }
+      return response;
+    }
+    throw new Error("Too many redirects");
+  }
+
   private static normalizePath(p: string): string {
     return path.normalize(p);
   }
@@ -87,7 +125,7 @@ export class Markdownify {
       let isTemporary = false;
 
       if (url) {
-        const response = await fetch(url);
+        const response = await this.safeFetch(url);
 
         let extension: string | null = null;
 
