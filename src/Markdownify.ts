@@ -4,9 +4,14 @@ import path from "path";
 import fs from "fs";
 import os from "os";
 import { fileURLToPath } from "url";
-import { URL } from "node:url";
-import is_ip_private from "private-ip";
-import { expandHome } from "./utils.js";
+import {
+  expandHome,
+  validateUrl,
+  isUnconvertedHtml,
+  inferExtensionFromUrl,
+  isMarkdownFile,
+  isWithinDirectory,
+} from "./utils.js";
 const execFileAsync = promisify(execFile);
 
 const __filename = fileURLToPath(import.meta.url);
@@ -42,9 +47,7 @@ export class Markdownify {
       throw new Error(`Error executing command: ${stderr}`);
     }
 
-    // Detect when markitdown returns unconverted HTML (e.g. JS-rendered SPAs)
-    const trimmed = stdout.trimStart();
-    if (trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html")) {
+    if (isUnconvertedHtml(stdout)) {
       throw new Error(
         "Conversion failed: the page returned raw HTML that could not be converted to Markdown. " +
           "This typically happens with JavaScript-rendered pages (SPAs) that require a browser to load content.",
@@ -71,25 +74,13 @@ export class Markdownify {
     return tempOutputPath;
   }
 
-  private static validateUrl(url: string): void {
-    const parsed = new URL(url);
-    if (!["http:", "https:"].includes(parsed.protocol)) {
-      throw new Error("Only http: and https: schemes are allowed.");
-    }
-    if (is_ip_private(parsed.hostname)) {
-      throw new Error(
-        `Fetching ${url} is potentially dangerous, aborting.`,
-      );
-    }
-  }
-
   private static async safeFetch(
     url: string,
     maxRedirects = 10,
   ): Promise<Response> {
     let currentUrl = url;
     for (let i = 0; i < maxRedirects; i++) {
-      this.validateUrl(currentUrl);
+      validateUrl(currentUrl);
       const response = await fetch(currentUrl, { redirect: "manual" });
       if (
         response.status >= 300 &&
@@ -107,10 +98,6 @@ export class Markdownify {
     throw new Error("Too many redirects");
   }
 
-  private static normalizePath(p: string): string {
-    return path.normalize(p);
-  }
-
   static async toMarkdown({
     filePath,
     url,
@@ -126,15 +113,7 @@ export class Markdownify {
 
       if (url) {
         const response = await this.safeFetch(url);
-
-        let extension: string | null = null;
-
-        if (url.endsWith(".pdf")) {
-          extension = "pdf";
-        } else {
-          // Default to .html so markitdown knows to convert HTML content
-          extension = "html";
-        }
+        const extension = inferExtensionFromUrl(url);
 
         const arrayBuffer = await response.arrayBuffer();
         const content = Buffer.from(arrayBuffer);
@@ -168,19 +147,15 @@ export class Markdownify {
   }: {
     filePath: string;
   }): Promise<MarkdownResult> {
-    // Check file type is *.md or *.markdown
-    const normPath = this.normalizePath(path.resolve(expandHome(filePath)));
-    const markdownExt = [".md", ".markdown"];
-    if (!markdownExt.includes(path.extname(normPath))) {
+    const resolvedPath = path.resolve(expandHome(filePath));
+    if (!isMarkdownFile(resolvedPath)) {
       throw new Error("Required file is not a Markdown file.");
     }
 
     if (process.env?.MD_SHARE_DIR) {
-      const allowedShareDir = this.normalizePath(
-        path.resolve(expandHome(process.env.MD_SHARE_DIR)),
-      );
-      if (!normPath.startsWith(allowedShareDir)) {
-        throw new Error(`Only files in ${allowedShareDir} are allowed.`);
+      const allowedShareDir = expandHome(process.env.MD_SHARE_DIR);
+      if (!isWithinDirectory(resolvedPath, allowedShareDir)) {
+        throw new Error(`Only files in ${path.normalize(path.resolve(allowedShareDir))} are allowed.`);
       }
     }
 
