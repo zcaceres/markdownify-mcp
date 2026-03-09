@@ -36,7 +36,12 @@ export class Markdownify {
     );
 
     if (!fs.existsSync(markitdownPath)) {
-      throw new Error("markitdown executable not found");
+      throw new Error(
+        `markitdown executable not found at ${markitdownPath}. ` +
+        `Ensure the Python virtual environment is set up by running: ` +
+        `python3 -m venv .venv && .venv/bin/pip install "markitdown>=0.1.5" ` +
+        `in the project root (${projectRoot}).`,
+      );
     }
 
     // Use execFile to prevent command injection

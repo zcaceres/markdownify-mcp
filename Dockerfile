@@ -3,7 +3,7 @@ FROM oven/bun:debian AS base
 WORKDIR /app
 
 # Install dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv bash && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv bash git && rm -rf /var/lib/apt/lists/*
 
 # Copy the source code
 COPY . .
