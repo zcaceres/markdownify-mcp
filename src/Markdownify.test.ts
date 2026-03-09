@@ -184,6 +184,77 @@ test("Markdownify.fromRepo rejects shell metacharacters in URL", async () => {
   ).rejects.toThrow("Invalid repository URL or shorthand");
 });
 
+// Integration tests against diverse real repositories
+test("Markdownify.fromRepo handles a TypeScript repo (sindresorhus/is)", async () => {
+  const result = await Markdownify.fromRepo({
+    repoUrl: "sindresorhus/is",
+  });
+
+  expect(result).toBeDefined();
+  expect(result.text.length).toBeGreaterThan(1000);
+  expect(result.text).toContain("package.json");
+  expect(result.text).toContain("tsconfig");
+}, 120_000);
+
+test("Markdownify.fromRepo handles a Python repo (pallets/click)", async () => {
+  const result = await Markdownify.fromRepo({
+    repoUrl: "pallets/click",
+  });
+
+  expect(result).toBeDefined();
+  expect(result.text.length).toBeGreaterThan(1000);
+  expect(result.text).toContain(".py");
+}, 120_000);
+
+test("Markdownify.fromRepo handles a Rust repo (BurntSushi/ripgrep)", async () => {
+  const result = await Markdownify.fromRepo({
+    repoUrl: "BurntSushi/ripgrep",
+  });
+
+  expect(result).toBeDefined();
+  expect(result.text.length).toBeGreaterThan(5000);
+  expect(result.text).toContain("Cargo.toml");
+}, 120_000);
+
+test("Markdownify.fromRepo handles a Go repo (junegunn/fzf)", async () => {
+  const result = await Markdownify.fromRepo({
+    repoUrl: "junegunn/fzf",
+  });
+
+  expect(result).toBeDefined();
+  expect(result.text.length).toBeGreaterThan(5000);
+  expect(result.text).toContain("go.mod");
+}, 120_000);
+
+test("Markdownify.fromRepo handles full GitLab-style HTTPS URL", async () => {
+  const result = await Markdownify.fromRepo({
+    repoUrl: "https://github.com/kelseyhightower/nocode",
+  });
+
+  expect(result).toBeDefined();
+  expect(result.text).toContain("README");
+}, 60_000);
+
+test("Markdownify.fromRepo handles a specific tag via branch param", async () => {
+  const result = await Markdownify.fromRepo({
+    repoUrl: "sindresorhus/is",
+    branch: "v6.0.0",
+  });
+
+  expect(result).toBeDefined();
+  expect(result.text).toContain("package.json");
+}, 120_000);
+
+test("Markdownify.fromRepo compress works on a multi-file repo", async () => {
+  const result = await Markdownify.fromRepo({
+    repoUrl: "sindresorhus/is",
+    compress: true,
+  });
+
+  expect(result).toBeDefined();
+  expect(result.text.length).toBeGreaterThan(500);
+}, 120_000);
+
 test("Markdownify.toMarkdown handles error from _markitdown method", async () => {
   const originalMarkitdown = Markdownify["_markitdown"];
   Markdownify["_markitdown"] = mock(() => {
