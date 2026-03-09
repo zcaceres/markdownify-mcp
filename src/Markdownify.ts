@@ -7,6 +7,7 @@ import { fileURLToPath } from "url";
 import {
   expandHome,
   validateUrl,
+  validateRepoUrl,
   isUnconvertedHtml,
   inferExtensionFromUrl,
   isMarkdownFile,
@@ -140,6 +141,59 @@ export class Markdownify {
         throw new Error("Error processing to Markdown: Unknown error occurred");
       }
     }
+  }
+
+  static async fromRepo({
+    repoUrl,
+    branch,
+    compress,
+  }: {
+    repoUrl: string;
+    branch?: string;
+    compress?: boolean;
+  }): Promise<MarkdownResult> {
+    validateRepoUrl(repoUrl);
+
+    const repomixPath = path.join(
+      __dirname,
+      "..",
+      "node_modules",
+      ".bin",
+      "repomix",
+    );
+
+    if (!fs.existsSync(repomixPath)) {
+      throw new Error("repomix executable not found");
+    }
+
+    const args = [
+      "--remote",
+      repoUrl,
+      "--style",
+      "markdown",
+      "--stdout",
+      "--quiet",
+    ];
+
+    if (branch) {
+      args.push("--remote-branch", branch);
+    }
+
+    if (compress) {
+      args.push("--compress");
+    }
+
+    const { stdout, stderr } = await execFileAsync(repomixPath, args, {
+      maxBuffer: 100 * 1024 * 1024, // 100 MB
+    });
+
+    if (!stdout) {
+      throw new Error(
+        `repomix produced no output${stderr ? `: ${stderr}` : ""}`,
+      );
+    }
+
+    return { text: stdout };
   }
 
   static async get({

@@ -2,6 +2,7 @@ import { expect, test, describe } from "bun:test";
 import {
   expandHome,
   validateUrl,
+  validateRepoUrl,
   isUnconvertedHtml,
   inferExtensionFromUrl,
   isMarkdownFile,
@@ -159,5 +160,49 @@ describe("isWithinDirectory", () => {
     expect(
       isWithinDirectory("/home/user/docs/../other/file.md", "/home/user/docs"),
     ).toBe(false);
+  });
+});
+
+describe("validateRepoUrl", () => {
+  test("accepts GitHub shorthand", () => {
+    expect(() => validateRepoUrl("octocat/Hello-World")).not.toThrow();
+  });
+
+  test("accepts full GitHub URL", () => {
+    expect(() =>
+      validateRepoUrl("https://github.com/octocat/Hello-World"),
+    ).not.toThrow();
+  });
+
+  test("rejects empty string", () => {
+    expect(() => validateRepoUrl("")).toThrow("Repository URL is required");
+  });
+
+  test("rejects whitespace-only string", () => {
+    expect(() => validateRepoUrl("   ")).toThrow("Repository URL is required");
+  });
+
+  test("rejects shell metacharacters", () => {
+    expect(() => validateRepoUrl("owner/repo; rm -rf /")).toThrow(
+      "Invalid repository URL or shorthand",
+    );
+  });
+
+  test("rejects flag injection", () => {
+    expect(() => validateRepoUrl("--help")).toThrow(
+      "Invalid repository URL or shorthand",
+    );
+  });
+
+  test("rejects file:// URLs", () => {
+    expect(() => validateRepoUrl("file:///etc/passwd")).toThrow(
+      "Only http: and https: repository URLs are allowed",
+    );
+  });
+
+  test("rejects ssh:// URLs", () => {
+    expect(() => validateRepoUrl("ssh://git@github.com/owner/repo")).toThrow(
+      "Only http: and https: repository URLs are allowed",
+    );
   });
 });
