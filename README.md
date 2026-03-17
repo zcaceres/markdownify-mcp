@@ -1,5 +1,7 @@
 # Markdownify MCP Server
 
+[![AgentRank](https://agentrank-ai.com/api/badge/tool/zcaceres--markdownify-mcp)](https://agentrank-ai.com/tool/zcaceres--markdownify-mcp/)
+
 > Help! I need someone with a Windows computer to help me add support for Markdownify-MCP on Windows. PRs exist but I cannot test them. Post [here](https://github.com/zcaceres/markdownify-mcp/issues/18) if interested.
 
 ![markdownify mcp logo](logo.jpg)
