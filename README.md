@@ -28,23 +28,20 @@ Markdownify is a Model Context Protocol (MCP) server that converts various file 
 1. Clone this repository
 2. Install dependencies:
    ```
-   pnpm install
+   bun install
    ```
-
-Note: this will also install `uv` and related Python depdencies.
-
 3. Build the project:
    ```
-   pnpm run build
+   bun run build
    ```
 4. Start the server:
    ```
-   pnpm start
+   bun start
    ```
 
 ## Development
 
-- Use `pnpm run dev` to start the TypeScript compiler in watch mode
+- Use `bun run dev` to start the TypeScript compiler in watch mode
 - Modify `src/server.ts` to customize server behavior
 - Add or modify tools in `src/tools.ts`
 
@@ -52,18 +49,14 @@ Note: this will also install `uv` and related Python depdencies.
 
 To integrate this server with a desktop app, add the following to your app's server configuration:
 
-```js
+```json
 {
   "mcpServers": {
     "markdownify": {
       "command": "node",
       "args": [
         "{ABSOLUTE PATH TO FILE HERE}/dist/index.js"
-      ],
-      "env": {
-        // By default, the server will use the default install location of `uv`
-        "UV_PATH": "/path/to/uv"
-      }
+      ]
     }
   }
 }
@@ -82,7 +75,7 @@ To integrate this server with a desktop app, add the following to your app's ser
 - `pptx-to-markdown`: Convert PPTX files to Markdown
 - `get-markdown-file`: Retrieve an existing Markdown file. File extension must end with: *.md, *.markdown.
   
-  OPTIONAL: set `MD_SHARE_DIR` env var to restrict the directory from which files can be retrieved, e.g. `MD_SHARE_DIR=[SOME_PATH] pnpm run start` 
+  OPTIONAL: set `MD_SHARE_DIR` env var to restrict the directory from which files can be retrieved, e.g. `MD_SHARE_DIR=[SOME_PATH] bun start`
 
 ## Contributing
 

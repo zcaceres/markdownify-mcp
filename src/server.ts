@@ -10,7 +10,6 @@ import { CallToolRequest } from "@modelcontextprotocol/sdk/types.js";
 const RequestPayloadSchema = z.object({
   filepath: z.string().optional(),
   url: z.string().optional(),
-  projectRoot: z.string().optional(),
   branch: z.string().optional(),
   compress: z.boolean().optional(),
 });
@@ -52,7 +51,6 @@ export function createServer() {
             }
             result = await Markdownify.toMarkdown({
               url: validatedArgs.url,
-              projectRoot: validatedArgs.projectRoot,
             });
             break;
 
@@ -67,7 +65,6 @@ export function createServer() {
             }
             result = await Markdownify.toMarkdown({
               filePath: validatedArgs.filepath,
-              projectRoot: validatedArgs.projectRoot,
             });
             break;
 
