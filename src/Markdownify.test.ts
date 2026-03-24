@@ -1,4 +1,4 @@
-import { expect, test, mock, beforeAll, afterAll } from "bun:test";
+import { expect, test, describe, beforeAll } from "bun:test";
 import { Markdownify, MarkdownResult } from "./Markdownify";
 import fs from "fs";
 import path from "path";
@@ -14,22 +14,12 @@ beforeAll(() => {
   }
 });
 
-afterAll(() => {
-  // Clean up any temporary files created during tests
-  const tempFiles = fs.readdirSync(tempDir);
-  tempFiles.forEach((file) => {
-    if (file.startsWith("markdown_output_")) {
-      fs.unlinkSync(path.join(tempDir, file));
-    }
-  });
-});
-
 test("Markdownify.toMarkdown converts PDF file to Markdown", async () => {
   const pdfPath = path.join(sampleDataDir, "test.pdf");
   const result = await Markdownify.toMarkdown({ filePath: pdfPath });
 
   expect(result).toBeDefined();
-  expect(result.text).toContain("Test PDF content");
+  expect(result.text).toContain("Introduction");
 });
 
 test("Markdownify.toMarkdown converts DOCX file to Markdown", async () => {
@@ -37,7 +27,7 @@ test("Markdownify.toMarkdown converts DOCX file to Markdown", async () => {
   const result = await Markdownify.toMarkdown({ filePath: docxPath });
 
   expect(result).toBeDefined();
-  expect(result.text).toContain("Test DOCX content");
+  expect(result.text).toContain("AutoGen");
 });
 
 test("Markdownify.toMarkdown converts XLSX file to Markdown", async () => {
@@ -45,7 +35,7 @@ test("Markdownify.toMarkdown converts XLSX file to Markdown", async () => {
   const result = await Markdownify.toMarkdown({ filePath: xlsxPath });
 
   expect(result).toBeDefined();
-  expect(result.text).toContain("Test XLSX content");
+  expect(result.text).toContain("Alpha");
 });
 
 test("Markdownify.toMarkdown converts PPTX file to Markdown", async () => {
@@ -53,7 +43,7 @@ test("Markdownify.toMarkdown converts PPTX file to Markdown", async () => {
   const result = await Markdownify.toMarkdown({ filePath: pptxPath });
 
   expect(result).toBeDefined();
-  expect(result.text).toContain("Test PPTX content");
+  expect(result.text).toContain("AutoGen");
 });
 
 test("Markdownify.toMarkdown converts image file to Markdown", async () => {
@@ -61,25 +51,21 @@ test("Markdownify.toMarkdown converts image file to Markdown", async () => {
   const result = await Markdownify.toMarkdown({ filePath: imagePath });
 
   expect(result).toBeDefined();
-  // markitdown returns only whitespace for images without LLM vision config
-  expect(result.text.trim()).toBe("");
+  // markitdown returns metadata for images (exif data if available)
+  expect(typeof result.text).toBe("string");
 });
 
-test("Markdownify.toMarkdown converts URL content to Markdown", async () => {
-  const testUrl = "https://example.com";
-  const html = "<h1>Example Domain</h1>";
-  const mockFetch = mock(() =>
-    Promise.resolve({
-      arrayBuffer: () =>
-        Promise.resolve(new TextEncoder().encode(html).buffer),
-    }),
+test("Markdownify.toMarkdown throws error when neither filePath nor url is provided", async () => {
+  await expect(Markdownify.toMarkdown({})).rejects.toThrow(
+    "Either filePath or url must be provided",
   );
-  global.fetch = mockFetch as any;
+});
 
-  const result = await Markdownify.toMarkdown({ url: testUrl });
-
-  expect(result).toBeDefined();
-  expect(result.text).toContain("# Example Domain");
+test("Markdownify.toMarkdown throws error for non-existent file", async () => {
+  const nonExistentPath = path.join(sampleDataDir, "non_existent.pdf");
+  await expect(
+    Markdownify.toMarkdown({ filePath: nonExistentPath }),
+  ).rejects.toThrow();
 });
 
 test("Markdownify.get retrieves existing Markdown file", async () => {
@@ -94,19 +80,6 @@ test("Markdownify.get retrieves existing Markdown file", async () => {
   expect(result.text).toBe(mdContent);
 
   fs.unlinkSync(tempFilePath);
-});
-
-test("Markdownify.toMarkdown throws error for non-existent file", async () => {
-  const nonExistentPath = path.join(sampleDataDir, "non_existent.pdf");
-  await expect(
-    Markdownify.toMarkdown({ filePath: nonExistentPath }),
-  ).rejects.toThrow();
-});
-
-test("Markdownify.toMarkdown throws error when neither filePath nor url is provided", async () => {
-  await expect(Markdownify.toMarkdown({})).rejects.toThrow(
-    "Either filePath or url must be provided",
-  );
 });
 
 test("Markdownify.get throws error for non-existent file", async () => {
@@ -255,16 +228,193 @@ test("Markdownify.fromRepo compress works on a multi-file repo", async () => {
   expect(result.text.length).toBeGreaterThan(500);
 }, 120_000);
 
-test("Markdownify.toMarkdown handles error from _markitdown method", async () => {
-  const originalMarkitdown = Markdownify["_markitdown"];
-  Markdownify["_markitdown"] = mock(() => {
-    throw new Error("Mocked _markitdown error");
+// ============================================================
+// Regression tests for Python → TypeScript markitdown swap
+// ============================================================
+
+describe("output quality: file conversions produce real markdown", () => {
+  test("PDF output contains markdown structure, not raw text dump", async () => {
+    const pdfPath = path.join(sampleDataDir, "test.pdf");
+    const result = await Markdownify.toMarkdown({ filePath: pdfPath });
+
+    expect(result.text.length).toBeGreaterThan(100);
+    // Should not be empty or whitespace-only
+    expect(result.text.trim().length).toBeGreaterThan(0);
+    // Should not contain raw HTML
+    expect(result.text).not.toMatch(/^<!DOCTYPE/i);
+    expect(result.text).not.toMatch(/^<html/i);
   });
 
-  const pdfPath = path.join(sampleDataDir, "test.pdf");
-  await expect(Markdownify.toMarkdown({ filePath: pdfPath })).rejects.toThrow(
-    "Error processing to Markdown: Mocked _markitdown error",
-  );
+  test("DOCX output contains markdown formatting", async () => {
+    const docxPath = path.join(sampleDataDir, "test.docx");
+    const result = await Markdownify.toMarkdown({ filePath: docxPath });
 
-  Markdownify["_markitdown"] = originalMarkitdown;
+    expect(result.text.length).toBeGreaterThan(100);
+    // Should contain markdown heading or bold markers
+    expect(result.text).toMatch(/#{1,6}\s|(\*\*.*\*\*)/);
+    // Should not be raw HTML
+    expect(result.text).not.toMatch(/^<!DOCTYPE/i);
+    expect(result.text).not.toMatch(/^<html/i);
+  });
+
+  test("XLSX output contains markdown table", async () => {
+    const xlsxPath = path.join(sampleDataDir, "test.xlsx");
+    const result = await Markdownify.toMarkdown({ filePath: xlsxPath });
+
+    expect(result.text.length).toBeGreaterThan(50);
+    // Should contain pipe-delimited table rows
+    expect(result.text).toContain("|");
+    expect(result.text).toContain("---");
+  });
+
+  test("PPTX output contains slide markers or headings", async () => {
+    const pptxPath = path.join(sampleDataDir, "test.pptx");
+    const result = await Markdownify.toMarkdown({ filePath: pptxPath });
+
+    expect(result.text.length).toBeGreaterThan(100);
+    // Should contain slide comments or headings
+    expect(result.text).toMatch(/<!-- Slide|#{1,6}\s/);
+  });
+});
+
+describe("URL-based conversions", () => {
+  test("converts a webpage URL to markdown", async () => {
+    const result = await Markdownify.toMarkdown({
+      url: "https://example.com",
+    });
+
+    expect(result).toBeDefined();
+    expect(result.text).toContain("Example Domain");
+    // Output should be markdown, not raw HTML
+    expect(result.text).not.toMatch(/^<!DOCTYPE/i);
+    expect(result.text).not.toMatch(/^<html/i);
+  }, 15_000);
+
+  test("converts an HTML page and produces markdown headings", async () => {
+    const result = await Markdownify.toMarkdown({
+      url: "https://example.com",
+    });
+
+    // Should have converted <h1> to markdown heading
+    expect(result.text).toMatch(/#{1,6}\s.*Example Domain/);
+  }, 15_000);
+});
+
+describe("SSRF protection on URL path", () => {
+  test("rejects private IP addresses", async () => {
+    await expect(
+      Markdownify.toMarkdown({ url: "http://192.168.1.1" }),
+    ).rejects.toThrow("potentially dangerous");
+  });
+
+  test("rejects localhost", async () => {
+    await expect(
+      Markdownify.toMarkdown({ url: "http://127.0.0.1" }),
+    ).rejects.toThrow("potentially dangerous");
+  });
+
+  test("rejects link-local metadata endpoint", async () => {
+    await expect(
+      Markdownify.toMarkdown({ url: "http://169.254.169.254/latest/meta-data/" }),
+    ).rejects.toThrow("potentially dangerous");
+  });
+
+  test("rejects file:// scheme", async () => {
+    await expect(
+      Markdownify.toMarkdown({ url: "file:///etc/passwd" }),
+    ).rejects.toThrow("Only http: and https: schemes are allowed");
+  });
+
+  test("rejects ftp:// scheme", async () => {
+    await expect(
+      Markdownify.toMarkdown({ url: "ftp://example.com/file" }),
+    ).rejects.toThrow("Only http: and https: schemes are allowed");
+  });
+});
+
+describe("error handling", () => {
+  test("errors are wrapped with 'Error processing to Markdown' prefix", async () => {
+    await expect(
+      Markdownify.toMarkdown({ filePath: "/nonexistent/path/file.pdf" }),
+    ).rejects.toThrow(/^Error processing to Markdown:/);
+  });
+
+  test("unsupported file extension produces a wrapped error", async () => {
+    const tempFile = path.join(tempDir, "test_unsupported.xyz123");
+    fs.writeFileSync(tempFile, "some random content");
+
+    try {
+      await expect(
+        Markdownify.toMarkdown({ filePath: tempFile }),
+      ).rejects.toThrow(/^Error processing to Markdown:/);
+    } finally {
+      fs.unlinkSync(tempFile);
+    }
+  });
+
+  test("invalid URL produces a wrapped error", async () => {
+    await expect(
+      Markdownify.toMarkdown({ url: "not-a-url" }),
+    ).rejects.toThrow(/^Error processing to Markdown:/);
+  });
+});
+
+describe("projectRoot parameter is safely ignored", () => {
+  test("file conversion works with projectRoot set", async () => {
+    const pdfPath = path.join(sampleDataDir, "test.pdf");
+    const result = await Markdownify.toMarkdown({
+      filePath: pdfPath,
+      projectRoot: "/some/random/path",
+    });
+
+    expect(result).toBeDefined();
+    expect(result.text).toContain("Introduction");
+  });
+
+  test("file conversion works without projectRoot", async () => {
+    const pdfPath = path.join(sampleDataDir, "test.pdf");
+    const result = await Markdownify.toMarkdown({
+      filePath: pdfPath,
+    });
+
+    expect(result).toBeDefined();
+    expect(result.text).toContain("Introduction");
+  });
+});
+
+describe("HTML is converted, not passed through", () => {
+  test("an HTML file on disk is converted to markdown", async () => {
+    const tempHtml = path.join(tempDir, "test_html_conversion.html");
+    fs.writeFileSync(
+      tempHtml,
+      `<!DOCTYPE html>
+<html>
+<head><title>Test Page</title></head>
+<body>
+  <h1>Main Heading</h1>
+  <p>This is a paragraph with <strong>bold text</strong> and <em>italic text</em>.</p>
+  <ul>
+    <li>Item one</li>
+    <li>Item two</li>
+  </ul>
+</body>
+</html>`,
+    );
+
+    try {
+      const result = await Markdownify.toMarkdown({ filePath: tempHtml });
+
+      // Should be converted to markdown, not returned as raw HTML
+      expect(result.text).not.toContain("<!DOCTYPE");
+      expect(result.text).not.toContain("<html");
+      expect(result.text).not.toContain("<body");
+
+      // Should contain markdown equivalents
+      expect(result.text).toContain("Main Heading");
+      expect(result.text).toMatch(/\*\*bold text\*\*/);
+      expect(result.text).toMatch(/\*italic text\*/);
+    } finally {
+      fs.unlinkSync(tempHtml);
+    }
+  });
 });

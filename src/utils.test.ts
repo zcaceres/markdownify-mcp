@@ -3,8 +3,6 @@ import {
   expandHome,
   validateUrl,
   validateRepoUrl,
-  isUnconvertedHtml,
-  inferExtensionFromUrl,
   isMarkdownFile,
   isWithinDirectory,
 } from "./utils";
@@ -72,46 +70,6 @@ describe("validateUrl", () => {
 
   test("throws on invalid URLs", () => {
     expect(() => validateUrl("not-a-url")).toThrow();
-  });
-});
-
-describe("isUnconvertedHtml", () => {
-  test("detects DOCTYPE html", () => {
-    expect(isUnconvertedHtml("<!DOCTYPE html><html>...</html>")).toBe(true);
-  });
-
-  test("detects html tag", () => {
-    expect(isUnconvertedHtml("<html lang='en'>...</html>")).toBe(true);
-  });
-
-  test("detects html with leading whitespace", () => {
-    expect(isUnconvertedHtml("  \n<!DOCTYPE html>")).toBe(true);
-  });
-
-  test("returns false for markdown content", () => {
-    expect(isUnconvertedHtml("# Hello World\n\nSome text")).toBe(false);
-  });
-
-  test("returns false for empty string", () => {
-    expect(isUnconvertedHtml("")).toBe(false);
-  });
-
-  test("returns false for plain text", () => {
-    expect(isUnconvertedHtml("Just some plain text")).toBe(false);
-  });
-});
-
-describe("inferExtensionFromUrl", () => {
-  test("returns pdf for .pdf URLs", () => {
-    expect(inferExtensionFromUrl("https://example.com/doc.pdf")).toBe("pdf");
-  });
-
-  test("returns html for non-pdf URLs", () => {
-    expect(inferExtensionFromUrl("https://example.com/page")).toBe("html");
-  });
-
-  test("returns html for .html URLs", () => {
-    expect(inferExtensionFromUrl("https://example.com/page.html")).toBe("html");
   });
 });
 

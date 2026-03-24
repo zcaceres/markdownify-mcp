@@ -41,18 +41,6 @@ export function validateRepoUrl(repoUrl: string): void {
   }
 }
 
-export function isUnconvertedHtml(output: string): boolean {
-  const trimmed = output.trimStart();
-  return trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html");
-}
-
-export function inferExtensionFromUrl(url: string): string {
-  if (url.endsWith(".pdf")) {
-    return "pdf";
-  }
-  return "html";
-}
-
 export function isMarkdownFile(filePath: string): boolean {
   const markdownExt = [".md", ".markdown"];
   return markdownExt.includes(path.extname(filePath));
