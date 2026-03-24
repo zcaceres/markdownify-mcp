@@ -1,0 +1,4 @@
+# Test fixtures contain Bing tracking URLs that trigger false positives
+src/sample-data/test_serp.html:facebook-access-token:42
+src/sample-data/test_serp.html:facebook-access-token:90
+src/sample-data/test_serp.html:facebook-access-token:117

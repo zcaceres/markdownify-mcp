@@ -1,5 +1,6 @@
 import { expect, test, describe, beforeAll } from "bun:test";
 import { Markdownify, MarkdownResult } from "./Markdownify";
+import { createMarkItDown } from "markitdown-typescript";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -356,6 +357,86 @@ describe("error handling", () => {
     await expect(
       Markdownify.toMarkdown({ url: "not-a-url" }),
     ).rejects.toThrow(/^Error processing to Markdown:/);
+  });
+});
+
+describe("YouTube converter (fixture-based, no network)", () => {
+  test("extracts metadata from YouTube HTML", async () => {
+    const md = createMarkItDown();
+    const fixturePath = path.join(sampleDataDir, "test_youtube.html");
+    const result = await md.convert(fixturePath, {
+      streamInfo: {
+        url: "https://www.youtube.com/watch?v=V2qZ_lgxTzg",
+        mimetype: "text/html",
+        extension: ".html",
+      },
+    });
+
+    // Should use the YouTube-specific converter, not generic HTML
+    expect(result.markdown).toContain("# YouTube");
+    expect(result.markdown).toContain("## Test Video Title");
+    expect(result.markdown).toContain("### Video Metadata");
+    expect(result.markdown).toContain("### Description");
+
+    // Metadata content
+    expect(result.markdown).toContain("1234567");
+    expect(result.markdown).toContain("test, video, markitdown");
+    expect(result.markdown).toContain(
+      "This is a test video description for unit testing.",
+    );
+  });
+
+  test("returns title in result", async () => {
+    const md = createMarkItDown();
+    const fixturePath = path.join(sampleDataDir, "test_youtube.html");
+    const result = await md.convert(fixturePath, {
+      streamInfo: {
+        url: "https://www.youtube.com/watch?v=V2qZ_lgxTzg",
+        mimetype: "text/html",
+        extension: ".html",
+      },
+    });
+
+    expect(result.title).toContain("Test Video Title");
+  });
+});
+
+describe("Bing SERP converter (fixture-based, no network)", () => {
+  test("extracts search results from Bing HTML", async () => {
+    const md = createMarkItDown();
+    const fixturePath = path.join(sampleDataDir, "test_serp.html");
+    const result = await md.convert(fixturePath, {
+      streamInfo: {
+        charset: "utf-8",
+        url: "https://www.bing.com/search?q=microsoft+wikipedia",
+      },
+    });
+
+    // Should use the Bing SERP-specific converter
+    expect(result.markdown).toContain("A Bing search for");
+    expect(result.markdown).toContain("microsoft wikipedia");
+
+    // Should contain actual search result content
+    expect(result.markdown).toContain(
+      "](https://en.wikipedia.org/wiki/Microsoft",
+    );
+    expect(result.markdown).toContain("Microsoft Corporation");
+  });
+
+  test("decodes Bing redirect URLs", async () => {
+    const md = createMarkItDown();
+    const fixturePath = path.join(sampleDataDir, "test_serp.html");
+    const result = await md.convert(fixturePath, {
+      streamInfo: {
+        charset: "utf-8",
+        url: "https://www.bing.com/search?q=microsoft+wikipedia",
+      },
+    });
+
+    // Should NOT contain Bing tracking URLs
+    expect(result.markdown).not.toContain("https://www.bing.com/ck/a?!&&p=");
+    // Should NOT contain SVG data URIs
+    expect(result.markdown).not.toContain("data:image/svg+xml");
   });
 });
 
