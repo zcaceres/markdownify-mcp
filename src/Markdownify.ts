@@ -24,37 +24,12 @@ export type MarkdownResult = {
 };
 
 export class Markdownify {
-  private static async safeFetch(
-    url: string,
-    maxRedirects = 10,
-  ): Promise<Response> {
-    let currentUrl = url;
-    for (let i = 0; i < maxRedirects; i++) {
-      validateUrl(currentUrl);
-      const response = await fetch(currentUrl, { redirect: "manual" });
-      if (
-        response.status >= 300 &&
-        response.status < 400 &&
-        response.headers.get("location")
-      ) {
-        currentUrl = new URL(
-          response.headers.get("location")!,
-          currentUrl,
-        ).toString();
-        continue;
-      }
-      return response;
-    }
-    throw new Error("Too many redirects");
-  }
-
   static async toMarkdown({
     filePath,
     url,
   }: {
     filePath?: string;
     url?: string;
-    projectRoot?: string;
   }): Promise<MarkdownResult> {
     try {
       if (url) {

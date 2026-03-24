@@ -359,29 +359,6 @@ describe("error handling", () => {
   });
 });
 
-describe("projectRoot parameter is safely ignored", () => {
-  test("file conversion works with projectRoot set", async () => {
-    const pdfPath = path.join(sampleDataDir, "test.pdf");
-    const result = await Markdownify.toMarkdown({
-      filePath: pdfPath,
-      projectRoot: "/some/random/path",
-    });
-
-    expect(result).toBeDefined();
-    expect(result.text).toContain("Introduction");
-  });
-
-  test("file conversion works without projectRoot", async () => {
-    const pdfPath = path.join(sampleDataDir, "test.pdf");
-    const result = await Markdownify.toMarkdown({
-      filePath: pdfPath,
-    });
-
-    expect(result).toBeDefined();
-    expect(result.text).toContain("Introduction");
-  });
-});
-
 describe("HTML is converted, not passed through", () => {
   test("an HTML file on disk is converted to markdown", async () => {
     const tempHtml = path.join(tempDir, "test_html_conversion.html");
