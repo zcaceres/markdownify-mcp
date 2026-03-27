@@ -4,3 +4,4 @@ dist
 .claude
 TODO
 *.pdf
+!src/sample-data/test.pdf
