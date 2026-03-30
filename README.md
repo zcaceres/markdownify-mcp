@@ -23,6 +23,10 @@ Markdownify is a Model Context Protocol (MCP) server that converts various file 
   - General web pages
 - Retrieve existing Markdown files
 
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/zcaceres-markdownify-mcp).
+
 ## Getting Started
 
 1. Clone this repository
