@@ -1,7 +1,7 @@
-import { execSync } from 'child_process';
+import { execSync } from "node:child_process";
 
-if (process.platform === 'win32') {
-  execSync('setup.bat', { stdio: 'inherit' });
+if (process.platform === "win32") {
+	execSync("setup.bat", { stdio: "inherit" });
 } else {
-  execSync('./setup.sh', { stdio: 'inherit' });
+	execSync("./setup.sh", { stdio: "inherit" });
 }
