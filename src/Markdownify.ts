@@ -46,13 +46,12 @@ export class Markdownify {
 		}
 
 		// Use execFile to prevent command injection
-		const { stdout, stderr } = await execFileAsync(markitdownPath, [filePath], {
+		// execFileAsync already throws on non-zero exit codes, so we only
+		// need stdout. Stderr often contains harmless warnings (e.g.
+		// onnxruntime, pydub/ffmpeg) that should not cause failures.
+		const { stdout } = await execFileAsync(markitdownPath, [filePath], {
 			maxBuffer: 50 * 1024 * 1024, // 50 MB
 		});
-
-		if (stderr) {
-			throw new Error(`Error executing command: ${stderr}`);
-		}
 
 		if (isUnconvertedHtml(stdout)) {
 			throw new Error(
