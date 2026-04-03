@@ -1,38 +1,41 @@
 {
-  "name": "mcp-markdownify-server",
-  "version": "1.0.3",
-  "description": "MCP Markdownify Server - Model Context Protocol Server for Converting Almost Anything to Markdown",
-  "license": "MIT",
-  "author": "@zcaceres (@zachcaceres | zach.dev)",
-  "homepage": "https://github.com/zcaceres/markdownify-mcp",
-  "bugs": "https://github.com/zcaceres/markdownify-mcp/issues",
-  "type": "module",
-  "bin": {
-    "mcp-markdownify-server": "dist/index.js"
-  },
-  "files": [
-    "dist",
-    "preinstall.js",
-    "setup.sh",
-    "setup.bat"
-  ],
-  "scripts": {
-    "build": "tsc && chmod +x dist/*.js",
-    "dev": "tsc --watch",
-    "preinstall": "node preinstall.js",
-    "prepublishOnly": "bun run build",
-    "start": "bun dist/index.js",
-    "test": "bun test",
-    "test:watch": "bun test --watch"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1",
-    "private-ip": "^3.0.2",
-    "repomix": "^1.12.0",
-    "zod": "^4.3.6"
-  },
-  "devDependencies": {
-    "@types/node": "^25.3.5",
-    "typescript": "^6.0.2"
-  }
+	"name": "mcp-markdownify-server",
+	"version": "1.0.3",
+	"description": "MCP Markdownify Server - Model Context Protocol Server for Converting Almost Anything to Markdown",
+	"license": "MIT",
+	"author": "@zcaceres (@zachcaceres | zach.dev)",
+	"homepage": "https://github.com/zcaceres/markdownify-mcp",
+	"bugs": "https://github.com/zcaceres/markdownify-mcp/issues",
+	"type": "module",
+	"bin": {
+		"mcp-markdownify-server": "dist/index.js"
+	},
+	"files": [
+		"dist",
+		"preinstall.js",
+		"setup.sh",
+		"setup.bat"
+	],
+	"scripts": {
+		"build": "tsc && chmod +x dist/*.js",
+		"dev": "tsc --watch",
+		"preinstall": "node preinstall.js",
+		"prepublishOnly": "bun run build",
+		"start": "bun dist/index.js",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"test": "bun test",
+		"test:watch": "bun test --watch"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.27.1",
+		"private-ip": "^3.0.2",
+		"repomix": "^1.12.0",
+		"zod": "^4.3.6"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.10",
+		"@types/node": "^25.3.5",
+		"typescript": "^6.0.2"
+	}
 }
