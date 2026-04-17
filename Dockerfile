@@ -11,7 +11,7 @@ COPY . .
 RUN rm .python-version
 
 # Install Python dependencies
-RUN python3 -m venv .venv && .venv/bin/pip install "markitdown[all]>=0.1.5"
+RUN python3 -m venv .venv && .venv/bin/pip install "markitdown[pdf]>=0.1.5"
 
 # Use a separate stage for building to save space
 FROM base AS builder
