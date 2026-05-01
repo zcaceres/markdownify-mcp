@@ -33,10 +33,11 @@ export class Markdownify {
     const markitdownPath = resolveMarkitdownPath(projectRoot);
 
     let stdout: string;
-    let stderr: string;
     try {
-      // execFile resolves bare command names against PATH (POSIX execvp / Windows search)
-      ({ stdout, stderr } = await execFileAsync(markitdownPath, [filePath], {
+      // execFile resolves bare command names against PATH (POSIX execvp / Windows search).
+      // Non-zero exit codes reject; stderr alone does not (markitdown emits non-fatal
+      // warnings from onnxruntime/pydub/etc. on a successful run).
+      ({ stdout } = await execFileAsync(markitdownPath, [filePath], {
         maxBuffer: 50 * 1024 * 1024, // 50 MB
       }));
     } catch (e: unknown) {
@@ -50,10 +51,6 @@ export class Markdownify {
         );
       }
       throw e;
-    }
-
-    if (stderr) {
-      throw new Error(`Error executing command: ${stderr}`);
     }
 
     if (isUnconvertedHtml(stdout)) {
