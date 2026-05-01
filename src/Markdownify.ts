@@ -11,7 +11,9 @@ import {
   isUnconvertedHtml,
   inferExtensionFromUrl,
   isMarkdownFile,
-  isWithinDirectory,
+  resolveMarkitdownPath,
+  resolveRepomixPath,
+  assertPathAllowed,
 } from "./utils.js";
 const execFileAsync = promisify(execFile);
 
@@ -28,26 +30,27 @@ export class Markdownify {
     filePath: string,
     projectRoot: string,
   ): Promise<string> {
-    const venvPath = path.join(projectRoot, ".venv");
-    const markitdownPath = path.join(
-      venvPath,
-      process.platform === "win32" ? "Scripts" : "bin",
-      `markitdown${process.platform === "win32" ? ".exe" : ""}`,
-    );
+    const markitdownPath = resolveMarkitdownPath(projectRoot);
 
-    if (!fs.existsSync(markitdownPath)) {
-      throw new Error(
-        `markitdown executable not found at ${markitdownPath}. ` +
-        `Ensure the Python virtual environment is set up by running: ` +
-        `python3 -m venv .venv && .venv/bin/pip install "markitdown>=0.1.5" ` +
-        `in the project root (${projectRoot}).`,
-      );
+    let stdout: string;
+    let stderr: string;
+    try {
+      // execFile resolves bare command names against PATH (POSIX execvp / Windows search)
+      ({ stdout, stderr } = await execFileAsync(markitdownPath, [filePath], {
+        maxBuffer: 50 * 1024 * 1024, // 50 MB
+      }));
+    } catch (e: unknown) {
+      const err = e as NodeJS.ErrnoException;
+      if (err?.code === "ENOENT") {
+        throw new Error(
+          `markitdown executable not found (looked up "${markitdownPath}"). ` +
+            `Set MARKITDOWN_PATH to its absolute location, install it on PATH (e.g. \`pipx install "markitdown[pdf]"\`), ` +
+            `or run setup in the project root (${projectRoot}): ` +
+            `python3 -m venv .venv && .venv/bin/pip install "markitdown[pdf]>=0.1.5".`,
+        );
+      }
+      throw e;
     }
-
-    // Use execFile to prevent command injection
-    const { stdout, stderr } = await execFileAsync(markitdownPath, [filePath], {
-      maxBuffer: 50 * 1024 * 1024, // 50 MB
-    });
 
     if (stderr) {
       throw new Error(`Error executing command: ${stderr}`);
@@ -127,7 +130,9 @@ export class Markdownify {
         inputPath = await this.saveToTempFile(content, extension);
         isTemporary = true;
       } else if (filePath) {
-        inputPath = filePath;
+        const expanded = expandHome(filePath);
+        assertPathAllowed(expanded);
+        inputPath = expanded;
       } else {
         throw new Error("Either filePath or url must be provided");
       }
@@ -159,17 +164,8 @@ export class Markdownify {
   }): Promise<MarkdownResult> {
     validateRepoUrl(repoUrl);
 
-    const repomixPath = path.join(
-      __dirname,
-      "..",
-      "node_modules",
-      ".bin",
-      "repomix",
-    );
-
-    if (!fs.existsSync(repomixPath)) {
-      throw new Error("repomix executable not found");
-    }
+    const projectRoot = path.resolve(__dirname, "..");
+    const repomixPath = resolveRepomixPath(projectRoot);
 
     const args = [
       "--remote",
@@ -188,9 +184,22 @@ export class Markdownify {
       args.push("--compress");
     }
 
-    const { stdout, stderr } = await execFileAsync(repomixPath, args, {
-      maxBuffer: 100 * 1024 * 1024, // 100 MB
-    });
+    let stdout: string;
+    let stderr: string;
+    try {
+      ({ stdout, stderr } = await execFileAsync(repomixPath, args, {
+        maxBuffer: 100 * 1024 * 1024, // 100 MB
+      }));
+    } catch (e: unknown) {
+      const err = e as NodeJS.ErrnoException;
+      if (err?.code === "ENOENT") {
+        throw new Error(
+          `repomix executable not found (looked up "${repomixPath}"). ` +
+            `Set REPOMIX_PATH or install it on PATH (\`bun add -g repomix\`).`,
+        );
+      }
+      throw e;
+    }
 
     if (!stdout) {
       throw new Error(
@@ -211,12 +220,7 @@ export class Markdownify {
       throw new Error("Required file is not a Markdown file.");
     }
 
-    if (process.env?.MD_SHARE_DIR) {
-      const allowedShareDir = expandHome(process.env.MD_SHARE_DIR);
-      if (!isWithinDirectory(resolvedPath, allowedShareDir)) {
-        throw new Error(`Only files in ${path.normalize(path.resolve(allowedShareDir))} are allowed.`);
-      }
-    }
+    assertPathAllowed(resolvedPath);
 
     if (!fs.existsSync(filePath)) {
       throw new Error("File does not exist");
