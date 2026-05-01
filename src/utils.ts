@@ -59,7 +59,10 @@ export function isMarkdownFile(filePath: string): boolean {
 }
 
 export function isWithinDirectory(filePath: string, directory: string): boolean {
-  const normPath = path.normalize(path.resolve(filePath));
-  const normDir = path.normalize(path.resolve(directory));
-  return normPath.startsWith(normDir);
+  const relativePath = path.relative(
+    path.normalize(path.resolve(directory)),
+    path.normalize(path.resolve(filePath)),
+  );
+  return relativePath === "" ||
+    (!relativePath.startsWith("..") && !path.isAbsolute(relativePath));
 }

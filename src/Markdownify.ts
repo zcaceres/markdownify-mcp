@@ -63,6 +63,27 @@ export class Markdownify {
     return stdout;
   }
 
+  private static resolveSharedFilePath(filePath: string): string {
+    const resolvedPath = path.resolve(expandHome(filePath));
+
+    if (process.env?.MD_SHARE_DIR) {
+      const allowedShareDir = path.resolve(expandHome(process.env.MD_SHARE_DIR));
+
+      if (!fs.existsSync(resolvedPath)) {
+        throw new Error("File does not exist");
+      }
+
+      const realPath = fs.realpathSync(resolvedPath);
+      const realAllowedShareDir = fs.realpathSync(allowedShareDir);
+
+      if (!isWithinDirectory(realPath, realAllowedShareDir)) {
+        throw new Error(`Only files in ${path.normalize(allowedShareDir)} are allowed.`);
+      }
+    }
+
+    return resolvedPath;
+  }
+
   private static async saveToTempFile(
     content: string | Buffer,
     suggestedExtension?: string | null,
@@ -127,7 +148,7 @@ export class Markdownify {
         inputPath = await this.saveToTempFile(content, extension);
         isTemporary = true;
       } else if (filePath) {
-        inputPath = filePath;
+        inputPath = this.resolveSharedFilePath(filePath);
       } else {
         throw new Error("Either filePath or url must be provided");
       }

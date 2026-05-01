@@ -103,6 +103,79 @@ test("Markdownify.toMarkdown throws error for non-existent file", async () => {
   ).rejects.toThrow();
 });
 
+test("Markdownify.toMarkdown rejects files outside MD_SHARE_DIR", async () => {
+  const originalShareDir = process.env.MD_SHARE_DIR;
+  const allowedDir = fs.mkdtempSync(path.join(tempDir, "md-share-"));
+  const outsideFile = path.join(sampleDataDir, "test.pdf");
+
+  process.env.MD_SHARE_DIR = allowedDir;
+
+  try {
+    await expect(
+      Markdownify.toMarkdown({ filePath: outsideFile }),
+    ).rejects.toThrow(`Only files in ${path.normalize(path.resolve(allowedDir))} are allowed.`);
+  } finally {
+    if (originalShareDir === undefined) {
+      delete process.env.MD_SHARE_DIR;
+    } else {
+      process.env.MD_SHARE_DIR = originalShareDir;
+    }
+    fs.rmSync(allowedDir, { recursive: true, force: true });
+  }
+});
+
+test("Markdownify.toMarkdown rejects sibling-directory prefix escapes", async () => {
+  const originalShareDir = process.env.MD_SHARE_DIR;
+  const parentDir = fs.mkdtempSync(path.join(tempDir, "md-share-parent-"));
+  const allowedDir = path.join(parentDir, "allowed");
+  const escapedDir = path.join(parentDir, "allowed-escape");
+  const escapedFile = path.join(escapedDir, "test.pdf");
+
+  fs.mkdirSync(allowedDir);
+  fs.mkdirSync(escapedDir);
+  fs.copyFileSync(path.join(sampleDataDir, "test.pdf"), escapedFile);
+  process.env.MD_SHARE_DIR = allowedDir;
+
+  try {
+    await expect(
+      Markdownify.toMarkdown({ filePath: escapedFile }),
+    ).rejects.toThrow(`Only files in ${path.normalize(path.resolve(allowedDir))} are allowed.`);
+  } finally {
+    if (originalShareDir === undefined) {
+      delete process.env.MD_SHARE_DIR;
+    } else {
+      process.env.MD_SHARE_DIR = originalShareDir;
+    }
+    fs.rmSync(parentDir, { recursive: true, force: true });
+  }
+});
+
+test("Markdownify.toMarkdown rejects symlink escapes from MD_SHARE_DIR", async () => {
+  const originalShareDir = process.env.MD_SHARE_DIR;
+  const allowedDir = fs.mkdtempSync(path.join(tempDir, "md-share-allowed-"));
+  const outsideDir = fs.mkdtempSync(path.join(tempDir, "md-share-outside-"));
+  const outsideFile = path.join(outsideDir, "test.pdf");
+  const symlinkPath = path.join(allowedDir, "linked.pdf");
+
+  fs.copyFileSync(path.join(sampleDataDir, "test.pdf"), outsideFile);
+  fs.symlinkSync(outsideFile, symlinkPath);
+  process.env.MD_SHARE_DIR = allowedDir;
+
+  try {
+    await expect(
+      Markdownify.toMarkdown({ filePath: symlinkPath }),
+    ).rejects.toThrow(`Only files in ${path.normalize(path.resolve(allowedDir))} are allowed.`);
+  } finally {
+    if (originalShareDir === undefined) {
+      delete process.env.MD_SHARE_DIR;
+    } else {
+      process.env.MD_SHARE_DIR = originalShareDir;
+    }
+    fs.rmSync(allowedDir, { recursive: true, force: true });
+    fs.rmSync(outsideDir, { recursive: true, force: true });
+  }
+});
+
 test("Markdownify.toMarkdown throws error when neither filePath nor url is provided", async () => {
   await expect(Markdownify.toMarkdown({})).rejects.toThrow(
     "Either filePath or url must be provided",
