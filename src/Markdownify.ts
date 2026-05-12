@@ -1,233 +1,234 @@
-import { execFile } from "child_process";
-import { promisify } from "util";
-import path from "path";
-import fs from "fs";
-import os from "os";
-import { fileURLToPath } from "url";
+import { execFile } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import {
-  expandHome,
-  validateUrl,
-  validateRepoUrl,
-  isUnconvertedHtml,
-  inferExtensionFromUrl,
-  isMarkdownFile,
-  resolveMarkitdownPath,
-  resolveRepomixPath,
-  assertPathAllowed,
+	assertPathAllowed,
+	expandHome,
+	inferExtensionFromUrl,
+	isMarkdownFile,
+	isUnconvertedHtml,
+	resolveMarkitdownPath,
+	resolveRepomixPath,
+	validateRepoUrl,
+	validateUrl,
 } from "./utils.js";
+
 const execFileAsync = promisify(execFile);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export type MarkdownResult = {
-  path?: string;
-  text: string;
+	path?: string;
+	text: string;
 };
 
 export class Markdownify {
-  private static async _markitdown(
-    filePath: string,
-    projectRoot: string,
-  ): Promise<string> {
-    const markitdownPath = resolveMarkitdownPath(projectRoot);
+	private static async _markitdown(
+		filePath: string,
+		projectRoot: string,
+	): Promise<string> {
+		const markitdownPath = resolveMarkitdownPath(projectRoot);
 
-    let stdout: string;
-    try {
-      // execFile resolves bare command names against PATH (POSIX execvp / Windows search).
-      // Non-zero exit codes reject; stderr alone does not (markitdown emits non-fatal
-      // warnings from onnxruntime/pydub/etc. on a successful run).
-      ({ stdout } = await execFileAsync(markitdownPath, [filePath], {
-        maxBuffer: 50 * 1024 * 1024, // 50 MB
-      }));
-    } catch (e: unknown) {
-      const err = e as NodeJS.ErrnoException;
-      if (err?.code === "ENOENT") {
-        throw new Error(
-          `markitdown executable not found (looked up "${markitdownPath}"). ` +
-            `Set MARKITDOWN_PATH to its absolute location, install it on PATH (e.g. \`pipx install "markitdown[pdf]"\`), ` +
-            `or run setup in the project root (${projectRoot}): ` +
-            `python3 -m venv .venv && .venv/bin/pip install "markitdown[pdf]>=0.1.5".`,
-        );
-      }
-      throw e;
-    }
+		let stdout: string;
+		try {
+			// execFile resolves bare command names against PATH (POSIX execvp / Windows search).
+			// Non-zero exit codes reject; stderr alone does not (markitdown emits non-fatal
+			// warnings from onnxruntime/pydub/etc. on a successful run).
+			({ stdout } = await execFileAsync(markitdownPath, [filePath], {
+				maxBuffer: 50 * 1024 * 1024, // 50 MB
+			}));
+		} catch (e: unknown) {
+			const err = e as NodeJS.ErrnoException;
+			if (err?.code === "ENOENT") {
+				throw new Error(
+					`markitdown executable not found (looked up "${markitdownPath}"). ` +
+						`Set MARKITDOWN_PATH to its absolute location, install it on PATH (e.g. \`pipx install "markitdown[pdf]"\`), ` +
+						`or run setup in the project root (${projectRoot}): ` +
+						`python3 -m venv .venv && .venv/bin/pip install "markitdown[pdf]>=0.1.5".`,
+				);
+			}
+			throw e;
+		}
 
-    if (isUnconvertedHtml(stdout)) {
-      throw new Error(
-        "Conversion failed: the page returned raw HTML that could not be converted to Markdown. " +
-          "This typically happens with JavaScript-rendered pages (SPAs) that require a browser to load content.",
-      );
-    }
+		if (isUnconvertedHtml(stdout)) {
+			throw new Error(
+				"Conversion failed: the page returned raw HTML that could not be converted to Markdown. " +
+					"This typically happens with JavaScript-rendered pages (SPAs) that require a browser to load content.",
+			);
+		}
 
-    return stdout;
-  }
+		return stdout;
+	}
 
-  private static async saveToTempFile(
-    content: string | Buffer,
-    suggestedExtension?: string | null,
-  ): Promise<string> {
-    let outputExtension = "md";
-    if (suggestedExtension != null) {
-      outputExtension = suggestedExtension;
-    }
+	private static async saveToTempFile(
+		content: string | Buffer,
+		suggestedExtension?: string | null,
+	): Promise<string> {
+		let outputExtension = "md";
+		if (suggestedExtension != null) {
+			outputExtension = suggestedExtension;
+		}
 
-    const tempOutputPath = path.join(
-      os.tmpdir(),
-      `markdown_output_${Date.now()}.${outputExtension}`,
-    );
-    fs.writeFileSync(tempOutputPath, content);
-    return tempOutputPath;
-  }
+		const tempOutputPath = path.join(
+			os.tmpdir(),
+			`markdown_output_${Date.now()}.${outputExtension}`,
+		);
+		fs.writeFileSync(tempOutputPath, content);
+		return tempOutputPath;
+	}
 
-  private static async safeFetch(
-    url: string,
-    maxRedirects = 10,
-  ): Promise<Response> {
-    let currentUrl = url;
-    for (let i = 0; i < maxRedirects; i++) {
-      validateUrl(currentUrl);
-      const response = await fetch(currentUrl, { redirect: "manual" });
-      if (
-        response.status >= 300 &&
-        response.status < 400 &&
-        response.headers.get("location")
-      ) {
-        currentUrl = new URL(
-          response.headers.get("location")!,
-          currentUrl,
-        ).toString();
-        continue;
-      }
-      return response;
-    }
-    throw new Error("Too many redirects");
-  }
+	private static async safeFetch(
+		url: string,
+		maxRedirects = 10,
+	): Promise<Response> {
+		let currentUrl = url;
+		for (let i = 0; i < maxRedirects; i++) {
+			validateUrl(currentUrl);
+			const response = await fetch(currentUrl, { redirect: "manual" });
+			if (
+				response.status >= 300 &&
+				response.status < 400 &&
+				response.headers.get("location")
+			) {
+				currentUrl = new URL(
+					response.headers.get("location")!,
+					currentUrl,
+				).toString();
+				continue;
+			}
+			return response;
+		}
+		throw new Error("Too many redirects");
+	}
 
-  static async toMarkdown({
-    filePath,
-    url,
-    projectRoot = path.resolve(__dirname, ".."),
-  }: {
-    filePath?: string;
-    url?: string;
-    projectRoot?: string;
-  }): Promise<MarkdownResult> {
-    try {
-      let inputPath: string;
-      let isTemporary = false;
+	static async toMarkdown({
+		filePath,
+		url,
+		projectRoot = path.resolve(__dirname, ".."),
+	}: {
+		filePath?: string;
+		url?: string;
+		projectRoot?: string;
+	}): Promise<MarkdownResult> {
+		try {
+			let inputPath: string;
+			let isTemporary = false;
 
-      if (url) {
-        const response = await this.safeFetch(url);
-        const extension = inferExtensionFromUrl(url);
+			if (url) {
+				const response = await Markdownify.safeFetch(url);
+				const extension = inferExtensionFromUrl(url);
 
-        const arrayBuffer = await response.arrayBuffer();
-        const content = Buffer.from(arrayBuffer);
+				const arrayBuffer = await response.arrayBuffer();
+				const content = Buffer.from(arrayBuffer);
 
-        inputPath = await this.saveToTempFile(content, extension);
-        isTemporary = true;
-      } else if (filePath) {
-        const expanded = expandHome(filePath);
-        assertPathAllowed(expanded);
-        inputPath = expanded;
-      } else {
-        throw new Error("Either filePath or url must be provided");
-      }
+				inputPath = await Markdownify.saveToTempFile(content, extension);
+				isTemporary = true;
+			} else if (filePath) {
+				const expanded = expandHome(filePath);
+				assertPathAllowed(expanded);
+				inputPath = expanded;
+			} else {
+				throw new Error("Either filePath or url must be provided");
+			}
 
-      const text = await this._markitdown(inputPath, projectRoot);
+			const text = await Markdownify._markitdown(inputPath, projectRoot);
 
-      if (isTemporary) {
-        fs.unlinkSync(inputPath);
-      }
+			if (isTemporary) {
+				fs.unlinkSync(inputPath);
+			}
 
-      return { text };
-    } catch (e: unknown) {
-      if (e instanceof Error) {
-        throw new Error(`Error processing to Markdown: ${e.message}`);
-      } else {
-        throw new Error("Error processing to Markdown: Unknown error occurred");
-      }
-    }
-  }
+			return { text };
+		} catch (e: unknown) {
+			if (e instanceof Error) {
+				throw new Error(`Error processing to Markdown: ${e.message}`);
+			} else {
+				throw new Error("Error processing to Markdown: Unknown error occurred");
+			}
+		}
+	}
 
-  static async fromRepo({
-    repoUrl,
-    branch,
-    compress,
-  }: {
-    repoUrl: string;
-    branch?: string;
-    compress?: boolean;
-  }): Promise<MarkdownResult> {
-    validateRepoUrl(repoUrl);
+	static async fromRepo({
+		repoUrl,
+		branch,
+		compress,
+	}: {
+		repoUrl: string;
+		branch?: string;
+		compress?: boolean;
+	}): Promise<MarkdownResult> {
+		validateRepoUrl(repoUrl);
 
-    const projectRoot = path.resolve(__dirname, "..");
-    const repomixPath = resolveRepomixPath(projectRoot);
+		const projectRoot = path.resolve(__dirname, "..");
+		const repomixPath = resolveRepomixPath(projectRoot);
 
-    const args = [
-      "--remote",
-      repoUrl,
-      "--style",
-      "markdown",
-      "--stdout",
-      "--quiet",
-    ];
+		const args = [
+			"--remote",
+			repoUrl,
+			"--style",
+			"markdown",
+			"--stdout",
+			"--quiet",
+		];
 
-    if (branch) {
-      args.push("--remote-branch", branch);
-    }
+		if (branch) {
+			args.push("--remote-branch", branch);
+		}
 
-    if (compress) {
-      args.push("--compress");
-    }
+		if (compress) {
+			args.push("--compress");
+		}
 
-    let stdout: string;
-    let stderr: string;
-    try {
-      ({ stdout, stderr } = await execFileAsync(repomixPath, args, {
-        maxBuffer: 100 * 1024 * 1024, // 100 MB
-      }));
-    } catch (e: unknown) {
-      const err = e as NodeJS.ErrnoException;
-      if (err?.code === "ENOENT") {
-        throw new Error(
-          `repomix executable not found (looked up "${repomixPath}"). ` +
-            `Set REPOMIX_PATH or install it on PATH (\`bun add -g repomix\`).`,
-        );
-      }
-      throw e;
-    }
+		let stdout: string;
+		let stderr: string;
+		try {
+			({ stdout, stderr } = await execFileAsync(repomixPath, args, {
+				maxBuffer: 100 * 1024 * 1024, // 100 MB
+			}));
+		} catch (e: unknown) {
+			const err = e as NodeJS.ErrnoException;
+			if (err?.code === "ENOENT") {
+				throw new Error(
+					`repomix executable not found (looked up "${repomixPath}"). ` +
+						`Set REPOMIX_PATH or install it on PATH (\`bun add -g repomix\`).`,
+				);
+			}
+			throw e;
+		}
 
-    if (!stdout) {
-      throw new Error(
-        `repomix produced no output${stderr ? `: ${stderr}` : ""}`,
-      );
-    }
+		if (!stdout) {
+			throw new Error(
+				`repomix produced no output${stderr ? `: ${stderr}` : ""}`,
+			);
+		}
 
-    return { text: stdout };
-  }
+		return { text: stdout };
+	}
 
-  static async get({
-    filePath,
-  }: {
-    filePath: string;
-  }): Promise<MarkdownResult> {
-    const resolvedPath = path.resolve(expandHome(filePath));
-    if (!isMarkdownFile(resolvedPath)) {
-      throw new Error("Required file is not a Markdown file.");
-    }
+	static async get({
+		filePath,
+	}: {
+		filePath: string;
+	}): Promise<MarkdownResult> {
+		const resolvedPath = path.resolve(expandHome(filePath));
+		if (!isMarkdownFile(resolvedPath)) {
+			throw new Error("Required file is not a Markdown file.");
+		}
 
-    assertPathAllowed(resolvedPath);
+		assertPathAllowed(resolvedPath);
 
-    if (!fs.existsSync(filePath)) {
-      throw new Error("File does not exist");
-    }
+		if (!fs.existsSync(resolvedPath)) {
+			throw new Error("File does not exist");
+		}
 
-    const text = await fs.promises.readFile(filePath, "utf-8");
+		const text = await fs.promises.readFile(resolvedPath, "utf-8");
 
-    return {
-      path: filePath,
-      text: text,
-    };
-  }
+		return {
+			path: resolvedPath,
+			text: text,
+		};
+	}
 }

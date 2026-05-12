@@ -101,9 +101,28 @@ Notes for the Docker MCP catalog (`mcp/markdownify`):
 - `docx-to-markdown`: Convert DOCX files to Markdown
 - `xlsx-to-markdown`: Convert XLSX files to Markdown
 - `pptx-to-markdown`: Convert PPTX files to Markdown
+- `git-repo-to-markdown`: Convert a GitHub repository into a single Markdown document (wraps Repomix). Supports `owner/repo` shorthand and full URLs.
 - `get-markdown-file`: Retrieve an existing Markdown file. File extension must end with: *.md, *.markdown.
 
   OPTIONAL: set `MD_ALLOWED_PATHS` to restrict every file-input tool to a list of directories, e.g. `MD_ALLOWED_PATHS=/data/in:/data/out bun start`.
+
+### Docker feature matrix
+
+| Tool | Local | Docker |
+|------|-------|--------|
+| `pdf-to-markdown` | ✅ | ✅ |
+| `docx-to-markdown` | ✅ | ✅ |
+| `xlsx-to-markdown` | ✅ | ✅ |
+| `pptx-to-markdown` | ✅ | ✅ |
+| `webpage-to-markdown` | ✅ | ✅ |
+| `youtube-to-markdown` | ✅ | ✅ |
+| `bing-search-to-markdown` | ✅ | ✅ |
+| `git-repo-to-markdown` | ✅ | ✅ |
+| `get-markdown-file` | ✅ | ✅ |
+| `image-to-markdown` | ✅ | ❌ ¹ |
+| `audio-to-markdown` | ✅ | ❌ ¹ |
+
+¹ Docker image installs `markitdown[pdf]` only — image/audio extras are excluded to keep the image slim and avoid ONNX runtime ARM compatibility issues.
 
 ## Contributing
 
