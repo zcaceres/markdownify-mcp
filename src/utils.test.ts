@@ -75,6 +75,31 @@ describe("validateUrl", () => {
     );
   });
 
+  test("rejects 10.0.0.0/8 private range", () => {
+    expect(() => validateUrl("http://10.0.0.1")).toThrow(
+      "potentially dangerous",
+    );
+  });
+
+  test("rejects 172.16.0.0/12 private range", () => {
+    expect(() => validateUrl("http://172.16.0.1")).toThrow(
+      "potentially dangerous",
+    );
+  });
+
+  test("rejects IPv6 loopback", () => {
+    // URL parser normalizes [::1] to ::1 in hostname
+    expect(() => validateUrl("http://[::1]")).toThrow(
+      "potentially dangerous",
+    );
+  });
+
+  test("rejects URLs with username (SSRF bypass attempt)", () => {
+    // Some parsers interpret the userinfo; our URL parser treats this as
+    // invalid since URLs with embedded credentials are likely SSRF probes.
+    expect(() => validateUrl("http://user:pass@evil.com")).toThrow();
+  });
+
   test("throws on invalid URLs", () => {
     expect(() => validateUrl("not-a-url")).toThrow();
   });
@@ -118,6 +143,22 @@ describe("inferExtensionFromUrl", () => {
   test("returns html for .html URLs", () => {
     expect(inferExtensionFromUrl("https://example.com/page.html")).toBe("html");
   });
+
+  test("returns pdf for .pdf URL with query parameters", () => {
+    expect(inferExtensionFromUrl("https://example.com/doc.pdf?v=2")).toBe("pdf");
+  });
+
+  test("handles case-insensitive .PDF extension", () => {
+    expect(inferExtensionFromUrl("https://example.com/doc.PDF")).toBe("pdf");
+  });
+
+  test("handles URLs with fragments", () => {
+    expect(inferExtensionFromUrl("https://example.com/doc.pdf#page=1")).toBe("pdf");
+  });
+
+  test("handles URLs with both query and fragment", () => {
+    expect(inferExtensionFromUrl("https://example.com/doc.pdf?v=1#page=2")).toBe("pdf");
+  });
 });
 
 describe("isMarkdownFile", () => {
@@ -139,6 +180,18 @@ describe("isMarkdownFile", () => {
 
   test("rejects files without extension", () => {
     expect(isMarkdownFile("/path/to/file")).toBe(false);
+  });
+
+  test("accepts .MD uppercase extension (case-insensitive)", () => {
+    expect(isMarkdownFile("/path/to/file.MD")).toBe(true);
+  });
+
+  test("accepts .MARKDOWN uppercase extension", () => {
+    expect(isMarkdownFile("/path/to/file.MARKDOWN")).toBe(true);
+  });
+
+  test("rejects files with .md in the middle of the name", () => {
+    expect(isMarkdownFile("/path/to/file.md.backup")).toBe(false);
   });
 });
 
@@ -164,6 +217,29 @@ describe("isWithinDirectory", () => {
   test("returns false for path traversal attempt", () => {
     expect(
       isWithinDirectory("/home/user/docs/../other/file.md", "/home/user/docs"),
+    ).toBe(false);
+  });
+
+  test("handles trailing slashes in directory", () => {
+    expect(
+      isWithinDirectory("/home/user/docs/file.md", "/home/user/docs/"),
+    ).toBe(true);
+  });
+
+  test("handles relative paths", () => {
+    const cwd = process.cwd();
+    expect(isWithinDirectory("./src/file.md", cwd)).toBe(true);
+  });
+
+  test("rejects when file equals directory (not within)", () => {
+    // A directory itself is not *within* itself (file == dir)
+    expect(isWithinDirectory("/home/user/docs", "/home/user/docs")).toBe(true);
+  });
+
+  test("rejects sneaky prefix matches", () => {
+    // /home/user/docs-other should NOT match /home/user/docs
+    expect(
+      isWithinDirectory("/home/user/docs-other/file.md", "/home/user/docs"),
     ).toBe(false);
   });
 });

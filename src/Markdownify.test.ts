@@ -30,7 +30,7 @@ test("Markdownify.toMarkdown converts PDF file to Markdown", async () => {
 
   expect(result).toBeDefined();
   expect(result.text).toContain("Test PDF content");
-});
+}, 15_000); // increased for onnxruntime first-run warmup
 
 test("Markdownify.toMarkdown converts DOCX file to Markdown", async () => {
   const docxPath = path.join(sampleDataDir, "test.docx");
@@ -38,7 +38,7 @@ test("Markdownify.toMarkdown converts DOCX file to Markdown", async () => {
 
   expect(result).toBeDefined();
   expect(result.text).toContain("Test DOCX content");
-});
+}, 15_000);
 
 test("Markdownify.toMarkdown converts XLSX file to Markdown", async () => {
   const xlsxPath = path.join(sampleDataDir, "test.xlsx");
@@ -46,7 +46,7 @@ test("Markdownify.toMarkdown converts XLSX file to Markdown", async () => {
 
   expect(result).toBeDefined();
   expect(result.text).toContain("Test XLSX content");
-});
+}, 15_000);
 
 test("Markdownify.toMarkdown converts PPTX file to Markdown", async () => {
   const pptxPath = path.join(sampleDataDir, "test.pptx");
@@ -54,7 +54,7 @@ test("Markdownify.toMarkdown converts PPTX file to Markdown", async () => {
 
   expect(result).toBeDefined();
   expect(result.text).toContain("Test PPTX content");
-});
+}, 15_000);
 
 test("Markdownify.toMarkdown converts image file to Markdown", async () => {
   const imagePath = path.join(sampleDataDir, "test.jpg");
@@ -63,7 +63,7 @@ test("Markdownify.toMarkdown converts image file to Markdown", async () => {
   expect(result).toBeDefined();
   // markitdown returns only whitespace for images without LLM vision config
   expect(result.text.trim()).toBe("");
-});
+}, 15_000);
 
 test("Markdownify.toMarkdown converts URL content to Markdown", async () => {
   const testUrl = "https://example.com";
@@ -80,7 +80,7 @@ test("Markdownify.toMarkdown converts URL content to Markdown", async () => {
 
   expect(result).toBeDefined();
   expect(result.text).toContain("# Example Domain");
-});
+}, 15_000);
 
 test("Markdownify.get retrieves existing Markdown file", async () => {
   const mdContent = "# Test Markdown\nThis is a test.";
@@ -164,7 +164,7 @@ test("Markdownify.fromRepo throws error for invalid repo", async () => {
   await expect(
     Markdownify.fromRepo({ repoUrl: "not-a-real-owner/not-a-real-repo-xyz" }),
   ).rejects.toThrow();
-}, 30_000);
+}, 120_000); // GitHub API may take a while to respond for non-existent repos
 
 test("Markdownify.fromRepo rejects empty URL", async () => {
   await expect(

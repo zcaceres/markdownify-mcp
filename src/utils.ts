@@ -61,7 +61,16 @@ export function validateUrl(url: string): void {
   if (!["http:", "https:"].includes(parsed.protocol)) {
     throw new Error("Only http: and https: schemes are allowed.");
   }
-  if (is_ip_private(parsed.hostname)) {
+  // Reject URLs with embedded credentials (potential SSRF bypass vector).
+  // Some URL parsers may interpret userinfo differently, leading to hostname confusion.
+  if (parsed.username || parsed.password) {
+    throw new Error(
+      `Fetching ${url} is potentially dangerous, aborting.`,
+    );
+  }
+  // is_ip_private does not cover all IPv6 loopback representations.
+  const hostname = parsed.hostname.toLowerCase();
+  if (is_ip_private(hostname) || hostname === "::1" || hostname === "[::1]") {
     throw new Error(
       `Fetching ${url} is potentially dangerous, aborting.`,
     );
@@ -92,7 +101,10 @@ export function isUnconvertedHtml(output: string): boolean {
 }
 
 export function inferExtensionFromUrl(url: string): string {
-  if (url.endsWith(".pdf")) {
+  // Strip query string and fragment before checking extension
+  const pathOnly = url.split("?")[0].split("#")[0];
+  const lower = pathOnly.toLowerCase();
+  if (lower.endsWith(".pdf")) {
     return "pdf";
   }
   return "html";
@@ -100,11 +112,16 @@ export function inferExtensionFromUrl(url: string): string {
 
 export function isMarkdownFile(filePath: string): boolean {
   const markdownExt = [".md", ".markdown"];
-  return markdownExt.includes(path.extname(filePath));
+  return markdownExt.includes(path.extname(filePath).toLowerCase());
 }
 
 export function isWithinDirectory(filePath: string, directory: string): boolean {
   const normPath = path.normalize(path.resolve(filePath));
   const normDir = path.normalize(path.resolve(directory));
-  return normPath.startsWith(normDir);
+  // Must start with dir prefix AND the next char must be a separator or end of string.
+  // This prevents prefix matches like /home/user/docs-other matching /home/user/docs.
+  if (!normPath.startsWith(normDir)) return false;
+  if (normPath.length === normDir.length) return true;
+  const nextChar = normPath[normDir.length];
+  return nextChar === path.sep || nextChar === "/";
 }
