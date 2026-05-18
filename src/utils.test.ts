@@ -166,6 +166,12 @@ describe("isWithinDirectory", () => {
       isWithinDirectory("/home/user/docs/../other/file.md", "/home/user/docs"),
     ).toBe(false);
   });
+
+  test("returns false for sibling directory with shared prefix", () => {
+    expect(
+      isWithinDirectory("/home/user/docs-evil/file.md", "/home/user/docs"),
+    ).toBe(false);
+  });
 });
 
 describe("validateRepoUrl", () => {
@@ -350,5 +356,57 @@ describe("getAllowedPaths / assertPathAllowed", () => {
     expect(() =>
       assertPathAllowed("/tmp/allowed/../etc/passwd"),
     ).toThrow("outside the allowed directories");
+  });
+
+  test("assertPathAllowed rejects sibling directory with shared prefix", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mdfy-prefix-"));
+    try {
+      const allowed = path.join(tmp, "share");
+      const evilSibling = path.join(tmp, "share-evil");
+      fs.mkdirSync(allowed);
+      fs.mkdirSync(evilSibling);
+      const secret = path.join(evilSibling, "secret.txt");
+      fs.writeFileSync(secret, "top secret");
+      process.env.MD_ALLOWED_PATHS = allowed;
+      expect(() => assertPathAllowed(secret)).toThrow(
+        "outside the allowed directories",
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("assertPathAllowed rejects symlink inside allowed dir that escapes", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mdfy-symlink-"));
+    try {
+      const allowed = path.join(tmp, "allowed");
+      const outside = path.join(tmp, "outside");
+      fs.mkdirSync(allowed);
+      fs.mkdirSync(outside);
+      const secret = path.join(outside, "secret.txt");
+      fs.writeFileSync(secret, "top secret");
+      const link = path.join(allowed, "link.txt");
+      fs.symlinkSync(secret, link);
+      process.env.MD_ALLOWED_PATHS = allowed;
+      expect(() => assertPathAllowed(link)).toThrow(
+        "outside the allowed directories",
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("assertPathAllowed permits regular file inside allowed dir after realpath", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mdfy-happy-"));
+    try {
+      const allowed = path.join(tmp, "allowed");
+      fs.mkdirSync(allowed);
+      const file = path.join(allowed, "doc.pdf");
+      fs.writeFileSync(file, "%PDF-1.4");
+      process.env.MD_ALLOWED_PATHS = allowed;
+      expect(() => assertPathAllowed(file)).not.toThrow();
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 });

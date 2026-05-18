@@ -43,15 +43,34 @@ export function getAllowedPaths(): string[] | null {
   return dirs.length > 0 ? dirs : null;
 }
 
+function realpathOrAncestor(p: string): string {
+  let current = path.resolve(p);
+  const suffix: string[] = [];
+  while (true) {
+    try {
+      const realCurrent = fs.realpathSync.native(current);
+      return suffix.length === 0
+        ? realCurrent
+        : path.join(realCurrent, ...suffix.slice().reverse());
+    } catch {
+      const parent = path.dirname(current);
+      if (parent === current) return path.resolve(p);
+      suffix.push(path.basename(current));
+      current = parent;
+    }
+  }
+}
+
 export function assertPathAllowed(filePath: string): void {
   const allowed = getAllowedPaths();
   if (!allowed) return;
-  const resolved = path.normalize(path.resolve(expandHome(filePath)));
-  if (!allowed.some((dir) => isWithinDirectory(resolved, dir))) {
+  const resolved = realpathOrAncestor(expandHome(filePath));
+  const allowedReal = allowed.map(realpathOrAncestor);
+  if (!allowedReal.some((dir) => isWithinDirectory(resolved, dir))) {
     throw new Error(
       `Path "${filePath}" is outside the allowed directories. ` +
         `Set MD_ALLOWED_PATHS to a ${path.delimiter}-separated list that includes a parent directory ` +
-        `(currently allowed: ${allowed.join(path.delimiter)}).`,
+        `(currently allowed: ${allowedReal.join(path.delimiter)}).`,
     );
   }
 }
@@ -104,7 +123,7 @@ export function isMarkdownFile(filePath: string): boolean {
 }
 
 export function isWithinDirectory(filePath: string, directory: string): boolean {
-  const normPath = path.normalize(path.resolve(filePath));
-  const normDir = path.normalize(path.resolve(directory));
-  return normPath.startsWith(normDir);
+  const rel = path.relative(path.resolve(directory), path.resolve(filePath));
+  if (rel === "") return true;
+  return !rel.startsWith("..") && !path.isAbsolute(rel);
 }
