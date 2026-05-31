@@ -2,14 +2,12 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import path from "path";
 import fs from "fs";
-import os from "os";
 import { fileURLToPath } from "url";
 import {
   expandHome,
   validateUrl,
   validateRepoUrl,
   isUnconvertedHtml,
-  inferExtensionFromUrl,
   isMarkdownFile,
   resolveMarkitdownPath,
   resolveRepomixPath,
@@ -27,7 +25,7 @@ export type MarkdownResult = {
 
 export class Markdownify {
   private static async _markitdown(
-    filePath: string,
+    input: string,
     projectRoot: string,
   ): Promise<string> {
     const markitdownPath = resolveMarkitdownPath(projectRoot);
@@ -37,7 +35,7 @@ export class Markdownify {
       // execFile resolves bare command names against PATH (POSIX execvp / Windows search).
       // Non-zero exit codes reject; stderr alone does not (markitdown emits non-fatal
       // warnings from onnxruntime/pydub/etc. on a successful run).
-      ({ stdout } = await execFileAsync(markitdownPath, [filePath], {
+      ({ stdout } = await execFileAsync(markitdownPath, [input], {
         maxBuffer: 50 * 1024 * 1024, // 50 MB
       }));
     } catch (e: unknown) {
@@ -63,31 +61,19 @@ export class Markdownify {
     return stdout;
   }
 
-  private static async saveToTempFile(
-    content: string | Buffer,
-    suggestedExtension?: string | null,
-  ): Promise<string> {
-    let outputExtension = "md";
-    if (suggestedExtension != null) {
-      outputExtension = suggestedExtension;
-    }
-
-    const tempOutputPath = path.join(
-      os.tmpdir(),
-      `markdown_output_${Date.now()}.${outputExtension}`,
-    );
-    fs.writeFileSync(tempOutputPath, content);
-    return tempOutputPath;
-  }
-
-  private static async safeFetch(
+  // Walks the redirect chain validating each hop against SSRF rules, returning
+  // the final resolved URL. Hands no body back — markitdown does its own fetch
+  // on the resolved URL so its URL-aware routing (YouTube transcript API, Bing,
+  // generic webpage) can fire instead of seeing a downloaded blob.
+  private static async resolveValidatedUrl(
     url: string,
     maxRedirects = 10,
-  ): Promise<Response> {
+  ): Promise<string> {
     let currentUrl = url;
     for (let i = 0; i < maxRedirects; i++) {
       validateUrl(currentUrl);
       const response = await fetch(currentUrl, { redirect: "manual" });
+      response.body?.cancel().catch(() => {});
       if (
         response.status >= 300 &&
         response.status < 400 &&
@@ -99,7 +85,7 @@ export class Markdownify {
         ).toString();
         continue;
       }
-      return response;
+      return currentUrl;
     }
     throw new Error("Too many redirects");
   }
@@ -115,17 +101,14 @@ export class Markdownify {
   }): Promise<MarkdownResult> {
     try {
       let inputPath: string;
-      let isTemporary = false;
 
       if (url) {
-        const response = await this.safeFetch(url);
-        const extension = inferExtensionFromUrl(url);
-
-        const arrayBuffer = await response.arrayBuffer();
-        const content = Buffer.from(arrayBuffer);
-
-        inputPath = await this.saveToTempFile(content, extension);
-        isTemporary = true;
+        // Hand markitdown the URL string (post-redirect-validation) so its
+        // URL-aware routing — YouTube transcript API, Bing search, generic
+        // webpage — can fire. Downloading first and passing a temp .html file
+        // forces markitdown into its generic HTML→Markdown path and silently
+        // breaks all three tools (e.g. YouTube returns the page footer).
+        inputPath = await this.resolveValidatedUrl(url);
       } else if (filePath) {
         const expanded = expandHome(filePath);
         assertPathAllowed(expanded);
@@ -135,10 +118,6 @@ export class Markdownify {
       }
 
       const text = await this._markitdown(inputPath, projectRoot);
-
-      if (isTemporary) {
-        fs.unlinkSync(inputPath);
-      }
 
       return { text };
     } catch (e: unknown) {
