@@ -2,8 +2,79 @@ import path from "path";
 import os from "os";
 import fs from "fs";
 import { URL } from "node:url";
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import is_ip_private from "private-ip";
 import { isValidRemoteValue } from "repomix";
+
+type ResolvedAddress = {
+  address: string;
+  family: number;
+};
+
+type HostResolver = (hostname: string) => Promise<ResolvedAddress[]>;
+
+function normalizeHostname(hostname: string): string {
+  return hostname.replace(/^\[(.*)\]$/, "$1");
+}
+
+function ipv4FromMappedIpv6(address: string): string | null {
+  const prefix = "::ffff:";
+  const normalized = address.toLowerCase();
+  if (!normalized.startsWith(prefix)) return null;
+
+  const suffix = normalized.slice(prefix.length);
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(suffix)) {
+    return suffix;
+  }
+
+  const parts = suffix.split(":");
+  if (parts.length !== 2) return null;
+
+  const high = Number.parseInt(parts[0], 16);
+  const low = Number.parseInt(parts[1], 16);
+  if (
+    !Number.isInteger(high) ||
+    !Number.isInteger(low) ||
+    high < 0 ||
+    high > 0xffff ||
+    low < 0 ||
+    low > 0xffff
+  ) {
+    return null;
+  }
+
+  return [
+    (high >> 8) & 0xff,
+    high & 0xff,
+    (low >> 8) & 0xff,
+    low & 0xff,
+  ].join(".");
+}
+
+function isPotentiallyDangerousIp(address: string): boolean {
+  const normalized = normalizeHostname(address);
+  if (!isIP(normalized)) return false;
+
+  const mappedIpv4 = ipv4FromMappedIpv6(normalized);
+  if (mappedIpv4) {
+    return is_ip_private(mappedIpv4) === true;
+  }
+
+  return is_ip_private(normalized) === true;
+}
+
+function assertSafeUrlDestination(url: string, address: string): void {
+  if (isPotentiallyDangerousIp(address)) {
+    throw new Error(
+      `Fetching ${url} is potentially dangerous, aborting.`,
+    );
+  }
+}
+
+async function resolveHostname(hostname: string): Promise<ResolvedAddress[]> {
+  return lookup(hostname, { all: true, verbatim: true });
+}
 
 export function expandHome(filepath: string): string {
   if (filepath.startsWith("~/") || filepath === "~") {
@@ -61,10 +132,24 @@ export function validateUrl(url: string): void {
   if (!["http:", "https:"].includes(parsed.protocol)) {
     throw new Error("Only http: and https: schemes are allowed.");
   }
-  if (is_ip_private(parsed.hostname)) {
-    throw new Error(
-      `Fetching ${url} is potentially dangerous, aborting.`,
-    );
+  assertSafeUrlDestination(url, parsed.hostname);
+}
+
+export async function validateUrlDestination(
+  url: string,
+  resolver: HostResolver = resolveHostname,
+): Promise<void> {
+  validateUrl(url);
+
+  const parsed = new URL(url);
+  const hostname = normalizeHostname(parsed.hostname);
+  if (isIP(hostname)) {
+    return;
+  }
+
+  const addresses = await resolver(hostname);
+  for (const { address } of addresses) {
+    assertSafeUrlDestination(url, address);
   }
 }
 

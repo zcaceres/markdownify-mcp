@@ -66,7 +66,7 @@ test("Markdownify.toMarkdown converts image file to Markdown", async () => {
 });
 
 test("Markdownify.toMarkdown converts URL content to Markdown", async () => {
-  const testUrl = "https://example.com";
+  const testUrl = "https://93.184.216.34";
   const html = "<h1>Example Domain</h1>";
   const mockFetch = mock(() =>
     Promise.resolve({
@@ -80,6 +80,41 @@ test("Markdownify.toMarkdown converts URL content to Markdown", async () => {
 
   expect(result).toBeDefined();
   expect(result.text).toContain("# Example Domain");
+});
+
+test("Markdownify.toMarkdown rejects bracketed IPv6 loopback URLs before fetching", async () => {
+  const mockFetch = mock(() =>
+    Promise.resolve({
+      arrayBuffer: () =>
+        Promise.resolve(new TextEncoder().encode("").buffer),
+    }),
+  );
+  global.fetch = mockFetch as any;
+
+  await expect(
+    Markdownify.toMarkdown({ url: "http://[::1]:8080/metadata" }),
+  ).rejects.toThrow("potentially dangerous");
+  expect(mockFetch).toHaveBeenCalledTimes(0);
+});
+
+test("Markdownify.toMarkdown rejects redirects to loopback URLs", async () => {
+  const mockFetch = mock(() =>
+    Promise.resolve({
+      status: 302,
+      headers: {
+        get: (name: string) =>
+          name.toLowerCase() === "location"
+            ? "http://[::1]:8080/metadata"
+            : null,
+      },
+    }),
+  );
+  global.fetch = mockFetch as any;
+
+  await expect(
+    Markdownify.toMarkdown({ url: "https://93.184.216.34/start" }),
+  ).rejects.toThrow("potentially dangerous");
+  expect(mockFetch).toHaveBeenCalledTimes(1);
 });
 
 test("Markdownify.get retrieves existing Markdown file", async () => {
