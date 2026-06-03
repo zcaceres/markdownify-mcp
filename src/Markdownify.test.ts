@@ -82,6 +82,43 @@ test("Markdownify.toMarkdown converts URL content to Markdown", async () => {
   expect(result.text).toContain("# Example Domain");
 });
 
+test("Markdownify.toMarkdown stores fetched URL content in a private random temp path", async () => {
+  const originalMarkitdown = Markdownify["_markitdown"];
+  const testUrl = "https://example.com";
+  const html = "<h1>Private Temp Path</h1>";
+  let observedInputPath = "";
+
+  global.fetch = mock(() =>
+    Promise.resolve({
+      arrayBuffer: () =>
+        Promise.resolve(new TextEncoder().encode(html).buffer),
+    }),
+  ) as any;
+
+  Markdownify["_markitdown"] = mock((inputPath: string) => {
+    observedInputPath = inputPath;
+    expect(fs.readFileSync(inputPath, "utf8")).toBe(html);
+    return "# Private Temp Path";
+  }) as any;
+
+  try {
+    const result = await Markdownify.toMarkdown({ url: testUrl });
+    const tempDirName = path.basename(path.dirname(observedInputPath));
+
+    expect(result.text).toBe("# Private Temp Path");
+    expect(tempDirName.startsWith("markdownify-")).toBe(true);
+    expect(path.basename(observedInputPath)).toMatch(
+      /^markdown_output_[0-9a-f-]{36}\.html$/,
+    );
+    expect(observedInputPath).not.toMatch(
+      /markdown_output_\d{13}\.html$/,
+    );
+    expect(fs.existsSync(path.dirname(observedInputPath))).toBe(false);
+  } finally {
+    Markdownify["_markitdown"] = originalMarkitdown;
+  }
+});
+
 test("Markdownify.get retrieves existing Markdown file", async () => {
   const mdContent = "# Test Markdown\nThis is a test.";
   const tempFilePath = path.join(tempDir, "test_get.md");

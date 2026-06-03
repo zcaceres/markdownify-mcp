@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs";
 import os from "os";
 import { fileURLToPath } from "url";
+import { randomUUID } from "crypto";
 import {
   expandHome,
   validateUrl,
@@ -23,6 +24,11 @@ const __dirname = path.dirname(__filename);
 export type MarkdownResult = {
   path?: string;
   text: string;
+};
+
+type TemporaryFile = {
+  path: string;
+  cleanupDir: string;
 };
 
 export class Markdownify {
@@ -66,18 +72,25 @@ export class Markdownify {
   private static async saveToTempFile(
     content: string | Buffer,
     suggestedExtension?: string | null,
-  ): Promise<string> {
+  ): Promise<TemporaryFile> {
     let outputExtension = "md";
     if (suggestedExtension != null) {
       outputExtension = suggestedExtension;
     }
 
-    const tempOutputPath = path.join(
-      os.tmpdir(),
-      `markdown_output_${Date.now()}.${outputExtension}`,
+    const tempOutputDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "markdownify-"),
     );
-    fs.writeFileSync(tempOutputPath, content);
-    return tempOutputPath;
+    const tempOutputPath = path.join(
+      tempOutputDir,
+      `markdown_output_${randomUUID()}.${outputExtension}`,
+    );
+    fs.writeFileSync(tempOutputPath, content, { flag: "wx" });
+    return { path: tempOutputPath, cleanupDir: tempOutputDir };
+  }
+
+  private static cleanupTempFile(tempFile: TemporaryFile): void {
+    fs.rmSync(tempFile.cleanupDir, { recursive: true, force: true });
   }
 
   private static async safeFetch(
@@ -113,9 +126,9 @@ export class Markdownify {
     url?: string;
     projectRoot?: string;
   }): Promise<MarkdownResult> {
+    let temporaryFile: TemporaryFile | null = null;
     try {
       let inputPath: string;
-      let isTemporary = false;
 
       if (url) {
         const response = await this.safeFetch(url);
@@ -124,8 +137,8 @@ export class Markdownify {
         const arrayBuffer = await response.arrayBuffer();
         const content = Buffer.from(arrayBuffer);
 
-        inputPath = await this.saveToTempFile(content, extension);
-        isTemporary = true;
+        temporaryFile = await this.saveToTempFile(content, extension);
+        inputPath = temporaryFile.path;
       } else if (filePath) {
         const expanded = expandHome(filePath);
         assertPathAllowed(expanded);
@@ -136,16 +149,16 @@ export class Markdownify {
 
       const text = await this._markitdown(inputPath, projectRoot);
 
-      if (isTemporary) {
-        fs.unlinkSync(inputPath);
-      }
-
       return { text };
     } catch (e: unknown) {
       if (e instanceof Error) {
         throw new Error(`Error processing to Markdown: ${e.message}`);
       } else {
         throw new Error("Error processing to Markdown: Unknown error occurred");
+      }
+    } finally {
+      if (temporaryFile) {
+        this.cleanupTempFile(temporaryFile);
       }
     }
   }
