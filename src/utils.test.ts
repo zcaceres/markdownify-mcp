@@ -2,6 +2,7 @@ import { expect, test, describe, beforeEach, afterEach } from "bun:test";
 import {
   expandHome,
   validateUrl,
+  validateUrlDestination,
   validateRepoUrl,
   isUnconvertedHtml,
   inferExtensionFromUrl,
@@ -75,8 +76,55 @@ describe("validateUrl", () => {
     );
   });
 
+  test("rejects bracketed IPv6 loopback addresses", () => {
+    expect(() => validateUrl("http://[::1]:8080")).toThrow(
+      "potentially dangerous",
+    );
+  });
+
+  test("rejects IPv4-mapped IPv6 loopback addresses", () => {
+    expect(() => validateUrl("http://[::ffff:7f00:1]")).toThrow(
+      "potentially dangerous",
+    );
+  });
+
   test("throws on invalid URLs", () => {
     expect(() => validateUrl("not-a-url")).toThrow();
+  });
+});
+
+describe("validateUrlDestination", () => {
+  test("accepts hostnames that resolve to public addresses", async () => {
+    await expect(
+      validateUrlDestination("https://public.example", async () => [
+        { address: "93.184.216.34", family: 4 },
+      ]),
+    ).resolves.toBeUndefined();
+  });
+
+  test("rejects hostnames that resolve to private addresses", async () => {
+    await expect(
+      validateUrlDestination("https://public.example", async () => [
+        { address: "10.0.0.10", family: 4 },
+      ]),
+    ).rejects.toThrow("potentially dangerous");
+  });
+
+  test("rejects hostnames that resolve to link-local addresses", async () => {
+    await expect(
+      validateUrlDestination("https://public.example", async () => [
+        { address: "169.254.169.254", family: 4 },
+      ]),
+    ).rejects.toThrow("potentially dangerous");
+  });
+
+  test("rejects hostnames when any resolved address is dangerous", async () => {
+    await expect(
+      validateUrlDestination("https://public.example", async () => [
+        { address: "93.184.216.34", family: 4 },
+        { address: "::1", family: 6 },
+      ]),
+    ).rejects.toThrow("potentially dangerous");
   });
 });
 
