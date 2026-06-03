@@ -166,6 +166,12 @@ describe("isWithinDirectory", () => {
       isWithinDirectory("/home/user/docs/../other/file.md", "/home/user/docs"),
     ).toBe(false);
   });
+
+  test("returns false for sibling directory with matching prefix", () => {
+    expect(
+      isWithinDirectory("/home/user/docs-archive/file.md", "/home/user/docs"),
+    ).toBe(false);
+  });
 });
 
 describe("validateRepoUrl", () => {
@@ -350,5 +356,51 @@ describe("getAllowedPaths / assertPathAllowed", () => {
     expect(() =>
       assertPathAllowed("/tmp/allowed/../etc/passwd"),
     ).toThrow("outside the allowed directories");
+  });
+
+  test("assertPathAllowed rejects sibling directories with matching prefix", () => {
+    process.env.MD_ALLOWED_PATHS = "/tmp/allowed";
+    expect(() =>
+      assertPathAllowed("/tmp/allowed-other/file.pdf"),
+    ).toThrow("outside the allowed directories");
+  });
+
+  test("assertPathAllowed rejects symlinks that escape allowed dirs", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mdfy-"));
+    const allowed = path.join(tmp, "allowed");
+    const privateDir = path.join(tmp, "private");
+    fs.mkdirSync(allowed);
+    fs.mkdirSync(privateDir);
+    const target = path.join(privateDir, "secret.md");
+    const link = path.join(allowed, "report.md");
+    fs.writeFileSync(target, "# secret");
+    fs.symlinkSync(target, link);
+
+    try {
+      process.env.MD_ALLOWED_PATHS = allowed;
+      expect(() => assertPathAllowed(link)).toThrow(
+        "outside the allowed directories",
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  test("assertPathAllowed permits symlinks that stay within allowed dirs", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mdfy-"));
+    const allowed = path.join(tmp, "allowed");
+    const docs = path.join(allowed, "docs");
+    fs.mkdirSync(docs, { recursive: true });
+    const target = path.join(docs, "report.md");
+    const link = path.join(allowed, "report.md");
+    fs.writeFileSync(target, "# report");
+    fs.symlinkSync(target, link);
+
+    try {
+      process.env.MD_ALLOWED_PATHS = allowed;
+      expect(() => assertPathAllowed(link)).not.toThrow();
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 });
