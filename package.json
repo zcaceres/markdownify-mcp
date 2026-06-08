@@ -5,6 +5,10 @@
   "license": "MIT",
   "author": "@zcaceres (@zachcaceres | zach.dev)",
   "homepage": "https://github.com/zcaceres/markdownify-mcp",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zcaceres/markdownify-mcp.git"
+  },
   "bugs": "https://github.com/zcaceres/markdownify-mcp/issues",
   "type": "module",
   "bin": {
