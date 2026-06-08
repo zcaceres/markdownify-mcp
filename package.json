@@ -17,7 +17,7 @@
     "setup.bat"
   ],
   "scripts": {
-    "build": "tsc && chmod +x dist/*.js",
+    "build": "tsc && node -e \"if (process.platform !== 'win32') require('child_process').execSync('chmod +x dist/*.js')\"",
     "dev": "tsc --watch",
     "preinstall": "node preinstall.js",
     "prepublishOnly": "bun run build",
