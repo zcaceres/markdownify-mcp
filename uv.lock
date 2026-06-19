@@ -729,11 +729,17 @@ name = "ocr"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "idna" },
     { name = "markitdown", extra = ["all"] },
+    { name = "urllib3" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "markitdown", extras = ["all"], specifier = ">=0.1.5" }]
+requires-dist = [
+    { name = "idna", specifier = ">=3.15" },
+    { name = "markitdown", extras = ["all"], specifier = ">=0.1.5" },
+    { name = "urllib3", specifier = ">=2.7.0" },
+]
 
 [[package]]
 name = "olefile"
