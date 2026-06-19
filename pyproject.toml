@@ -6,4 +6,9 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "markitdown[all]>=0.1.5",
+    # Security floors for transitive deps (Dependabot GHSA-qccp-gfcp-xxvc,
+    # GHSA-mf9v-mfxr-j63j, GHSA-65pc-fj4g-8rjx). Keep until markitdown's
+    # own constraints guarantee these.
+    "urllib3>=2.7.0",
+    "idna>=3.15",
 ]
