@@ -1,5 +1,7 @@
 # Markdownify MCP Server
 
+[![MCP Toplist](https://mcptoplist.com/badge/glama%2Fzcaceres%2Fmarkdownify-mcp.svg)](https://mcptoplist.com/server/glama%2Fzcaceres%2Fmarkdownify-mcp)
+
 ![markdownify mcp logo](logo.jpg)
 
 Markdownify is a Model Context Protocol (MCP) server that converts various file types and web content to Markdown format. It provides a set of tools to transform PDFs, images, audio files, web pages, and more into easily readable and shareable Markdown text.
