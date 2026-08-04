@@ -91,6 +91,41 @@ export function isUnconvertedHtml(output: string): boolean {
   return trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html");
 }
 
+// A few of markitdown's converters key off the URL itself rather than the bytes:
+// YouTubeConverter requires a URL starting "https://www.youtube.com/watch?" and
+// BingSerpConverter requires "https://www.bing.com/search?q=". Downloading those pages
+// first and handing markitdown a temp .html file leaves stream_info.url unset, so
+// accepts() returns false and the generic HTML converter runs instead. That is why
+// youtube-to-markdown returns the page footer and bing-search-to-markdown returns
+// localized SERP chrome. Those hosts have to reach markitdown as URL strings.
+//
+// Deliberately an allowlist rather than "pass every URL through": markitdown fetches
+// with requests' default User-Agent, which some hosts reject outright. en.wikipedia.org
+// and stackoverflow.com both answer 403 to markitdown while answering 200 to this
+// server's own fetch. Wikipedia is the sharp case, since markitdown ships a
+// WikipediaConverter that can never run on a live fetch, so routing every URL through
+// markitdown would trade working output for a hard 403 on those hosts.
+export function shouldPassUrlToMarkitdown(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "https:") {
+    return false;
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  if (host === "www.youtube.com") {
+    return parsed.pathname === "/watch" && parsed.searchParams.has("v");
+  }
+  if (host === "www.bing.com") {
+    return parsed.pathname === "/search" && parsed.searchParams.has("q");
+  }
+  return false;
+}
+
 export function inferExtensionFromUrl(url: string): string {
   if (url.endsWith(".pdf")) {
     return "pdf";

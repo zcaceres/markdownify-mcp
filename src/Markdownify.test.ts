@@ -255,6 +255,115 @@ test("Markdownify.fromRepo compress works on a multi-file repo", async () => {
   expect(result.text.length).toBeGreaterThan(500);
 }, 120_000);
 
+test("Markdownify.toMarkdown passes a YouTube watch URL to markitdown instead of a temp file", async () => {
+  const testUrl = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+  global.fetch = mock(() =>
+    Promise.resolve({
+      status: 200,
+      headers: { get: () => null },
+      body: null,
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+    }),
+  ) as any;
+
+  const originalMarkitdown = Markdownify["_markitdown"];
+  let receivedArg: string | undefined;
+  Markdownify["_markitdown"] = mock(async (arg: string) => {
+    receivedArg = arg;
+    return "# YouTube\n\n### Transcript\nmocked";
+  });
+
+  try {
+    await Markdownify.toMarkdown({ url: testUrl });
+  } finally {
+    Markdownify["_markitdown"] = originalMarkitdown;
+  }
+
+  expect(receivedArg).toBe(testUrl);
+});
+
+test("Markdownify.toMarkdown resolves a youtu.be redirect before handing the URL to markitdown", async () => {
+  const shortUrl = "https://youtu.be/dQw4w9WgXcQ";
+  const resolvedUrl = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+  global.fetch = mock((url: string) => {
+    if (url === shortUrl) {
+      return Promise.resolve({
+        status: 303,
+        headers: { get: (h: string) => (h === "location" ? resolvedUrl : null) },
+        body: null,
+      });
+    }
+    return Promise.resolve({
+      status: 200,
+      headers: { get: () => null },
+      body: null,
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+    });
+  }) as any;
+
+  const originalMarkitdown = Markdownify["_markitdown"];
+  let receivedArg: string | undefined;
+  Markdownify["_markitdown"] = mock(async (arg: string) => {
+    receivedArg = arg;
+    return "ok";
+  });
+
+  try {
+    await Markdownify.toMarkdown({ url: shortUrl });
+  } finally {
+    Markdownify["_markitdown"] = originalMarkitdown;
+  }
+
+  expect(receivedArg).toBe(resolvedUrl);
+});
+
+test("Markdownify.toMarkdown still downloads non-allowlisted URLs to a temp file", async () => {
+  const testUrl = "https://example.com/page";
+  const html = "<h1>Example Domain</h1>";
+  global.fetch = mock(() =>
+    Promise.resolve({
+      status: 200,
+      headers: { get: () => null },
+      body: null,
+      arrayBuffer: () =>
+        Promise.resolve(new TextEncoder().encode(html).buffer),
+    }),
+  ) as any;
+
+  const originalMarkitdown = Markdownify["_markitdown"];
+  let receivedArg: string | undefined;
+  Markdownify["_markitdown"] = mock(async (arg: string) => {
+    receivedArg = arg;
+    return "# Example Domain";
+  });
+
+  try {
+    await Markdownify.toMarkdown({ url: testUrl });
+  } finally {
+    Markdownify["_markitdown"] = originalMarkitdown;
+  }
+
+  expect(receivedArg).not.toBe(testUrl);
+  expect(receivedArg).toContain("markdown_output_");
+});
+
+test("Markdownify.toMarkdown rejects a URL whose redirect lands on a private IP (SSRF)", async () => {
+  global.fetch = mock(() =>
+    Promise.resolve({
+      status: 302,
+      headers: {
+        get: (h: string) =>
+          h === "location" ? "http://169.254.169.254/latest/meta-data/" : null,
+      },
+      body: null,
+    }),
+  ) as any;
+
+  await expect(
+    Markdownify.toMarkdown({ url: "https://example.com/start" }),
+  ).rejects.toThrow("potentially dangerous");
+});
+
 test("Markdownify.toMarkdown handles error from _markitdown method", async () => {
   const originalMarkitdown = Markdownify["_markitdown"];
   Markdownify["_markitdown"] = mock(() => {

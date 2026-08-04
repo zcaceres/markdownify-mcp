@@ -10,6 +10,7 @@ import {
   validateRepoUrl,
   isUnconvertedHtml,
   inferExtensionFromUrl,
+  shouldPassUrlToMarkitdown,
   isMarkdownFile,
   resolveMarkitdownPath,
   resolveRepomixPath,
@@ -80,10 +81,15 @@ export class Markdownify {
     return tempOutputPath;
   }
 
+  // Walks the redirect chain, validating every hop against the SSRF rules, and returns
+  // the final response alongside the URL it actually came from. The resolved URL matters
+  // because markitdown's URL-keyed converters only recognize canonical forms: youtu.be
+  // and m.youtube.com links redirect to www.youtube.com/watch?v=..., so resolving before
+  // the allowlist check is what lets short links reach the YouTube converter.
   private static async safeFetch(
     url: string,
     maxRedirects = 10,
-  ): Promise<Response> {
+  ): Promise<{ response: Response; finalUrl: string }> {
     let currentUrl = url;
     for (let i = 0; i < maxRedirects; i++) {
       validateUrl(currentUrl);
@@ -93,13 +99,14 @@ export class Markdownify {
         response.status < 400 &&
         response.headers.get("location")
       ) {
+        response.body?.cancel().catch(() => {});
         currentUrl = new URL(
           response.headers.get("location")!,
           currentUrl,
         ).toString();
         continue;
       }
-      return response;
+      return { response, finalUrl: currentUrl };
     }
     throw new Error("Too many redirects");
   }
@@ -118,14 +125,23 @@ export class Markdownify {
       let isTemporary = false;
 
       if (url) {
-        const response = await this.safeFetch(url);
-        const extension = inferExtensionFromUrl(url);
+        const { response, finalUrl } = await this.safeFetch(url);
 
-        const arrayBuffer = await response.arrayBuffer();
-        const content = Buffer.from(arrayBuffer);
+        if (shouldPassUrlToMarkitdown(finalUrl)) {
+          // Hand the resolved URL to markitdown so its URL-keyed converter runs.
+          // Passing a downloaded temp file instead leaves stream_info.url unset and
+          // silently falls back to the generic HTML converter.
+          response.body?.cancel().catch(() => {});
+          inputPath = finalUrl;
+        } else {
+          const extension = inferExtensionFromUrl(url);
 
-        inputPath = await this.saveToTempFile(content, extension);
-        isTemporary = true;
+          const arrayBuffer = await response.arrayBuffer();
+          const content = Buffer.from(arrayBuffer);
+
+          inputPath = await this.saveToTempFile(content, extension);
+          isTemporary = true;
+        }
       } else if (filePath) {
         const expanded = expandHome(filePath);
         assertPathAllowed(expanded);
