@@ -74,6 +74,27 @@ All paths default to sensible values; override only when the defaults don't fit 
 | `MD_ALLOWED_PATHS` | unset (unrestricted) | Path-delimiter-separated list (`:` on POSIX, `;` on Windows) of directories the server is allowed to read. When set, all file-input tools (`pdf-to-markdown`, `get-markdown-file`, etc.) reject paths outside these directories. |
 | `MD_SHARE_DIR` | unset | Deprecated alias for `MD_ALLOWED_PATHS` (single directory). Still honored for backward compatibility. |
 
+## Usage with HTTP (Streamable HTTP transport)
+
+By default the server runs over stdio. To run it as a Streamable HTTP server:
+
+```sh
+bun dist/index.js --transport=http --port=3000
+```
+
+Or via environment variables:
+
+```sh
+MCP_TRANSPORT=http MCP_PORT=3000 bun dist/index.js
+```
+
+| Flag / Env | Default | Purpose |
+|---|---|---|
+| `--transport=stdio\|http` / `MCP_TRANSPORT` | `stdio` | Transport mode. |
+| `--port=N` / `MCP_PORT` | `3000` | Port for HTTP transport (ignored in stdio mode). |
+
+The HTTP transport is **stateless**: each request gets a fresh server instance with no session management. This matches the pattern recommended by the MCP SDK for stateless deployments.
+
 ## Usage with Docker
 
 Build and run:
