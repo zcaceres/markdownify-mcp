@@ -96,6 +96,35 @@ test("Markdownify.get retrieves existing Markdown file", async () => {
   fs.unlinkSync(tempFilePath);
 });
 
+// Regression: get() must use the resolved (home-expanded, normalized) path for
+// existsSync/readFile/return value, not the raw user-supplied string. Before this
+// fix, a path like "~/foo.md" passed expandHome+assertPathAllowed but then failed
+// existsSync because the unexpanded string reaches the syscall.
+//
+// Strategy: use the real $HOME and write the fixture inside it. We CANNOT mock
+// os.homedir() — both `mock.module("os", ...)` and a runtime `process.env.HOME`
+// override are silently ignored by bun (os.homedir() is cached at startup, and
+// built-in modules resist ESM-binding rewrites). Verified against bun 1.4.0.
+// Each run uses a pid-scoped subdirectory under $HOME for parallel-test safety,
+// and cleans up in `finally`.
+test("Markdownify.get expands ~ and uses the resolved path", async () => {
+  const mdContent = "# Tilde test\nbody";
+  const dir = path.join(os.homedir(), `.mdify-get-tilde-${process.pid}`);
+  const mdFile = path.join(dir, "note.md");
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(mdFile, mdContent);
+  try {
+    const result = await Markdownify.get({
+      filePath: `~/${path.basename(dir)}/note.md`,
+    });
+    expect(result).toBeDefined();
+    expect(result.path).toBe(mdFile);
+    expect(result.text).toBe(mdContent);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("Markdownify.toMarkdown throws error for non-existent file", async () => {
   const nonExistentPath = path.join(sampleDataDir, "non_existent.pdf");
   await expect(
