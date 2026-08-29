@@ -219,14 +219,14 @@ export class Markdownify {
 
     assertPathAllowed(resolvedPath);
 
-    if (!fs.existsSync(filePath)) {
+    if (!fs.existsSync(resolvedPath)) {
       throw new Error("File does not exist");
     }
 
-    const text = await fs.promises.readFile(filePath, "utf-8");
+    const text = await fs.promises.readFile(resolvedPath, "utf-8");
 
     return {
-      path: filePath,
+      path: resolvedPath,
       text: text,
     };
   }

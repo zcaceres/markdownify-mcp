@@ -166,6 +166,37 @@ describe("isWithinDirectory", () => {
       isWithinDirectory("/home/user/docs/../other/file.md", "/home/user/docs"),
     ).toBe(false);
   });
+
+  // Regression: raw startsWith lets a sibling dir whose name extends the prefix
+  // bypass the sandbox (e.g. allowed=/tmp/allowed bypassed by /tmp/allowedX/x.md).
+  // The fix requires a path-boundary separator after the allowed dir.
+  test("returns false for sibling dir whose name extends the allowed prefix", () => {
+    expect(
+      isWithinDirectory("/tmp/allowedX/secret.md", "/tmp/allowed"),
+    ).toBe(false);
+    expect(
+      isWithinDirectory("/tmp/allowed-extra/x.md", "/tmp/allowed"),
+    ).toBe(false);
+  });
+
+  test("still returns true for the allowed dir itself (boundary case)", () => {
+    expect(isWithinDirectory("/tmp/allowed", "/tmp/allowed")).toBe(true);
+  });
+
+  // Regression: post-fix with raw `normDir + path.sep` produces "//" on POSIX
+  // when normDir already ends with the separator (e.g. allowed="/"), which
+  // would deny every path and silently regress allow-all configs. The fix
+  // hoists the trailing separator only when needed.
+  test("returns true for every path when allowed is root", () => {
+    expect(isWithinDirectory("/etc/passwd", "/")).toBe(true);
+    expect(isWithinDirectory("/tmp/anything", "/")).toBe(true);
+    expect(isWithinDirectory("/", "/")).toBe(true);
+  });
+
+  test("still rejects sibling when allowed has trailing separator", () => {
+    expect(isWithinDirectory("/tmp/allowedX/x.md", "/tmp/allowed/")).toBe(false);
+    expect(isWithinDirectory("/tmp/allowed/x.md", "/tmp/allowed/")).toBe(true);
+  });
 });
 
 describe("validateRepoUrl", () => {
@@ -208,6 +239,36 @@ describe("validateRepoUrl", () => {
   test("rejects ssh:// URLs", () => {
     expect(() => validateRepoUrl("ssh://git@github.com/owner/repo")).toThrow(
       "Only http: and https: repository URLs are allowed",
+    );
+  });
+
+  // Regression: the `://` sniff above misses scp-style SSH shorthand
+  // ("git@host:path"), which `git clone` accepts on port 22 — bypassing
+  // the http(s) gate and letting internal hosts be reached.
+  test("rejects scp-style SSH shorthand", () => {
+    expect(() => validateRepoUrl("git@github.com:owner/repo.git")).toThrow(
+      "scp-style SSH syntax",
+    );
+    expect(() => validateRepoUrl("git@192.168.1.5:owner/repo.git")).toThrow(
+      "scp-style SSH syntax",
+    );
+    expect(() => validateRepoUrl("user@host:path")).toThrow(
+      "scp-style SSH syntax",
+    );
+  });
+
+  // Regression: same scp shorthand without a user part ("host:path") is also
+  // accepted by `git ls-remote` and `git clone` on port 22. Pre-fix regex
+  // required "@host:" which missed this form entirely.
+  test("rejects no-user scp-style SSH shorthand", () => {
+    expect(() => validateRepoUrl("internal-host:owner/repo.git")).toThrow(
+      "scp-style SSH syntax",
+    );
+    expect(() => validateRepoUrl("github.com:octocat/Hello-World")).toThrow(
+      "scp-style SSH syntax",
+    );
+    expect(() => validateRepoUrl("host:path")).toThrow(
+      "scp-style SSH syntax",
     );
   });
 });

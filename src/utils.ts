@@ -77,12 +77,26 @@ export function validateRepoUrl(repoUrl: string): void {
       `Invalid repository URL or shorthand: ${repoUrl}. Use a GitHub URL (https://github.com/owner/repo) or shorthand (owner/repo).`,
     );
   }
-  // Block non-http(s) explicit URLs (e.g. file://, ssh:// for SSRF prevention)
+  // Block non-http(s) explicit URLs (e.g. file://, ssh:// for SSRF prevention).
+  // Also block scp-style ssh shorthand — both forms:
+  //   - "user@host:path"     (e.g. git@github.com:owner/repo.git)
+  //   - "host:path"          (e.g. internal-host:owner/repo.git)
+  // The `://` sniff above misses both — but `git clone` and `git ls-remote`
+  // accept scp syntax on port 22 by default, letting an attacker reach
+  // internal hosts even though validateUrl rejects them for http fetches.
+  // The disambiguator from legitimate GitHub shorthand ("owner/repo", no
+  // colon) is the colon. Anything starting with "@", "/", or whitespace is
+  // not scp syntax (already rejected upstream by isValidRemoteValue, but
+  // kept here as a defensive no-match).
   if (repoUrl.includes("://")) {
     const parsed = new URL(repoUrl);
     if (!["http:", "https:"].includes(parsed.protocol)) {
       throw new Error("Only http: and https: repository URLs are allowed.");
     }
+  } else if (/^(?:[^/\s@]+@)?[^/\s@]+:/.test(repoUrl)) {
+    throw new Error(
+      `Repository shorthand "${repoUrl}" uses scp-style SSH syntax, which is not allowed. Use an http(s) URL (e.g. https://github.com/owner/repo).`,
+    );
   }
 }
 
@@ -106,5 +120,16 @@ export function isMarkdownFile(filePath: string): boolean {
 export function isWithinDirectory(filePath: string, directory: string): boolean {
   const normPath = path.normalize(path.resolve(filePath));
   const normDir = path.normalize(path.resolve(directory));
-  return normPath.startsWith(normDir);
+  // Boundary-aware prefix check: file must be exactly `directory` or inside it,
+  // not in a sibling whose name extends the prefix (e.g. allowed=/tmp/a,
+  // bypassed by /tmp/a-extra/x). Without the trailing separator, raw startsWith
+  // would let a sibling directory whose name starts with the same prefix slip
+  // through the sandbox.
+  //
+  // If normDir already ends with a separator (root "/", or trailing-sep input),
+  // do NOT append another path.sep — that would produce "//" on POSIX and break
+  // containment for the root directory.
+  const sep = path.sep;
+  const dirWithSep = normDir.endsWith(sep) ? normDir : normDir + sep;
+  return normPath === normDir || normPath.startsWith(dirWithSep);
 }
