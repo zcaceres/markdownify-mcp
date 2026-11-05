@@ -7,6 +7,9 @@
   "homepage": "https://github.com/zcaceres/markdownify-mcp",
   "bugs": "https://github.com/zcaceres/markdownify-mcp/issues",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "bin": {
     "mcp-markdownify-server": "dist/index.js"
   },
@@ -14,7 +17,10 @@
     "dist",
     "preinstall.js",
     "setup.sh",
-    "setup.bat"
+    "setup.bat",
+    "pyproject.toml",
+    "uv.lock",
+    ".python-version"
   ],
   "scripts": {
     "build": "tsc && chmod +x dist/*.js",
@@ -26,13 +32,13 @@
     "test:watch": "bun test --watch"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "private-ip": "^3.0.2",
-    "repomix": "^1.12.0",
-    "zod": "^4.3.6"
+    "repomix": "^1.18.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@types/node": "^25.3.5",
-    "typescript": "^6.0.2"
+    "@types/node": "^22.20.5",
+    "typescript": "^7.0.2"
   }
 }
