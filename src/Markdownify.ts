@@ -47,7 +47,7 @@ export class Markdownify {
           `markitdown executable not found (looked up "${markitdownPath}"). ` +
             `Set MARKITDOWN_PATH to its absolute location, install it on PATH (e.g. \`pipx install "markitdown[pdf]"\`), ` +
             `or run setup in the project root (${projectRoot}): ` +
-            `python3 -m venv .venv && .venv/bin/pip install "markitdown[pdf]>=0.1.5".`,
+            `node preinstall.js (requires uv on PATH).`,
         );
       }
       throw e;

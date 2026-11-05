@@ -23,13 +23,19 @@ Markdownify is a Model Context Protocol (MCP) server that converts various file 
 
 ## Getting Started
 
+Prerequisites:
+- [Bun](https://bun.sh/) for JavaScript dependency management and builds.
+- Node.js 22 or later (also used by the Repomix CLI).
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) on `PATH` for locked Python setup.
+- Python 3.11–3.14. uv can install the development interpreter selected by `.python-version` if needed; Python 3.15 is not supported.
+
 1. Clone this repository
 2. Install dependencies:
    ```
-   bun install
+   bun install --frozen-lockfile
    ```
 
-   The `preinstall` step creates a Python virtual environment at `.venv` and installs `markitdown[all]`.
+   The `preinstall` step runs `uv sync --locked --extra all --no-dev`, creating `.venv` and installing MarkItDown's full feature set at the exact versions in `uv.lock`. Setup fails if the lockfile is stale or Python installation fails. If dependency lifecycle scripts are disabled, run `node preinstall.js` manually.
 
 3. Build the project:
    ```
@@ -45,6 +51,14 @@ Markdownify is a Model Context Protocol (MCP) server that converts various file 
 - Use `bun run dev` to start the TypeScript compiler in watch mode
 - Modify `src/server.ts` to customize server behavior
 - Add or modify tools in `src/tools.ts`
+
+### Updating dependencies
+
+Normal installs consume the committed lockfiles; they do not upgrade packages.
+
+- JavaScript: update the intended ranges in `package.json`, run `bun update --ignore-scripts`, then commit `package.json` and `bun.lock`.
+- Python: update `pyproject.toml` as needed, run `uv lock --upgrade`, then commit `pyproject.toml` and `uv.lock`. Both the local `all` and Docker `pdf` profiles are resolved in this one lockfile.
+- Verify with `uv lock --check`, `node preinstall.js`, `bun run build`, `bun test`, and `bash scripts/docker-smoke-test.sh` when Docker is available.
 
 ## Usage with Desktop App
 
@@ -88,7 +102,7 @@ docker run --rm -i \
 Notes for the Docker MCP catalog (`mcp/markdownify`):
 - Mount any host directories you want the server to read into the container, then pass the **container** paths to the tools (e.g. `/data/foo.pdf`, not `/Users/you/Documents/foo.pdf`).
 - Set `MD_ALLOWED_PATHS` to the colon-separated list of mounted directories so the server enforces a read boundary that matches the bind mount.
-- The published Docker image installs `markitdown[pdf]` only — audio transcription and image OCR (`audio-to-markdown`, `image-to-markdown`) require the `[all]` extras and will fail in the slim image. Use the local install (`bun install`) for the full feature set.
+- The Docker image installs only the locked `pdf` profile (`uv sync --locked --extra pdf`), not the full `all` profile. Audio transcription and image OCR (`audio-to-markdown`, `image-to-markdown`) require the `[all]` extras and will fail in the slim image. Use the local install (`bun install --frozen-lockfile`) for the full feature set.
 
 ## Available Tools
 
