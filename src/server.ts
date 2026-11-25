@@ -18,7 +18,7 @@ export function createServer() {
   const server = new Server(
     {
       name: "mcp-markdownify-server",
-      version: "0.1.0",
+      version: "1.2.0",
     },
     {
       capabilities: {
