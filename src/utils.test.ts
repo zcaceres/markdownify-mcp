@@ -8,6 +8,7 @@ import {
   isPrivateOrReservedIp,
   isUnconvertedHtml,
   inferExtensionFromUrl,
+  shouldPassUrlToMarkitdown,
   isMarkdownFile,
   isWithinDirectory,
   resolveMarkitdownPath,
@@ -229,6 +230,82 @@ describe("inferExtensionFromUrl", () => {
 
   test("returns html for .html URLs", () => {
     expect(inferExtensionFromUrl("https://example.com/page.html")).toBe("html");
+  });
+});
+
+describe("shouldPassUrlToMarkitdown", () => {
+  test("accepts a canonical YouTube watch URL", () => {
+    expect(
+      shouldPassUrlToMarkitdown("https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+    ).toBe(true);
+  });
+
+  test("accepts a YouTube watch URL with extra query params", () => {
+    expect(
+      shouldPassUrlToMarkitdown(
+        "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42s",
+      ),
+    ).toBe(true);
+  });
+
+  test("rejects a YouTube watch URL with no video id", () => {
+    expect(shouldPassUrlToMarkitdown("https://www.youtube.com/watch")).toBe(
+      false,
+    );
+  });
+
+  test("rejects non-watch YouTube paths", () => {
+    expect(
+      shouldPassUrlToMarkitdown("https://www.youtube.com/@somechannel"),
+    ).toBe(false);
+  });
+
+  test("rejects unresolved youtu.be short links", () => {
+    expect(shouldPassUrlToMarkitdown("https://youtu.be/dQw4w9WgXcQ")).toBe(
+      false,
+    );
+  });
+
+  test("accepts a Bing SERP URL", () => {
+    expect(
+      shouldPassUrlToMarkitdown("https://www.bing.com/search?q=markitdown"),
+    ).toBe(true);
+  });
+
+  test("rejects a Bing URL that is not a search", () => {
+    expect(shouldPassUrlToMarkitdown("https://www.bing.com/images")).toBe(
+      false,
+    );
+  });
+
+  test("rejects Wikipedia despite markitdown having a converter for it", () => {
+    expect(
+      shouldPassUrlToMarkitdown("https://en.wikipedia.org/wiki/Markdown"),
+    ).toBe(false);
+  });
+
+  test("rejects arbitrary hosts and non-https URLs", () => {
+    expect(shouldPassUrlToMarkitdown("https://example.com/page")).toBe(false);
+    expect(
+      shouldPassUrlToMarkitdown("http://www.youtube.com/watch?v=dQw4w9WgXcQ"),
+    ).toBe(false);
+  });
+
+  test("rejects lookalike hosts that merely contain an allowed domain", () => {
+    expect(
+      shouldPassUrlToMarkitdown(
+        "https://www.youtube.com.evil.test/watch?v=dQw4w9WgXcQ",
+      ),
+    ).toBe(false);
+    expect(
+      shouldPassUrlToMarkitdown(
+        "https://evil-www.youtube.com/watch?v=dQw4w9WgXcQ",
+      ),
+    ).toBe(false);
+  });
+
+  test("returns false for malformed URLs", () => {
+    expect(shouldPassUrlToMarkitdown("not a url")).toBe(false);
   });
 });
 

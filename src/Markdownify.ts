@@ -12,6 +12,7 @@ import {
   validateBranchName,
   isUnconvertedHtml,
   inferExtensionFromUrl,
+  shouldPassUrlToMarkitdown,
   isMarkdownFile,
   resolveMarkitdownPath,
   resolveRepomixPath,
@@ -33,6 +34,8 @@ type TemporaryFile = {
 };
 
 export class Markdownify {
+  private static _validateUrlDestination = validateUrlDestination;
+
   private static async _markitdown(
     filePath: string,
     projectRoot: string,
@@ -94,27 +97,30 @@ export class Markdownify {
     fs.rmSync(tempFile.cleanupDir, { recursive: true, force: true });
   }
 
+  // Walks the redirect chain, validating every hop against the SSRF rules, and returns
+  // the final response alongside the resolved URL. Short links (e.g. youtu.be) resolve
+  // to their canonical form before the markitdown URL-routing allowlist check runs.
   private static async safeFetch(
     url: string,
     maxRedirects = 10,
-  ): Promise<Response> {
+  ): Promise<{ response: Response; finalUrl: string }> {
     let currentUrl = url;
     for (let i = 0; i < maxRedirects; i++) {
-      await validateUrlDestination(currentUrl);
+      await this._validateUrlDestination(currentUrl);
       const response = await fetch(currentUrl, { redirect: "manual" });
       if (
         response.status >= 300 &&
         response.status < 400 &&
         response.headers.get("location")
       ) {
-        await response.body?.cancel();
+        await response.body?.cancel().catch(() => {});
         currentUrl = new URL(
           response.headers.get("location")!,
           currentUrl,
         ).toString();
         continue;
       }
-      return response;
+      return { response, finalUrl: currentUrl };
     }
     throw new Error("Too many redirects");
   }
@@ -133,14 +139,20 @@ export class Markdownify {
       let inputPath: string;
 
       if (url) {
-        const response = await this.safeFetch(url);
-        const extension = inferExtensionFromUrl(url);
+        const { response, finalUrl } = await this.safeFetch(url);
 
-        const arrayBuffer = await response.arrayBuffer();
-        const content = Buffer.from(arrayBuffer);
+        if (shouldPassUrlToMarkitdown(finalUrl)) {
+          await response.body?.cancel().catch(() => {});
+          inputPath = finalUrl;
+        } else {
+          const extension = inferExtensionFromUrl(finalUrl);
 
-        temporaryFile = await this.saveToTempFile(content, extension);
-        inputPath = temporaryFile.path;
+          const arrayBuffer = await response.arrayBuffer();
+          const content = Buffer.from(arrayBuffer);
+
+          temporaryFile = await this.saveToTempFile(content, extension);
+          inputPath = temporaryFile.path;
+        }
       } else if (filePath) {
         const expanded = path.resolve(expandHome(filePath));
         assertPathAllowed(expanded);
