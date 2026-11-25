@@ -7,8 +7,9 @@ import { randomUUID } from "crypto";
 import { fileURLToPath } from "url";
 import {
   expandHome,
-  validateUrl,
+  validateUrlDestination,
   validateRepoUrl,
+  validateBranchName,
   isUnconvertedHtml,
   inferExtensionFromUrl,
   isMarkdownFile,
@@ -99,13 +100,14 @@ export class Markdownify {
   ): Promise<Response> {
     let currentUrl = url;
     for (let i = 0; i < maxRedirects; i++) {
-      validateUrl(currentUrl);
+      await validateUrlDestination(currentUrl);
       const response = await fetch(currentUrl, { redirect: "manual" });
       if (
         response.status >= 300 &&
         response.status < 400 &&
         response.headers.get("location")
       ) {
+        await response.body?.cancel();
         currentUrl = new URL(
           response.headers.get("location")!,
           currentUrl,
@@ -173,6 +175,9 @@ export class Markdownify {
     compress?: boolean;
   }): Promise<MarkdownResult> {
     validateRepoUrl(repoUrl);
+    if (repoUrl.includes("://")) {
+      await validateUrlDestination(repoUrl);
+    }
 
     const projectRoot = path.resolve(__dirname, "..");
     const repomixPath = resolveRepomixPath(projectRoot);
@@ -186,7 +191,8 @@ export class Markdownify {
       "--quiet",
     ];
 
-    if (branch) {
+    if (branch !== undefined) {
+      validateBranchName(branch);
       args.push("--remote-branch", branch);
     }
 

@@ -68,7 +68,7 @@ test("Markdownify.toMarkdown converts image file to Markdown", async () => {
 }, conversionTimeout);
 
 test("Markdownify.toMarkdown converts URL content to Markdown", async () => {
-  const testUrl = "https://example.com";
+  const testUrl = "https://93.184.216.34";
   const html = "<h1>Example Domain</h1>";
   const mockFetch = mock(() =>
     Promise.resolve({
@@ -86,7 +86,7 @@ test("Markdownify.toMarkdown converts URL content to Markdown", async () => {
 
 test("Markdownify.toMarkdown stores fetched URL content in a private random temp path and cleans up", async () => {
   const originalMarkitdown = Markdownify["_markitdown"];
-  const testUrl = "https://example.com";
+  const testUrl = "https://93.184.216.34";
   const html = "<h1>Private Temp Path</h1>";
   let observedInputPath = "";
 
@@ -136,13 +136,44 @@ test("Markdownify.toMarkdown cleans up temp directory when _markitdown throws", 
 
   try {
     await expect(
-      Markdownify.toMarkdown({ url: "https://example.com" }),
+      Markdownify.toMarkdown({ url: "https://93.184.216.34" }),
     ).rejects.toThrow("Simulated markitdown failure");
     expect(observedInputPath).not.toBe("");
     expect(fs.existsSync(path.dirname(observedInputPath))).toBe(false);
   } finally {
     Markdownify["_markitdown"] = originalMarkitdown;
   }
+});
+
+test("Markdownify.toMarkdown rejects SSRF URLs and redirects to private targets before fetching", async () => {
+  const mockFetch = mock(() =>
+    Promise.resolve({
+      status: 302,
+      headers: {
+        get: (name: string) =>
+          name.toLowerCase() === "location"
+            ? "http://[::ffff:7f00:1]:8080/secret"
+            : null,
+      },
+      body: { cancel: () => Promise.resolve() },
+    }),
+  );
+  global.fetch = mockFetch as any;
+
+  await expect(
+    Markdownify.toMarkdown({ url: "http://[::1]:8080/metadata" }),
+  ).rejects.toThrow("potentially dangerous");
+  expect(mockFetch).toHaveBeenCalledTimes(0);
+
+  await expect(
+    Markdownify.toMarkdown({ url: "http://localhost:8080/metadata" }),
+  ).rejects.toThrow("potentially dangerous");
+  expect(mockFetch).toHaveBeenCalledTimes(0);
+
+  await expect(
+    Markdownify.toMarkdown({ url: "https://93.184.216.34/start" }),
+  ).rejects.toThrow("potentially dangerous");
+  expect(mockFetch).toHaveBeenCalledTimes(1);
 });
 
 test("Markdownify.get retrieves existing Markdown file", async () => {
@@ -266,6 +297,24 @@ test("Markdownify.fromRepo rejects shell metacharacters in URL", async () => {
   await expect(
     Markdownify.fromRepo({ repoUrl: "owner/repo; rm -rf /" }),
   ).rejects.toThrow("Invalid repository URL or shorthand");
+});
+
+test("Markdownify.fromRepo rejects scp-style SSH shorthand and private URLs", async () => {
+  await expect(
+    Markdownify.fromRepo({ repoUrl: "git@internal.local:owner/repo.git" }),
+  ).rejects.toThrow("scp-style SSH syntax");
+  await expect(
+    Markdownify.fromRepo({ repoUrl: "http://127.0.0.1/owner/repo" }),
+  ).rejects.toThrow("potentially dangerous");
+});
+
+test("Markdownify.fromRepo rejects option injection in branch parameter", async () => {
+  await expect(
+    Markdownify.fromRepo({
+      repoUrl: "octocat/Hello-World",
+      branch: "--upload-pack=id",
+    }),
+  ).rejects.toThrow("Invalid branch name");
 });
 
 // Integration tests against diverse real repositories
