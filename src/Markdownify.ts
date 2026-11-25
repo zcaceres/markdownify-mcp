@@ -3,13 +3,16 @@ import { promisify } from "util";
 import path from "path";
 import fs from "fs";
 import os from "os";
+import { randomUUID } from "crypto";
 import { fileURLToPath } from "url";
 import {
   expandHome,
-  validateUrl,
+  validateUrlDestination,
   validateRepoUrl,
+  validateBranchName,
   isUnconvertedHtml,
   inferExtensionFromUrl,
+  shouldPassUrlToMarkitdown,
   isMarkdownFile,
   resolveMarkitdownPath,
   resolveRepomixPath,
@@ -25,7 +28,14 @@ export type MarkdownResult = {
   text: string;
 };
 
+type TemporaryFile = {
+  path: string;
+  cleanupDir: string;
+};
+
 export class Markdownify {
+  private static _validateUrlDestination = validateUrlDestination;
+
   private static async _markitdown(
     filePath: string,
     projectRoot: string,
@@ -66,40 +76,51 @@ export class Markdownify {
   private static async saveToTempFile(
     content: string | Buffer,
     suggestedExtension?: string | null,
-  ): Promise<string> {
+  ): Promise<TemporaryFile> {
     let outputExtension = "md";
     if (suggestedExtension != null) {
       outputExtension = suggestedExtension;
     }
 
-    const tempOutputPath = path.join(
-      os.tmpdir(),
-      `markdown_output_${Date.now()}.${outputExtension}`,
+    const tempOutputDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "markdownify-"),
     );
-    fs.writeFileSync(tempOutputPath, content);
-    return tempOutputPath;
+    const tempOutputPath = path.join(
+      tempOutputDir,
+      `markdown_output_${randomUUID()}.${outputExtension}`,
+    );
+    fs.writeFileSync(tempOutputPath, content, { flag: "wx" });
+    return { path: tempOutputPath, cleanupDir: tempOutputDir };
   }
 
+  private static cleanupTempFile(tempFile: TemporaryFile): void {
+    fs.rmSync(tempFile.cleanupDir, { recursive: true, force: true });
+  }
+
+  // Walks the redirect chain, validating every hop against the SSRF rules, and returns
+  // the final response alongside the resolved URL. Short links (e.g. youtu.be) resolve
+  // to their canonical form before the markitdown URL-routing allowlist check runs.
   private static async safeFetch(
     url: string,
     maxRedirects = 10,
-  ): Promise<Response> {
+  ): Promise<{ response: Response; finalUrl: string }> {
     let currentUrl = url;
     for (let i = 0; i < maxRedirects; i++) {
-      validateUrl(currentUrl);
+      await this._validateUrlDestination(currentUrl);
       const response = await fetch(currentUrl, { redirect: "manual" });
       if (
         response.status >= 300 &&
         response.status < 400 &&
         response.headers.get("location")
       ) {
+        await response.body?.cancel().catch(() => {});
         currentUrl = new URL(
           response.headers.get("location")!,
           currentUrl,
         ).toString();
         continue;
       }
-      return response;
+      return { response, finalUrl: currentUrl };
     }
     throw new Error("Too many redirects");
   }
@@ -113,21 +134,27 @@ export class Markdownify {
     url?: string;
     projectRoot?: string;
   }): Promise<MarkdownResult> {
+    let temporaryFile: TemporaryFile | null = null;
     try {
       let inputPath: string;
-      let isTemporary = false;
 
       if (url) {
-        const response = await this.safeFetch(url);
-        const extension = inferExtensionFromUrl(url);
+        const { response, finalUrl } = await this.safeFetch(url);
 
-        const arrayBuffer = await response.arrayBuffer();
-        const content = Buffer.from(arrayBuffer);
+        if (shouldPassUrlToMarkitdown(finalUrl)) {
+          await response.body?.cancel().catch(() => {});
+          inputPath = finalUrl;
+        } else {
+          const extension = inferExtensionFromUrl(finalUrl);
 
-        inputPath = await this.saveToTempFile(content, extension);
-        isTemporary = true;
+          const arrayBuffer = await response.arrayBuffer();
+          const content = Buffer.from(arrayBuffer);
+
+          temporaryFile = await this.saveToTempFile(content, extension);
+          inputPath = temporaryFile.path;
+        }
       } else if (filePath) {
-        const expanded = expandHome(filePath);
+        const expanded = path.resolve(expandHome(filePath));
         assertPathAllowed(expanded);
         inputPath = expanded;
       } else {
@@ -136,16 +163,16 @@ export class Markdownify {
 
       const text = await this._markitdown(inputPath, projectRoot);
 
-      if (isTemporary) {
-        fs.unlinkSync(inputPath);
-      }
-
       return { text };
     } catch (e: unknown) {
       if (e instanceof Error) {
         throw new Error(`Error processing to Markdown: ${e.message}`);
       } else {
         throw new Error("Error processing to Markdown: Unknown error occurred");
+      }
+    } finally {
+      if (temporaryFile) {
+        this.cleanupTempFile(temporaryFile);
       }
     }
   }
@@ -160,6 +187,9 @@ export class Markdownify {
     compress?: boolean;
   }): Promise<MarkdownResult> {
     validateRepoUrl(repoUrl);
+    if (repoUrl.includes("://")) {
+      await validateUrlDestination(repoUrl);
+    }
 
     const projectRoot = path.resolve(__dirname, "..");
     const repomixPath = resolveRepomixPath(projectRoot);
@@ -173,7 +203,8 @@ export class Markdownify {
       "--quiet",
     ];
 
-    if (branch) {
+    if (branch !== undefined) {
+      validateBranchName(branch);
       args.push("--remote-branch", branch);
     }
 
@@ -219,14 +250,14 @@ export class Markdownify {
 
     assertPathAllowed(resolvedPath);
 
-    if (!fs.existsSync(filePath)) {
+    if (!fs.existsSync(resolvedPath)) {
       throw new Error("File does not exist");
     }
 
-    const text = await fs.promises.readFile(filePath, "utf-8");
+    const text = await fs.promises.readFile(resolvedPath, "utf-8");
 
     return {
-      path: filePath,
+      path: resolvedPath,
       text: text,
     };
   }
