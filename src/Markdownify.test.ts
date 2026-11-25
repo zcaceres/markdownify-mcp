@@ -84,6 +84,67 @@ test("Markdownify.toMarkdown converts URL content to Markdown", async () => {
   expect(result.text).toContain("# Example Domain");
 }, conversionTimeout);
 
+test("Markdownify.toMarkdown stores fetched URL content in a private random temp path and cleans up", async () => {
+  const originalMarkitdown = Markdownify["_markitdown"];
+  const testUrl = "https://example.com";
+  const html = "<h1>Private Temp Path</h1>";
+  let observedInputPath = "";
+
+  global.fetch = mock(() =>
+    Promise.resolve({
+      arrayBuffer: () =>
+        Promise.resolve(new TextEncoder().encode(html).buffer),
+    }),
+  ) as any;
+
+  Markdownify["_markitdown"] = mock(async (inputPath: string) => {
+    observedInputPath = inputPath;
+    expect(fs.readFileSync(inputPath, "utf8")).toBe(html);
+    return "# Private Temp Path";
+  }) as any;
+
+  try {
+    const result = await Markdownify.toMarkdown({ url: testUrl });
+    const tempDirName = path.basename(path.dirname(observedInputPath));
+
+    expect(result.text).toBe("# Private Temp Path");
+    expect(tempDirName.startsWith("markdownify-")).toBe(true);
+    expect(path.basename(observedInputPath)).toMatch(
+      /^markdown_output_[0-9a-f-]{36}\.html$/,
+    );
+    expect(fs.existsSync(path.dirname(observedInputPath))).toBe(false);
+  } finally {
+    Markdownify["_markitdown"] = originalMarkitdown;
+  }
+});
+
+test("Markdownify.toMarkdown cleans up temp directory when _markitdown throws", async () => {
+  const originalMarkitdown = Markdownify["_markitdown"];
+  let observedInputPath = "";
+
+  global.fetch = mock(() =>
+    Promise.resolve({
+      arrayBuffer: () =>
+        Promise.resolve(new TextEncoder().encode("<p>boom</p>").buffer),
+    }),
+  ) as any;
+
+  Markdownify["_markitdown"] = mock(async (inputPath: string) => {
+    observedInputPath = inputPath;
+    throw new Error("Simulated markitdown failure");
+  }) as any;
+
+  try {
+    await expect(
+      Markdownify.toMarkdown({ url: "https://example.com" }),
+    ).rejects.toThrow("Simulated markitdown failure");
+    expect(observedInputPath).not.toBe("");
+    expect(fs.existsSync(path.dirname(observedInputPath))).toBe(false);
+  } finally {
+    Markdownify["_markitdown"] = originalMarkitdown;
+  }
+});
+
 test("Markdownify.get retrieves existing Markdown file", async () => {
   const mdContent = "# Test Markdown\nThis is a test.";
   const tempFilePath = path.join(tempDir, "test_get.md");
@@ -96,6 +157,27 @@ test("Markdownify.get retrieves existing Markdown file", async () => {
   expect(result.text).toBe(mdContent);
 
   fs.unlinkSync(tempFilePath);
+});
+
+test("Markdownify.get expands ~ and reads from the resolved path", async () => {
+  const mdContent = "# Tilde test\nbody";
+  const dir = fs.mkdtempSync(path.join(tempDir, "mdfy-get-tilde-"));
+  const mdFile = path.join(dir, "note.md");
+  fs.writeFileSync(mdFile, mdContent);
+  try {
+    const relFromHome = path.relative(os.homedir(), mdFile);
+    if (path.isAbsolute(relFromHome)) {
+      // Cross-drive on Windows: cannot express via ~/...
+      return;
+    }
+    const tildePath = `~/${relFromHome}`;
+    const result = await Markdownify.get({ filePath: tildePath });
+    expect(result).toBeDefined();
+    expect(result.path).toBe(path.resolve(mdFile));
+    expect(result.text).toBe(mdContent);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("Markdownify.toMarkdown throws error for non-existent file", async () => {
