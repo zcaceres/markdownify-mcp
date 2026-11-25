@@ -3,7 +3,7 @@ name = "ocr"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.11,<3.15"
+requires-python = ">=3.11.5,<3.15"
 dependencies = [
     "markitdown>=0.1.9,<0.2",
 ]
