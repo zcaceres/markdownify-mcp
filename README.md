@@ -88,6 +88,30 @@ All paths default to sensible values; override only when the defaults don't fit 
 | `MD_ALLOWED_PATHS` | unset (unrestricted) | Path-delimiter-separated list (`:` on POSIX, `;` on Windows) of directories the server is allowed to read. When set, all file-input tools (`pdf-to-markdown`, `get-markdown-file`, etc.) reject paths outside these directories. |
 | `MD_SHARE_DIR` | unset | Deprecated alias for `MD_ALLOWED_PATHS` (single directory). Still honored for backward compatibility. |
 
+## Usage with HTTP (Streamable HTTP transport)
+
+By default the server runs over `stdio`. To run it as a stateless Streamable HTTP server (listening on `127.0.0.1:3000/mcp` by default):
+
+```sh
+MD_ALLOWED_PATHS=/path/to/docs bun dist/index.js --transport=http --port=3000
+```
+
+Or via environment variables:
+
+```sh
+MCP_TRANSPORT=http MCP_PORT=3000 MD_ALLOWED_PATHS=/path/to/docs bun dist/index.js
+```
+
+| Flag / Env | Default | Purpose |
+|---|---|---|
+| `--transport=stdio\|http` / `MCP_TRANSPORT` | `stdio` | Transport mode. |
+| `--host=HOST` / `MCP_HOST` | `127.0.0.1` | Bind address for HTTP mode. Defaults to loopback only. |
+| `--port=N` / `MCP_PORT` | `3000` | Port for HTTP mode (ignored in `stdio` mode). |
+| `MCP_ALLOWED_HOSTS` | loopback hosts when bound to loopback | Comma-separated list of allowed `Host` headers (DNS-rebinding protection). |
+| `MCP_ALLOWED_ORIGINS` | loopback origins when bound to loopback | Comma-separated list of allowed browser `Origin` headers. |
+
+> **Security note:** The HTTP transport has no built-in authentication. Always set `MD_ALLOWED_PATHS` when running over HTTP, keep `--host=127.0.0.1` for local use, or place it behind an authenticating reverse proxy with `MCP_ALLOWED_HOSTS` / `MCP_ALLOWED_ORIGINS` configured.
+
 ## Usage with Docker
 
 Build and run:
