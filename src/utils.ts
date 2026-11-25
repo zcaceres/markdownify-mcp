@@ -111,8 +111,15 @@ export function isUnconvertedHtml(output: string): boolean {
 }
 
 export function inferExtensionFromUrl(url: string): string {
-  if (url.endsWith(".pdf")) {
-    return "pdf";
+  try {
+    const { pathname } = new URL(url);
+    if (pathname.toLowerCase().endsWith(".pdf")) {
+      return "pdf";
+    }
+  } catch {
+    if (url.toLowerCase().endsWith(".pdf")) {
+      return "pdf";
+    }
   }
   return "html";
 }
@@ -125,5 +132,5 @@ export function isMarkdownFile(filePath: string): boolean {
 export function isWithinDirectory(filePath: string, directory: string): boolean {
   const rel = path.relative(path.resolve(directory), path.resolve(filePath));
   if (rel === "") return true;
-  return !rel.startsWith("..") && !path.isAbsolute(rel);
+  return rel !== ".." && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel);
 }

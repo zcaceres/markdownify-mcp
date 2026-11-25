@@ -111,6 +111,18 @@ describe("inferExtensionFromUrl", () => {
     expect(inferExtensionFromUrl("https://example.com/doc.pdf")).toBe("pdf");
   });
 
+  test("returns pdf for .pdf URLs with query string or fragment", () => {
+    expect(inferExtensionFromUrl("https://example.com/doc.pdf?utm_source=x")).toBe(
+      "pdf",
+    );
+    expect(inferExtensionFromUrl("https://example.com/doc.pdf#page=2")).toBe(
+      "pdf",
+    );
+    expect(
+      inferExtensionFromUrl("https://example.com/DOC.PDF?v=2#section"),
+    ).toBe("pdf");
+  });
+
   test("returns html for non-pdf URLs", () => {
     expect(inferExtensionFromUrl("https://example.com/page")).toBe("html");
   });
@@ -171,6 +183,17 @@ describe("isWithinDirectory", () => {
     expect(
       isWithinDirectory("/home/user/docs-evil/file.md", "/home/user/docs"),
     ).toBe(false);
+  });
+
+  test("returns true for the directory itself and root directory", () => {
+    expect(isWithinDirectory("/home/user/docs", "/home/user/docs")).toBe(true);
+    expect(isWithinDirectory("/etc/passwd", "/")).toBe(true);
+  });
+
+  test("returns true for filenames starting with double dots inside directory", () => {
+    expect(
+      isWithinDirectory("/home/user/docs/..notes.md", "/home/user/docs"),
+    ).toBe(true);
   });
 });
 
