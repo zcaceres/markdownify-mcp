@@ -30,6 +30,8 @@ jobs:
 
       - run: node preinstall.js
 
+      - run: bun run lint
+
       - run: bun run build
 
       - run: bun test --timeout 30000
