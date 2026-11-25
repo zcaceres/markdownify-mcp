@@ -6,6 +6,8 @@ import os from "os";
 
 const sampleDataDir = path.join(__dirname, "sample-data");
 const tempDir = os.tmpdir();
+// Cold Python imports after a fresh install can exceed Bun's five-second default.
+const conversionTimeout = 30_000;
 
 beforeAll(() => {
   // Ensure the sample data directory exists
@@ -30,7 +32,7 @@ test("Markdownify.toMarkdown converts PDF file to Markdown", async () => {
 
   expect(result).toBeDefined();
   expect(result.text).toContain("Test PDF content");
-});
+}, conversionTimeout);
 
 test("Markdownify.toMarkdown converts DOCX file to Markdown", async () => {
   const docxPath = path.join(sampleDataDir, "test.docx");
@@ -38,7 +40,7 @@ test("Markdownify.toMarkdown converts DOCX file to Markdown", async () => {
 
   expect(result).toBeDefined();
   expect(result.text).toContain("Test DOCX content");
-});
+}, conversionTimeout);
 
 test("Markdownify.toMarkdown converts XLSX file to Markdown", async () => {
   const xlsxPath = path.join(sampleDataDir, "test.xlsx");
@@ -46,7 +48,7 @@ test("Markdownify.toMarkdown converts XLSX file to Markdown", async () => {
 
   expect(result).toBeDefined();
   expect(result.text).toContain("Test XLSX content");
-});
+}, conversionTimeout);
 
 test("Markdownify.toMarkdown converts PPTX file to Markdown", async () => {
   const pptxPath = path.join(sampleDataDir, "test.pptx");
@@ -54,7 +56,7 @@ test("Markdownify.toMarkdown converts PPTX file to Markdown", async () => {
 
   expect(result).toBeDefined();
   expect(result.text).toContain("Test PPTX content");
-});
+}, conversionTimeout);
 
 test("Markdownify.toMarkdown converts image file to Markdown", async () => {
   const imagePath = path.join(sampleDataDir, "test.jpg");
@@ -63,7 +65,7 @@ test("Markdownify.toMarkdown converts image file to Markdown", async () => {
   expect(result).toBeDefined();
   // markitdown returns only whitespace for images without LLM vision config
   expect(result.text.trim()).toBe("");
-});
+}, conversionTimeout);
 
 test("Markdownify.toMarkdown converts URL content to Markdown", async () => {
   const testUrl = "https://example.com";
@@ -80,7 +82,7 @@ test("Markdownify.toMarkdown converts URL content to Markdown", async () => {
 
   expect(result).toBeDefined();
   expect(result.text).toContain("# Example Domain");
-});
+}, conversionTimeout);
 
 test("Markdownify.get retrieves existing Markdown file", async () => {
   const mdContent = "# Test Markdown\nThis is a test.";
@@ -101,7 +103,7 @@ test("Markdownify.toMarkdown throws error for non-existent file", async () => {
   await expect(
     Markdownify.toMarkdown({ filePath: nonExistentPath }),
   ).rejects.toThrow();
-});
+}, conversionTimeout);
 
 test("Markdownify.toMarkdown throws error when neither filePath nor url is provided", async () => {
   await expect(Markdownify.toMarkdown({})).rejects.toThrow(
