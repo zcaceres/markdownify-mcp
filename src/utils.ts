@@ -237,6 +237,36 @@ export function isUnconvertedHtml(output: string): boolean {
   return trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html");
 }
 
+// A few of markitdown's converters key off the URL itself rather than the bytes:
+// YouTubeConverter requires "https://www.youtube.com/watch?..." and
+// BingSerpConverter requires "https://www.bing.com/search?q=...". Downloading those
+// pages first and passing a temp .html file leaves stream_info.url unset so those
+// converters never fire.
+//
+// Deliberately an allowlist rather than passing every URL through: markitdown fetches
+// with requests' default User-Agent, which hosts like en.wikipedia.org and
+// stackoverflow.com reject with 403 while accepting this server's fetch.
+export function shouldPassUrlToMarkitdown(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "https:") {
+    return false;
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  if (host === "www.youtube.com") {
+    return parsed.pathname === "/watch" && parsed.searchParams.has("v");
+  }
+  if (host === "www.bing.com") {
+    return parsed.pathname === "/search" && parsed.searchParams.has("q");
+  }
+  return false;
+}
+
 export function inferExtensionFromUrl(url: string): string {
   try {
     const { pathname } = new URL(url);
