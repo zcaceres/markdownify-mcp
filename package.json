@@ -1,47 +1,50 @@
 {
-  "name": "mcp-markdownify-server",
-  "version": "1.2.0",
-  "description": "MCP Markdownify Server - Model Context Protocol Server for Converting Almost Anything to Markdown",
-  "license": "MIT",
-  "author": "@zcaceres (@zachcaceres | zach.dev)",
-  "homepage": "https://github.com/zcaceres/markdownify-mcp",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/zcaceres/markdownify-mcp.git"
-  },
-  "bugs": "https://github.com/zcaceres/markdownify-mcp/issues",
-  "type": "module",
-  "engines": {
-    "node": ">=22"
-  },
-  "bin": {
-    "mcp-markdownify-server": "dist/index.js"
-  },
-  "files": [
-    "dist",
-    "preinstall.js",
-    "setup.sh",
-    "setup.bat",
-    "pyproject.toml",
-    "uv.lock",
-    ".python-version"
-  ],
-  "scripts": {
-    "build": "tsc && chmod +x dist/*.js",
-    "dev": "tsc --watch",
-    "preinstall": "node preinstall.js",
-    "prepublishOnly": "bun run build",
-    "start": "bun dist/index.js",
-    "test": "bun test",
-    "test:watch": "bun test --watch"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.2",
-    "repomix": "^1.18.1",
-    "zod": "^4.6.7"
-  },
-  "devDependencies": {
-    "@types/node": "^22.20.5",
-    "typescript": "^7.0.2"
-  }
+	"name": "mcp-markdownify-server",
+	"version": "1.2.0",
+	"description": "MCP Markdownify Server - Model Context Protocol Server for Converting Almost Anything to Markdown",
+	"license": "MIT",
+	"author": "@zcaceres (@zachcaceres | zach.dev)",
+	"homepage": "https://github.com/zcaceres/markdownify-mcp",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/zcaceres/markdownify-mcp.git"
+	},
+	"bugs": "https://github.com/zcaceres/markdownify-mcp/issues",
+	"type": "module",
+	"engines": {
+		"node": ">=22"
+	},
+	"bin": {
+		"mcp-markdownify-server": "dist/index.js"
+	},
+	"files": [
+		"dist",
+		"preinstall.js",
+		"setup.sh",
+		"setup.bat",
+		"pyproject.toml",
+		"uv.lock",
+		".python-version"
+	],
+	"scripts": {
+		"build": "tsc && chmod +x dist/*.js",
+		"dev": "tsc --watch",
+		"format": "biome check --write .",
+		"lint": "biome check .",
+		"preinstall": "node preinstall.js",
+		"prepublishOnly": "bun run build",
+		"start": "bun dist/index.js",
+		"test": "bun test",
+		"test:watch": "bun test --watch"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.32.2",
+		"repomix": "^1.18.1",
+		"zod": "^4.6.7"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.6.9",
+		"@types/node": "^22.20.5",
+		"typescript": "^7.0.2"
+	}
 }
