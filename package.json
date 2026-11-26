@@ -30,6 +30,7 @@
 		"build": "tsc && chmod +x dist/*.js",
 		"dev": "tsc --watch",
 		"format": "biome check --write .",
+		"harness": "bun cli/main.ts",
 		"lint": "biome check .",
 		"preinstall": "node preinstall.js",
 		"prepublishOnly": "bun run build",

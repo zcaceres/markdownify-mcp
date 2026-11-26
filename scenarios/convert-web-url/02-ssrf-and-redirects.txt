@@ -1,0 +1,85 @@
+# Slice 02: SSRF Validation and Manual Redirects (WU-2, WU-5)
+
+# WU-2 (D14, I1): non-http(s) schemes, blocked hostnames, and private/reserved IPs are refused before fetching
+> convert webpage-to-markdown file:///etc/passwd
+error: Only http: and https: schemes are allowed.
+
+> convert webpage-to-markdown ftp://example.com/file.txt
+error: Only http: and https: schemes are allowed.
+
+> convert webpage-to-markdown http://localhost:8080/admin
+error: Fetching http://localhost:8080/admin is potentially dangerous, aborting.
+
+> convert webpage-to-markdown http://metadata.google.internal/computeMetadata/v1/
+error: Fetching http://metadata.google.internal/computeMetadata/v1/ is potentially dangerous, aborting.
+
+> convert webpage-to-markdown http://[::ffff:7f00:1]:8080/secret
+error: Fetching http://[::ffff:7f00:1]:8080/secret is potentially dangerous, aborting.
+
+# WU-2 (D14, I1): DNS lookup resolving to private IP (including dual-record) or failing fails closed before fetching
+> network dns rebind.example 93.184.216.34 ::1
+dns rebind.example -> 93.184.216.34, ::1
+
+> convert webpage-to-markdown https://rebind.example/page
+error: Fetching https://rebind.example/page is potentially dangerous, aborting.
+
+> network dns-fail missing.example
+dns set to fail for missing.example
+
+> convert webpage-to-markdown https://missing.example/page
+error: Could not resolve host "missing.example" for https://missing.example/page.
+
+> network fetch-count
+fetch count: 0
+
+# WU-5 (D14, I1): valid public 3xx redirects (including relative Location) are followed and converted
+> network redirect https://example.com/old 301 /new
+redirected https://example.com/old -> 301 /new
+
+> network stub https://example.com/new 200 <h1>Moved</h1>
+stubbed https://example.com/new -> 200
+
+> markitdown stub # Moved
+markitdown stubbed
+
+> convert webpage-to-markdown https://example.com/old
+ok: webpage-to-markdown (path: none)
+| # Moved
+
+> filesystem temp-count
+active temp dirs: 0
+
+# WU-5 (D14, I1): redirect to a private target aborts before fetching the disallowed hop
+> reset
+the world is back to its fixtures
+
+> network redirect https://example.com/start 302 http://127.0.0.1:8080/secret
+redirected https://example.com/start -> 302 http://127.0.0.1:8080/secret
+
+> convert webpage-to-markdown https://example.com/start
+error: Fetching http://127.0.0.1:8080/secret is potentially dangerous, aborting.
+
+> network fetch-count
+fetch count: 1
+
+> filesystem temp-count
+active temp dirs: 0
+
+# WU-5 (D13): redirect chain exceeding maxRedirects (10) is refused cleanly
+> reset
+the world is back to its fixtures
+
+> network redirect https://example.com/loop1 302 https://example.com/loop2
+redirected https://example.com/loop1 -> 302 https://example.com/loop2
+
+> network redirect https://example.com/loop2 302 https://example.com/loop1
+redirected https://example.com/loop2 -> 302 https://example.com/loop1
+
+> convert webpage-to-markdown https://example.com/loop1
+error: Too many redirects
+
+> network fetch-count
+fetch count: 11
+
+> filesystem temp-count
+active temp dirs: 0

@@ -1,0 +1,111 @@
+# Slice 03: Format Inference, YouTube/Bing Pass-through, and Unconverted HTML (WU-8, WU-9, WU-12)
+
+# WU-8 (D10, D15): Content-Type header takes precedence over extensionless URL pathname
+> network stub https://example.com/download?id=42 200 %PDF-1.7
+stubbed https://example.com/download?id=42 -> 200
+
+> network content-type https://example.com/download?id=42 application/pdf; charset=binary
+content-type https://example.com/download?id=42 -> application/pdf; charset=binary
+
+> markitdown stub # Quarterly Report
+markitdown stubbed
+
+> convert webpage-to-markdown https://example.com/download?id=42
+ok: webpage-to-markdown (path: none)
+| # Quarterly Report
+
+> markitdown last-input
+last input: /tmp/markdownify-mock-1/markdown_output_1.pdf
+
+> filesystem temp-count
+active temp dirs: 0
+
+# WU-8 (D10, D15): ambiguous Content-Type falls back to recognized URL pathname extension
+> network stub https://example.com/files/deck.pptx 200 PK
+stubbed https://example.com/files/deck.pptx -> 200
+
+> network content-type https://example.com/files/deck.pptx application/octet-stream
+content-type https://example.com/files/deck.pptx -> application/octet-stream
+
+> markitdown stub # Slide Deck
+markitdown stubbed
+
+> convert webpage-to-markdown https://example.com/files/deck.pptx
+ok: webpage-to-markdown (path: none)
+| # Slide Deck
+
+> markitdown last-input
+last input: /tmp/markdownify-mock-2/markdown_output_2.pptx
+
+# WU-8 (D10, D15): unknown Content-Type and unknown pathname default to .html
+> network stub https://example.com/mystery 200 <p>Hello</p>
+stubbed https://example.com/mystery -> 200
+
+> network content-type https://example.com/mystery application/octet-stream
+content-type https://example.com/mystery -> application/octet-stream
+
+> markitdown stub Hello
+markitdown stubbed
+
+> convert webpage-to-markdown https://example.com/mystery
+ok: webpage-to-markdown (path: none)
+| Hello
+
+> markitdown last-input
+last input: /tmp/markdownify-mock-3/markdown_output_3.html
+
+# WU-9 (D10, D14): youtu.be redirects to canonical YouTube watch URL and passes directly to markitdown without staging
+> reset
+the world is back to its fixtures
+
+> network redirect https://youtu.be/dQw4w9WgXcQ 303 https://www.youtube.com/watch?v=dQw4w9WgXcQ
+redirected https://youtu.be/dQw4w9WgXcQ -> 303 https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+> network stub https://www.youtube.com/watch?v=dQw4w9WgXcQ 200 <html>yt</html>
+stubbed https://www.youtube.com/watch?v=dQw4w9WgXcQ -> 200
+
+> markitdown stub # Video Transcript
+markitdown stubbed
+
+> convert youtube-to-markdown https://youtu.be/dQw4w9WgXcQ
+ok: youtube-to-markdown (path: none)
+| # Video Transcript
+
+> markitdown last-input
+last input: https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+> filesystem staged-count
+staged count: 0
+
+# WU-9 (D10, D14): canonical Bing search URL passes directly to markitdown without staging
+> network stub https://www.bing.com/search?q=markdown 200 <html>bing</html>
+stubbed https://www.bing.com/search?q=markdown -> 200
+
+> markitdown stub # Bing Results
+markitdown stubbed
+
+> convert bing-search-to-markdown https://www.bing.com/search?q=markdown
+ok: bing-search-to-markdown (path: none)
+| # Bing Results
+
+> markitdown last-input
+last input: https://www.bing.com/search?q=markdown
+
+> filesystem staged-count
+staged count: 0
+
+# WU-12 (D3, D8, I4): raw unconverted HTML from markitdown fails conversion and cleans up Temporary File
+> reset
+the world is back to its fixtures
+
+> network stub https://example.com/spa 200 <!DOCTYPE html><div id="root"></div>
+stubbed https://example.com/spa -> 200
+
+> markitdown stub <!DOCTYPE html><html><body></body></html>
+markitdown stubbed
+
+> convert webpage-to-markdown https://example.com/spa
+error: Conversion failed: the page returned raw HTML that could not be converted to Markdown. This typically happens with JavaScript-rendered pages (SPAs) that require a browser to load content.
+
+> filesystem temp-count
+active temp dirs: 0

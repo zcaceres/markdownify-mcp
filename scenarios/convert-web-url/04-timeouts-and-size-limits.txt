@@ -1,0 +1,96 @@
+# Slice 04: Timeouts, Download Size Cap, and Env Overrides (WU-6, WU-13)
+
+# WU-6 (D7, D13): fetch exceeding default 30s timeout is aborted and advances deterministic clock
+> network stub https://example.com/slow 200 <h1>Eventually</h1>
+stubbed https://example.com/slow -> 200
+
+> network slow https://example.com/slow 35s
+network latency for https://example.com/slow -> 35000ms
+
+> convert webpage-to-markdown https://example.com/slow
+error: Fetch timed out after 30000ms for https://example.com/slow
+
+> clock
+2026-01-05T09:00:30.000Z
+
+> filesystem temp-count
+active temp dirs: 0
+
+# WU-6 (D7, D13): Web URL download exceeding default 25 MB cap is aborted without staging a Temporary File
+> reset
+the world is back to its fixtures
+
+> network stub-size https://example.com/huge.pdf 30000000
+stubbed https://example.com/huge.pdf -> 200 (30000000 bytes)
+
+> convert webpage-to-markdown https://example.com/huge.pdf
+error: Download exceeded maximum size of 26214400 bytes for https://example.com/huge.pdf
+
+> filesystem staged-count
+staged count: 0
+
+# WU-13 (D7, D13, I4): markitdown exceeding default 60s timeout is aborted and cleans up Temporary File
+> reset
+the world is back to its fixtures
+
+> network stub https://example.com/heavy 200 <h1>Heavy</h1>
+stubbed https://example.com/heavy -> 200
+
+> markitdown slow 70s
+markitdown latency -> 70000ms
+
+> convert webpage-to-markdown https://example.com/heavy
+error: Conversion timed out after 60000ms
+
+> clock
+2026-01-05T09:01:00.000Z
+
+> filesystem temp-count
+active temp dirs: 0
+
+# WU-6, WU-13 (D13): MD_* env var overrides tighten or raise limits, and invalid values fail cleanly
+> reset
+the world is back to its fixtures
+
+> config set MD_FETCH_TIMEOUT_MS 5000
+config MD_FETCH_TIMEOUT_MS = 5000
+
+> network stub https://example.com/medium 200 <h1>Medium</h1>
+stubbed https://example.com/medium -> 200
+
+> network slow https://example.com/medium 8s
+network latency for https://example.com/medium -> 8000ms
+
+> convert webpage-to-markdown https://example.com/medium
+error: Fetch timed out after 5000ms for https://example.com/medium
+
+> config set MD_FETCH_TIMEOUT_MS 10000
+config MD_FETCH_TIMEOUT_MS = 10000
+
+> markitdown stub # Medium
+markitdown stubbed
+
+> convert webpage-to-markdown https://example.com/medium
+ok: webpage-to-markdown (path: none)
+| # Medium
+
+> config set MD_MAX_REDIRECTS 1
+config MD_MAX_REDIRECTS = 1
+
+> network redirect https://example.com/h0 302 https://example.com/h1
+redirected https://example.com/h0 -> 302 https://example.com/h1
+
+> network redirect https://example.com/h1 302 https://example.com/h2
+redirected https://example.com/h1 -> 302 https://example.com/h2
+
+> network stub https://example.com/h2 200 <h1>H2</h1>
+stubbed https://example.com/h2 -> 200
+
+> convert webpage-to-markdown https://example.com/h0
+error: Too many redirects
+
+> config set MD_MAX_DOWNLOAD_BYTES bad
+config MD_MAX_DOWNLOAD_BYTES = bad
+
+> convert webpage-to-markdown https://example.com/medium
+error: Invalid MD_MAX_DOWNLOAD_BYTES "bad": must be a positive integer
