@@ -1,0 +1,12 @@
+# Harness smoke scenario: deterministic clock starts at startOfTime, advances on command, and resets cleanly.
+> clock
+2026-01-05T09:00:00.000Z
+
+> clock advance 30m
+2026-01-05T09:30:00.000Z
+
+> reset
+the world is back to its fixtures
+
+> clock
+2026-01-05T09:00:00.000Z

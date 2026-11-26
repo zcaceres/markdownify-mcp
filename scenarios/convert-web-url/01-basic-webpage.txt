@@ -1,0 +1,96 @@
+# Slice 01: Basic Webpage Conversion (Convert Web URL tracer bullet)
+
+# WU-1 (D3, D8): missing and malformed URL inputs are refused as structured errors
+> convert webpage-to-markdown
+error: URL is required for this tool
+
+> convert webpage-to-markdown not-a-url
+error: Invalid URL "not-a-url"
+
+# WU-3, WU-7, WU-10, WU-14 (D3, D5, I3, I4): fetch HTTP 200 HTML, stage temp file, convert, clean up, return text with no path
+> network stub https://example.com/article 200 <h1>Example Domain</h1>
+stubbed https://example.com/article -> 200
+
+> markitdown stub # Example Domain
+markitdown stubbed
+
+> convert webpage-to-markdown https://example.com/article
+ok: webpage-to-markdown (path: none)
+| # Example Domain
+
+> filesystem temp-count
+active temp dirs: 0
+
+# WU-14 (D3, D5): youtube-to-markdown and bing-search-to-markdown also return text with no path
+> network stub https://example.com/video-page 200 <h1>Video</h1>
+stubbed https://example.com/video-page -> 200
+
+> markitdown stub # Video
+markitdown stubbed
+
+> convert youtube-to-markdown https://example.com/video-page
+ok: youtube-to-markdown (path: none)
+| # Video
+
+> network stub https://example.com/search-page 200 <h1>Results</h1>
+stubbed https://example.com/search-page -> 200
+
+> markitdown stub # Results
+markitdown stubbed
+
+> convert bing-search-to-markdown https://example.com/search-page
+ok: bing-search-to-markdown (path: none)
+| # Results
+
+# WU-4 (D8, D12): non-2xx HTTP status fails conversion instead of converting the error page
+> network stub https://example.com/missing 404 <h1>Not Found</h1>
+stubbed https://example.com/missing -> 404
+
+> convert webpage-to-markdown https://example.com/missing
+error: HTTP 404 fetching https://example.com/missing
+
+> filesystem temp-count
+active temp dirs: 0
+
+# WU-11 (D8, D16, I4): empty whitespace-only output on exit 0 returns an empty Markdown Result
+> network stub https://example.com/blank 200 <div></div>
+stubbed https://example.com/blank -> 200
+
+> markitdown empty
+markitdown set to empty output
+
+> convert webpage-to-markdown https://example.com/blank
+ok: webpage-to-markdown (path: none)
+(empty)
+
+> filesystem temp-count
+active temp dirs: 0
+
+# WU-11 (D8, I4): converter failure and missing binary return structured errors and clean up Temporary File
+> markitdown fail exit code 1
+markitdown set to fail
+
+> convert webpage-to-markdown https://example.com/article
+error: Conversion failed: exit code 1
+
+> filesystem temp-count
+active temp dirs: 0
+
+> markitdown missing
+markitdown set to missing
+
+> convert webpage-to-markdown https://example.com/article
+error: markitdown executable not found
+
+> filesystem temp-count
+active temp dirs: 0
+
+# WU-3 (D8): network failure returns a structured error with no leaked Temporary File
+> network fail https://example.com/down connection refused
+network set to fail for https://example.com/down
+
+> convert webpage-to-markdown https://example.com/down
+error: Network error fetching https://example.com/down: connection refused
+
+> filesystem temp-count
+active temp dirs: 0
