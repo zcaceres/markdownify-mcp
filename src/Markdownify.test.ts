@@ -94,6 +94,7 @@ test(
 		const html = "<h1>Example Domain</h1>";
 		const mockFetch = mock(() =>
 			Promise.resolve({
+				status: 200,
 				arrayBuffer: () =>
 					Promise.resolve(new TextEncoder().encode(html).buffer),
 			}),
@@ -116,6 +117,7 @@ test("Markdownify.toMarkdown stores fetched URL content in a private random temp
 
 	global.fetch = mock(() =>
 		Promise.resolve({
+			status: 200,
 			arrayBuffer: () => Promise.resolve(new TextEncoder().encode(html).buffer),
 		}),
 	) as any;
@@ -147,6 +149,7 @@ test("Markdownify.toMarkdown cleans up temp directory when _markitdown throws", 
 
 	global.fetch = mock(() =>
 		Promise.resolve({
+			status: 200,
 			arrayBuffer: () =>
 				Promise.resolve(new TextEncoder().encode("<p>boom</p>").buffer),
 		}),
@@ -526,4 +529,196 @@ test("Markdownify.toMarkdown handles error from _markitdown method", async () =>
 	);
 
 	Markdownify["_markitdown"] = originalMarkitdown;
+});
+
+test("Markdownify.toMarkdown rejects non-2xx HTTP responses with status code (D12)", async () => {
+	global.fetch = mock(() =>
+		Promise.resolve({
+			status: 404,
+			headers: { get: () => null },
+			body: { cancel: () => Promise.resolve() },
+			arrayBuffer: () =>
+				Promise.resolve(new TextEncoder().encode("<h1>Not Found</h1>").buffer),
+		}),
+	) as any;
+
+	await expect(
+		Markdownify.toMarkdown({ url: "https://93.184.216.34/missing" }),
+	).rejects.toThrow("HTTP 404 fetching https://93.184.216.34/missing");
+});
+
+test("Markdownify.toMarkdown normalizes whitespace-only exit-0 output to empty string (D16)", async () => {
+	const originalMarkitdown = Markdownify["_markitdown"];
+	global.fetch = mock(() =>
+		Promise.resolve({
+			status: 200,
+			headers: { get: () => null },
+			body: null,
+			arrayBuffer: () =>
+				Promise.resolve(new TextEncoder().encode("<div></div>").buffer),
+		}),
+	) as any;
+	Markdownify["_markitdown"] = mock(async () => "   \n\t  ") as any;
+
+	try {
+		const result = await Markdownify.toMarkdown({
+			url: "https://93.184.216.34/blank",
+		});
+		expect(result).toEqual({ text: "" });
+	} finally {
+		Markdownify["_markitdown"] = originalMarkitdown;
+	}
+});
+
+test("Markdownify.toMarkdown allows 10 redirect hops and rejects an 11th redirect (D13)", async () => {
+	const originalMarkitdown = Markdownify["_markitdown"];
+	Markdownify["_markitdown"] = mock(async () => "# Hop 10") as any;
+	let hops = 0;
+	global.fetch = mock((url: string) => {
+		if (hops < 10) {
+			hops++;
+			return Promise.resolve({
+				status: 302,
+				headers: {
+					get: (name: string) =>
+						name.toLowerCase() === "location"
+							? `https://93.184.216.34/hop-${hops}`
+							: null,
+				},
+				body: { cancel: () => Promise.resolve() },
+			});
+		}
+		return Promise.resolve({
+			status: 200,
+			headers: { get: () => "text/html" },
+			body: null,
+			arrayBuffer: () =>
+				Promise.resolve(new TextEncoder().encode(`<h1>${url}</h1>`).buffer),
+		});
+	}) as any;
+
+	try {
+		const result = await Markdownify.toMarkdown({
+			url: "https://93.184.216.34/hop-0",
+		});
+		expect(result).toEqual({ text: "# Hop 10" });
+		expect(hops).toBe(10);
+	} finally {
+		Markdownify["_markitdown"] = originalMarkitdown;
+	}
+});
+
+test("Markdownify.toMarkdown infers temp file extension from Content-Type on extensionless URLs (D10, D15)", async () => {
+	const originalMarkitdown = Markdownify["_markitdown"];
+	let receivedPath = "";
+	global.fetch = mock(() =>
+		Promise.resolve({
+			status: 200,
+			headers: {
+				get: (name: string) =>
+					name.toLowerCase() === "content-type"
+						? "application/pdf; charset=binary"
+						: null,
+			},
+			body: null,
+			arrayBuffer: () =>
+				Promise.resolve(new TextEncoder().encode("%PDF-1.7").buffer),
+		}),
+	) as any;
+	Markdownify["_markitdown"] = mock(async (inputPath: string) => {
+		receivedPath = inputPath;
+		return "# Inferred PDF";
+	}) as any;
+
+	try {
+		const result = await Markdownify.toMarkdown({
+			url: "https://93.184.216.34/download?id=99",
+		});
+		expect(result).toEqual({ text: "# Inferred PDF" });
+		expect(receivedPath.endsWith(".pdf")).toBe(true);
+	} finally {
+		Markdownify["_markitdown"] = originalMarkitdown;
+	}
+});
+
+test("Markdownify.toMarkdown aborts downloads exceeding MD_MAX_DOWNLOAD_BYTES via Content-Length or stream (D13)", async () => {
+	const savedMax = process.env.MD_MAX_DOWNLOAD_BYTES;
+	process.env.MD_MAX_DOWNLOAD_BYTES = "10";
+	let cancelled = false;
+
+	try {
+		// 1. Content-Length exceeds limit
+		global.fetch = mock(() =>
+			Promise.resolve({
+				status: 200,
+				headers: {
+					get: (name: string) =>
+						name.toLowerCase() === "content-length" ? "50" : "text/html",
+				},
+				body: {
+					cancel: async () => {
+						cancelled = true;
+					},
+				},
+			}),
+		) as any;
+
+		await expect(
+			Markdownify.toMarkdown({ url: "https://93.184.216.34/huge-header" }),
+		).rejects.toThrow("Download exceeded maximum size of 10 bytes");
+		expect(cancelled).toBe(true);
+
+		// 2. Streaming body exceeds limit without Content-Length
+		let readerCancelled = false;
+		let chunksSent = 0;
+		const stream = new ReadableStream<Uint8Array>({
+			pull(controller) {
+				chunksSent++;
+				controller.enqueue(new Uint8Array(6));
+				if (chunksSent >= 5) controller.close();
+			},
+			cancel() {
+				readerCancelled = true;
+			},
+		});
+		global.fetch = mock(() =>
+			Promise.resolve({
+				status: 200,
+				headers: { get: () => null },
+				body: stream,
+			}),
+		) as any;
+
+		await expect(
+			Markdownify.toMarkdown({ url: "https://93.184.216.34/huge-stream" }),
+		).rejects.toThrow("Download exceeded maximum size of 10 bytes");
+		expect(readerCancelled).toBe(true);
+	} finally {
+		if (savedMax === undefined) delete process.env.MD_MAX_DOWNLOAD_BYTES;
+		else process.env.MD_MAX_DOWNLOAD_BYTES = savedMax;
+	}
+});
+
+test("Markdownify.toMarkdown enforces MD_FETCH_TIMEOUT_MS on fetch abort (D13)", async () => {
+	const savedTimeout = process.env.MD_FETCH_TIMEOUT_MS;
+	process.env.MD_FETCH_TIMEOUT_MS = "50";
+
+	global.fetch = mock((_url: string, init?: { signal?: AbortSignal }) => {
+		return new Promise((_resolve, reject) => {
+			init?.signal?.addEventListener("abort", () => {
+				const abortErr = new Error("Aborted");
+				abortErr.name = "TimeoutError";
+				reject(abortErr);
+			});
+		});
+	}) as any;
+
+	try {
+		await expect(
+			Markdownify.toMarkdown({ url: "https://93.184.216.34/stall" }),
+		).rejects.toThrow("Fetch timed out after 50ms");
+	} finally {
+		if (savedTimeout === undefined) delete process.env.MD_FETCH_TIMEOUT_MS;
+		else process.env.MD_FETCH_TIMEOUT_MS = savedTimeout;
+	}
 });

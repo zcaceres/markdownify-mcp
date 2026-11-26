@@ -18,6 +18,8 @@ import {
 	validateRepoUrl,
 	validateUrlDestination,
 } from "./utils.js";
+import { markdownResult } from "./web-conversion/queries.js";
+import { checkHttpStatus, parseWebLimits } from "./web-conversion/verbs.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -40,6 +42,7 @@ export class Markdownify {
 	private static async _markitdown(
 		filePath: string,
 		projectRoot: string,
+		timeoutMs?: number,
 	): Promise<string> {
 		const markitdownPath = resolveMarkitdownPath(projectRoot);
 
@@ -50,9 +53,13 @@ export class Markdownify {
 			// warnings from onnxruntime/pydub/etc. on a successful run).
 			({ stdout } = await execFileAsync(markitdownPath, [filePath], {
 				maxBuffer: 50 * 1024 * 1024, // 50 MB
+				...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
 			}));
 		} catch (e: unknown) {
-			const err = e as NodeJS.ErrnoException;
+			const err = e as NodeJS.ErrnoException & {
+				killed?: boolean;
+				signal?: string | null;
+			};
 			if (err?.code === "ENOENT") {
 				throw new Error(
 					`markitdown executable not found (looked up "${markitdownPath}"). ` +
@@ -60,6 +67,12 @@ export class Markdownify {
 						`or run setup in the project root (${projectRoot}): ` +
 						`node preinstall.js (requires uv on PATH).`,
 				);
+			}
+			if (
+				timeoutMs !== undefined &&
+				(err?.killed || err?.code === "ETIMEDOUT")
+			) {
+				throw new Error(`Conversion timed out after ${timeoutMs}ms`);
 			}
 			throw e;
 		}
@@ -98,17 +111,82 @@ export class Markdownify {
 		fs.rmSync(tempFile.cleanupDir, { recursive: true, force: true });
 	}
 
+	private static async readResponseBytesWithLimit(
+		response: Response,
+		maxBytes: number,
+		url: string,
+	): Promise<Buffer> {
+		const rawLength = response.headers?.get("content-length");
+		if (rawLength && /^\d+$/.test(rawLength.trim())) {
+			const declared = Number.parseInt(rawLength.trim(), 10);
+			if (declared > maxBytes) {
+				await response.body?.cancel().catch(() => {});
+				throw new Error(
+					`Download exceeded maximum size of ${maxBytes} bytes for ${url}`,
+				);
+			}
+		}
+
+		if (response.body && typeof response.body.getReader === "function") {
+			const reader = response.body.getReader();
+			const chunks: Uint8Array[] = [];
+			let total = 0;
+			try {
+				while (true) {
+					const { done, value } = await reader.read();
+					if (done) break;
+					if (!value) continue;
+					total += value.byteLength;
+					if (total > maxBytes) {
+						await reader.cancel().catch(() => {});
+						throw new Error(
+							`Download exceeded maximum size of ${maxBytes} bytes for ${url}`,
+						);
+					}
+					chunks.push(value);
+				}
+			} finally {
+				reader.releaseLock();
+			}
+			return Buffer.concat(chunks);
+		}
+
+		const arrayBuffer = await response.arrayBuffer();
+		if (arrayBuffer.byteLength > maxBytes) {
+			throw new Error(
+				`Download exceeded maximum size of ${maxBytes} bytes for ${url}`,
+			);
+		}
+		return Buffer.from(arrayBuffer);
+	}
+
 	// Walks the redirect chain, validating every hop against the SSRF rules, and returns
 	// the final response alongside the resolved URL. Short links (e.g. youtu.be) resolve
 	// to their canonical form before the markitdown URL-routing allowlist check runs.
 	private static async safeFetch(
 		url: string,
 		maxRedirects = 10,
+		fetchTimeoutMs = 30_000,
 	): Promise<{ response: Response; finalUrl: string }> {
 		let currentUrl = url;
-		for (let i = 0; i < maxRedirects; i++) {
+		for (let i = 0; i <= maxRedirects; i++) {
 			await Markdownify._validateUrlDestination(currentUrl);
-			const response = await fetch(currentUrl, { redirect: "manual" });
+			const signal = AbortSignal.timeout(fetchTimeoutMs);
+			let response: Response;
+			try {
+				response = await fetch(currentUrl, { redirect: "manual", signal });
+			} catch (e: unknown) {
+				if (
+					signal.aborted ||
+					(e instanceof Error &&
+						(e.name === "TimeoutError" || e.name === "AbortError"))
+				) {
+					throw new Error(
+						`Fetch timed out after ${fetchTimeoutMs}ms for ${currentUrl}`,
+					);
+				}
+				throw e;
+			}
 			const location = response.headers?.get("location");
 			if (response.status >= 300 && response.status < 400 && location) {
 				await response.body?.cancel().catch(() => {});
@@ -131,19 +209,39 @@ export class Markdownify {
 	}): Promise<MarkdownResult> {
 		let temporaryFile: TemporaryFile | null = null;
 		try {
+			const limitsResult = parseWebLimits(process.env);
+			if (!limitsResult.ok) {
+				throw new Error(limitsResult.error);
+			}
+			const limits = limitsResult.value;
 			let inputPath: string;
 
 			if (url) {
-				const { response, finalUrl } = await Markdownify.safeFetch(url);
+				const { response, finalUrl } = await Markdownify.safeFetch(
+					url,
+					limits.maxRedirects,
+					limits.fetchTimeoutMs,
+				);
+				const statusCheck = checkHttpStatus(response.status, finalUrl);
+				if (!statusCheck.ok) {
+					await response.body?.cancel().catch(() => {});
+					throw new Error(statusCheck.error);
+				}
 
 				if (shouldPassUrlToMarkitdown(finalUrl)) {
 					await response.body?.cancel().catch(() => {});
 					inputPath = finalUrl;
 				} else {
-					const extension = inferExtensionFromUrl(finalUrl);
+					const extension = inferExtensionFromUrl(
+						finalUrl,
+						response.headers?.get("content-type"),
+					);
 
-					const arrayBuffer = await response.arrayBuffer();
-					const content = Buffer.from(arrayBuffer);
+					const content = await Markdownify.readResponseBytesWithLimit(
+						response,
+						limits.maxDownloadBytes,
+						finalUrl,
+					);
 
 					temporaryFile = await Markdownify.saveToTempFile(content, extension);
 					inputPath = temporaryFile.path;
@@ -156,9 +254,13 @@ export class Markdownify {
 				throw new Error("Either filePath or url must be provided");
 			}
 
-			const text = await Markdownify._markitdown(inputPath, projectRoot);
+			const text = await Markdownify._markitdown(
+				inputPath,
+				projectRoot,
+				limits.markitdownTimeoutMs,
+			);
 
-			return { text };
+			return markdownResult(text);
 		} catch (e: unknown) {
 			if (e instanceof Error) {
 				throw new Error(`Error processing to Markdown: ${e.message}`);

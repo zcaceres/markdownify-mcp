@@ -1,10 +1,18 @@
 import { lookup } from "node:dns/promises";
 import fs from "node:fs";
-import { BlockList, isIP } from "node:net";
+import { isIP } from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { URL } from "node:url";
 import { isValidRemoteValue } from "repomix";
+import { isPrivateOrReservedIp, normalizeHostname } from "./shared/ip.js";
+import {
+	checkConvertedOutput,
+	inferTempExtension,
+	shouldPassUrlDirectly,
+} from "./web-conversion/verbs.js";
+
+export { isPrivateOrReservedIp };
 
 export type ResolvedAddress = {
 	address: string;
@@ -12,56 +20,6 @@ export type ResolvedAddress = {
 };
 
 export type HostResolver = (hostname: string) => Promise<ResolvedAddress[]>;
-
-const PRIVATE_IP_BLOCKLIST = new BlockList();
-// Non-public IPv4 ranges (IANA Special-Purpose Address Registry)
-PRIVATE_IP_BLOCKLIST.addSubnet("0.0.0.0", 8, "ipv4");
-PRIVATE_IP_BLOCKLIST.addSubnet("10.0.0.0", 8, "ipv4");
-PRIVATE_IP_BLOCKLIST.addSubnet("100.64.0.0", 10, "ipv4");
-PRIVATE_IP_BLOCKLIST.addSubnet("127.0.0.0", 8, "ipv4");
-PRIVATE_IP_BLOCKLIST.addSubnet("169.254.0.0", 16, "ipv4");
-PRIVATE_IP_BLOCKLIST.addSubnet("172.16.0.0", 12, "ipv4");
-PRIVATE_IP_BLOCKLIST.addSubnet("192.0.0.0", 24, "ipv4");
-PRIVATE_IP_BLOCKLIST.addSubnet("192.0.2.0", 24, "ipv4");
-PRIVATE_IP_BLOCKLIST.addSubnet("192.168.0.0", 16, "ipv4");
-PRIVATE_IP_BLOCKLIST.addSubnet("198.18.0.0", 15, "ipv4");
-PRIVATE_IP_BLOCKLIST.addSubnet("198.51.100.0", 24, "ipv4");
-PRIVATE_IP_BLOCKLIST.addSubnet("203.0.113.0", 24, "ipv4");
-PRIVATE_IP_BLOCKLIST.addSubnet("224.0.0.0", 4, "ipv4");
-PRIVATE_IP_BLOCKLIST.addSubnet("240.0.0.0", 4, "ipv4");
-// Non-public IPv6 ranges (BlockList also maps ::ffff:0:0/96 onto IPv4 rules)
-PRIVATE_IP_BLOCKLIST.addSubnet("::", 128, "ipv6");
-PRIVATE_IP_BLOCKLIST.addSubnet("::1", 128, "ipv6");
-PRIVATE_IP_BLOCKLIST.addSubnet("::", 96, "ipv6");
-PRIVATE_IP_BLOCKLIST.addSubnet("64:ff9b::", 96, "ipv6");
-PRIVATE_IP_BLOCKLIST.addSubnet("64:ff9b:1::", 48, "ipv6");
-PRIVATE_IP_BLOCKLIST.addSubnet("100::", 64, "ipv6");
-PRIVATE_IP_BLOCKLIST.addSubnet("2001::", 32, "ipv6");
-PRIVATE_IP_BLOCKLIST.addSubnet("2001:2::", 48, "ipv6");
-PRIVATE_IP_BLOCKLIST.addSubnet("2001:db8::", 32, "ipv6");
-PRIVATE_IP_BLOCKLIST.addSubnet("2002::", 16, "ipv6");
-PRIVATE_IP_BLOCKLIST.addSubnet("fc00::", 7, "ipv6");
-PRIVATE_IP_BLOCKLIST.addSubnet("fe80::", 10, "ipv6");
-PRIVATE_IP_BLOCKLIST.addSubnet("fec0::", 10, "ipv6");
-PRIVATE_IP_BLOCKLIST.addSubnet("ff00::", 8, "ipv6");
-
-function normalizeHostname(hostname: string): string {
-	const unwrapped = hostname.replace(/^\[(.*)\]$/, "$1");
-	const withoutZone = unwrapped.split("%")[0] ?? unwrapped;
-	return withoutZone.replace(/\.+$/, "").toLowerCase();
-}
-
-export function isPrivateOrReservedIp(address: string): boolean {
-	const normalized = normalizeHostname(address);
-	const family = isIP(normalized);
-	if (family === 4) {
-		return PRIVATE_IP_BLOCKLIST.check(normalized, "ipv4");
-	}
-	if (family === 6) {
-		return PRIVATE_IP_BLOCKLIST.check(normalized, "ipv6");
-	}
-	return false;
-}
 
 function isBlockedHostname(hostname: string): boolean {
 	return (
@@ -231,52 +189,18 @@ export function validateBranchName(branch: string): void {
 }
 
 export function isUnconvertedHtml(output: string): boolean {
-	const trimmed = output.trimStart();
-	return trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html");
+	return !checkConvertedOutput(output).ok;
 }
 
-// A few of markitdown's converters key off the URL itself rather than the bytes:
-// YouTubeConverter requires "https://www.youtube.com/watch?..." and
-// BingSerpConverter requires "https://www.bing.com/search?q=...". Downloading those
-// pages first and passing a temp .html file leaves stream_info.url unset so those
-// converters never fire.
-//
-// Deliberately an allowlist rather than passing every URL through: markitdown fetches
-// with requests' default User-Agent, which hosts like en.wikipedia.org and
-// stackoverflow.com reject with 403 while accepting this server's fetch.
 export function shouldPassUrlToMarkitdown(url: string): boolean {
-	let parsed: URL;
-	try {
-		parsed = new URL(url);
-	} catch {
-		return false;
-	}
-	if (parsed.protocol !== "https:") {
-		return false;
-	}
-
-	const host = parsed.hostname.toLowerCase();
-	if (host === "www.youtube.com") {
-		return parsed.pathname === "/watch" && parsed.searchParams.has("v");
-	}
-	if (host === "www.bing.com") {
-		return parsed.pathname === "/search" && parsed.searchParams.has("q");
-	}
-	return false;
+	return shouldPassUrlDirectly(url);
 }
 
-export function inferExtensionFromUrl(url: string): string {
-	try {
-		const { pathname } = new URL(url);
-		if (pathname.toLowerCase().endsWith(".pdf")) {
-			return "pdf";
-		}
-	} catch {
-		if (url.toLowerCase().endsWith(".pdf")) {
-			return "pdf";
-		}
-	}
-	return "html";
+export function inferExtensionFromUrl(
+	url: string,
+	contentType?: string | null,
+): string {
+	return inferTempExtension(url, contentType);
 }
 
 export function isMarkdownFile(filePath: string): boolean {
