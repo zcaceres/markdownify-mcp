@@ -19,6 +19,7 @@ Markdownify is a Model Context Protocol (MCP) server that converts various file 
   - YouTube video transcripts
   - Bing search results
   - General web pages
+- Convert Git repositories to Markdown (via Repomix, with optional branch/tag/commit and Tree-sitter compression)
 - Retrieve existing Markdown files
 
 ## Getting Started
@@ -145,6 +146,7 @@ Notes for the Docker MCP catalog (`mcp/markdownify`):
 - `docx-to-markdown`: Convert DOCX files to Markdown
 - `xlsx-to-markdown`: Convert XLSX files to Markdown
 - `pptx-to-markdown`: Convert PPTX files to Markdown
+- `git-repo-to-markdown`: Convert a remote Git repository (URL or GitHub `owner/repo` shorthand) into a single Markdown document
 - `get-markdown-file`: Retrieve an existing Markdown file. File extension must end with: *.md, *.markdown.
 
   OPTIONAL: set `MD_ALLOWED_PATHS` to restrict every file-input tool to a list of directories, e.g. `MD_ALLOWED_PATHS=/data/in:/data/out bun start`.
