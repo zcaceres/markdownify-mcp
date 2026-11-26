@@ -7,6 +7,7 @@ import {
 import { z } from "zod";
 import { Markdownify, type MarkdownResult } from "./Markdownify.js";
 import * as tools from "./tools.js";
+import { validateWebRequest } from "./web-conversion/verbs.js";
 
 const RequestPayloadSchema = z.object({
 	filepath: z.string().optional(),
@@ -14,6 +15,16 @@ const RequestPayloadSchema = z.object({
 	branch: z.string().optional(),
 	compress: z.boolean().optional(),
 });
+
+function formatZodError(error: z.ZodError): string {
+	const details = error.issues
+		.map((issue) => {
+			const field = issue.path.length > 0 ? `${issue.path.join(".")}: ` : "";
+			return `${field}${issue.message}`;
+		})
+		.join("; ");
+	return `Invalid arguments: ${details}`;
+}
 
 export function createServer() {
 	const server = new Server(
@@ -39,21 +50,22 @@ export function createServer() {
 		async (request: CallToolRequest) => {
 			const { name, arguments: args } = request.params;
 
-			const validatedArgs = RequestPayloadSchema.parse(args);
-
 			try {
+				const validatedArgs = RequestPayloadSchema.parse(args ?? {});
 				let result: MarkdownResult;
 				switch (name) {
 					case tools.YouTubeToMarkdownTool.name:
 					case tools.BingSearchResultToMarkdownTool.name:
-					case tools.WebpageToMarkdownTool.name:
-						if (!validatedArgs.url) {
-							throw new Error("URL is required for this tool");
+					case tools.WebpageToMarkdownTool.name: {
+						const validatedWeb = validateWebRequest(name, validatedArgs.url);
+						if (!validatedWeb.ok) {
+							throw new Error(validatedWeb.error);
 						}
 						result = await Markdownify.toMarkdown({
-							url: validatedArgs.url,
+							url: validatedWeb.value.url,
 						});
 						break;
+					}
 
 					case tools.PDFToMarkdownTool.name:
 					case tools.ImageToMarkdownTool.name:
@@ -103,6 +115,12 @@ export function createServer() {
 					isError: false,
 				};
 			} catch (e) {
+				if (e instanceof z.ZodError) {
+					return {
+						content: [{ type: "text", text: `Error: ${formatZodError(e)}` }],
+						isError: true,
+					};
+				}
 				if (e instanceof Error) {
 					return {
 						content: [{ type: "text", text: `Error: ${e.message}` }],
