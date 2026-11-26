@@ -14,6 +14,7 @@ async function main() {
 			port: config.port,
 			allowedHosts: config.allowedHosts,
 			allowedOrigins: config.allowedOrigins,
+			allowUnrestrictedPaths: config.allowUnrestrictedPaths,
 		});
 		return;
 	}

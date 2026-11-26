@@ -3,17 +3,41 @@ import type { Command } from "../command.ts";
 
 export const filesystem: Command = {
 	kind: "world",
-	usage: "filesystem temp-count | filesystem staged-count",
-	summary: "inspect mock temporary file state",
-	run: async ([sub, ...rest], world) => {
-		if (rest.length > 0) return err(`usage: ${filesystem.usage}`);
+	usage:
+		"filesystem temp-count | filesystem staged-count | filesystem put <path> | filesystem mkdir <path> | filesystem unreadable <path> | filesystem symlink <link> <target>",
+	summary: "inspect temporary file state or stage mock local files",
+	run: async ([sub, target, ...extra], world) => {
+		if (sub === "temp-count" || sub === "staged-count") {
+			if (target !== undefined) return err(`usage: ${filesystem.usage}`);
+			return sub === "temp-count"
+				? ok([`active temp dirs: ${world.filesystem.activeTempDirCount()}`])
+				: ok([`staged count: ${world.filesystem.stagedCount()}`]);
+		}
+		if (world.mode === "live") {
+			if (!sub) return err(`usage: ${filesystem.usage}`);
+			return err(`filesystem ${sub} is only available in mock mode`);
+		}
+		if (sub === "symlink") {
+			const [linkTarget] = extra;
+			if (!target || !linkTarget || extra.length !== 1) {
+				return err(`usage: ${filesystem.usage}`);
+			}
+			world.filesystem.symlink(target, linkTarget);
+			return ok([`created symlink ${target} -> ${linkTarget}`]);
+		}
+		if (!target || extra.length > 0) {
+			return err(`usage: ${filesystem.usage}`);
+		}
 		switch (sub) {
-			case "temp-count":
-				return ok([
-					`active temp dirs: ${world.filesystem.activeTempDirCount()}`,
-				]);
-			case "staged-count":
-				return ok([`staged count: ${world.filesystem.stagedCount()}`]);
+			case "put":
+				world.filesystem.putFile(target);
+				return ok([`created file ${target}`]);
+			case "mkdir":
+				world.filesystem.mkdir(target);
+				return ok([`created dir ${target}`]);
+			case "unreadable":
+				world.filesystem.putUnreadable(target);
+				return ok([`created unreadable file ${target}`]);
 			default:
 				return err(`usage: ${filesystem.usage}`);
 		}

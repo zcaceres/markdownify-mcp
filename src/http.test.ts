@@ -16,24 +16,34 @@ describe("parseCliArgs", () => {
 			host: "127.0.0.1",
 			allowedHosts: [],
 			allowedOrigins: [],
+			allowUnrestrictedPaths: false,
 		});
 	});
 
 	test("parses CLI flags and overrides env vars", () => {
 		expect(
-			parseCliArgs(["--transport=http", "--port=4123", "--host=localhost"], {
-				MCP_TRANSPORT: "stdio",
-				MCP_PORT: "9999",
-				MCP_HOST: "0.0.0.0",
-				MCP_ALLOWED_HOSTS: "mcp.example.com, localhost:4123",
-				MCP_ALLOWED_ORIGINS: "https://app.example.com",
-			}),
+			parseCliArgs(
+				[
+					"--transport=http",
+					"--port=4123",
+					"--host=localhost",
+					"--allow-unrestricted-paths",
+				],
+				{
+					MCP_TRANSPORT: "stdio",
+					MCP_PORT: "9999",
+					MCP_HOST: "0.0.0.0",
+					MCP_ALLOWED_HOSTS: "mcp.example.com, localhost:4123",
+					MCP_ALLOWED_ORIGINS: "https://app.example.com",
+				},
+			),
 		).toEqual({
 			transport: "http",
 			port: 4123,
 			host: "localhost",
 			allowedHosts: ["mcp.example.com", "localhost:4123"],
 			allowedOrigins: ["https://app.example.com"],
+			allowUnrestrictedPaths: true,
 		});
 	});
 
@@ -43,11 +53,13 @@ describe("parseCliArgs", () => {
 				MCP_TRANSPORT: "http",
 				MCP_PORT: "8080",
 				MCP_HOST: "::1",
+				MCP_ALLOW_UNRESTRICTED_PATHS: "true",
 			}),
 		).toMatchObject({
 			transport: "http",
 			port: 8080,
 			host: "::1",
+			allowUnrestrictedPaths: true,
 		});
 	});
 

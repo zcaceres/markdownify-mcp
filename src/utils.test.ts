@@ -563,15 +563,20 @@ describe("getAllowedPaths / assertPathAllowed", () => {
 		expect(allowed).toEqual(["/tmp/a", "/tmp/b"].map((p) => path.resolve(p)));
 	});
 
-	test("falls back to MD_SHARE_DIR for backward compatibility", () => {
+	test("ignores removed MD_SHARE_DIR env var (D23)", () => {
 		process.env.MD_SHARE_DIR = "/tmp/legacy";
-		expect(getAllowedPaths()).toEqual([path.resolve("/tmp/legacy")]);
+		expect(getAllowedPaths()).toBeNull();
 	});
 
-	test("MD_ALLOWED_PATHS takes precedence over MD_SHARE_DIR", () => {
-		process.env.MD_ALLOWED_PATHS = "/tmp/new";
-		process.env.MD_SHARE_DIR = "/tmp/legacy";
-		expect(getAllowedPaths()).toEqual([path.resolve("/tmp/new")]);
+	test("throws when MD_ALLOWED_PATHS is explicitly set to empty or delimiter-only value (D24)", () => {
+		process.env.MD_ALLOWED_PATHS = "";
+		expect(() => getAllowedPaths()).toThrow(
+			"MD_ALLOWED_PATHS is set but contains no valid directories",
+		);
+		process.env.MD_ALLOWED_PATHS = `${path.delimiter}   ${path.delimiter}`;
+		expect(() => assertPathAllowed("/tmp/file.pdf")).toThrow(
+			"MD_ALLOWED_PATHS is set but contains no valid directories",
+		);
 	});
 
 	test("expands ~ in allowed paths", () => {
