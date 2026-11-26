@@ -9,6 +9,7 @@ and a withdrawn decision keeps its heading as one line.
 What each journey's users can do and see is in its acceptance criteria, which cite these rules:
 
 - **Convert Web URL:** MCP Client converts a Web URL (webpage, YouTube video, Bing search, or hosted document) into a Markdown Result ([acceptance criteria](docs/journeys/convert-web-url/acceptance-criteria.md)).
+- **Convert Local File:** MCP Client converts a Local File (PDF, image, audio, DOCX, XLSX, PPTX) within Allowed Paths into a Markdown Result ([acceptance criteria](docs/journeys/convert-local-file/acceptance-criteria.md)).
 
 ## Sources
 
@@ -37,8 +38,8 @@ noun marked _(derived)_ is computed from others, never stored, and its entry say
 - **Git Repository:** a remote Git repository identified by an `http(s)` URL or GitHub `owner/repo` shorthand, optionally qualified by branch/tag/commit and compression flag (D3, D5).
 - **Markdown File:** an existing local `.md` or `.markdown` file (case-insensitive) read directly without conversion (D3, D5, D8).
 - **Markdown Result** _(derived)_: the Markdown `text` (and resolved `path` when retrieving a Markdown File) produced on demand by converting a source or retrieving a Markdown File; never persisted by the server (D1, D5).
-- **Allowed Paths:** the Operator-configured list of directories (`MD_ALLOWED_PATHS`, with deprecated `MD_SHARE_DIR` fallback) bounding filesystem reads after `~` expansion and realpath resolution (D5, D6).
-- **Server Configuration:** the Operator-supplied CLI flags and environment variables (`transport`, `host`, `port`, `allowedHosts`, `allowedOrigins`, `MARKITDOWN_PATH`, `REPOMIX_PATH`, `MD_ALLOWED_PATHS`) parsed at startup (D2, D5, D6).
+- **Allowed Paths:** the Operator-configured list of directories (`MD_ALLOWED_PATHS`) bounding filesystem reads after `~` expansion and realpath resolution (D5, D6, D23).
+- **Server Configuration:** the Operator-supplied CLI flags and environment variables (`transport`, `host`, `port`, `allowedHosts`, `allowedOrigins`, `allowUnrestrictedPaths`, `MARKITDOWN_PATH`, `REPOMIX_PATH`, `MD_ALLOWED_PATHS`) parsed at startup (D2, D5, D6, D23).
 - **Temporary File:** a transient file written in a private random temp directory during Web URL download and deleted after conversion completes or fails (D5).
 
 ### Verbs
@@ -72,7 +73,7 @@ D#.
 
 ### Local File & Markdown Retrieval
 
-- File conversion tools convert a Local File via `markitdown` and return the derived Markdown Result text (D3, D4, D5).
+- File conversion tools require an absolute or `~`-prefixed path, validate Allowed Paths before checking existence, verify the target exists and is a readable regular file, convert it via `markitdown` (without applying Web URL raw-HTML rejection or a separate input file byte cap), and return the derived Markdown Result text (D3, D4, D5, D17, D18, D19, D20).
 - `get-markdown-file` retrieves an existing local Markdown File (`.md` or `.markdown`, case-insensitively) and returns its resolved path and contents as a Markdown Result (D3, D5, D8).
 - Whenever Allowed Paths is active, Local File and Markdown File reads are validated against Allowed Paths after `~` expansion and `realpath` resolution (D6, I2).
 
@@ -91,8 +92,9 @@ D#.
 ### Server Configuration & Transports
 
 - The Operator serves Markdownify MCP over `stdio` (default) or stateless Streamable HTTP configured via CLI flags and environment variables (D1, D2, D5).
-- In `stdio` mode, Allowed Paths defaults to unrestricted (with deprecated `MD_SHARE_DIR` honored as fallback when `MD_ALLOWED_PATHS` is unset) (D6, U4).
-- In `http` mode, local file-input tools fail closed (`isError: true`) when Allowed Paths is unset unless the Operator passes an explicit unrestricted opt-out, while Web URL and Git Repository tools remain available (D6, D9, U4).
+- In `stdio` mode, Allowed Paths defaults to unrestricted when `MD_ALLOWED_PATHS` is unset (D6, D23).
+- In `http` mode, local file-input tools fail closed (`isError: true`) when `MD_ALLOWED_PATHS` is unset unless the Operator passes `--allow-unrestricted-paths` or `MCP_ALLOW_UNRESTRICTED_PATHS=true`, while Web URL and Git Repository tools remain available (D6, D9, D23).
+- When `MD_ALLOWED_PATHS` is explicitly set in the environment but parses to zero directories (empty, whitespace-only, or delimiter-only), local file-input tools fail closed with a structured configuration error (D8, D24).
 
 ## Non-Functional Requirements
 
@@ -159,7 +161,7 @@ for an undecided rule and will change with it.
 
 ### D6. File-access boundary defaults (`MD_ALLOWED_PATHS`)
 
-- **Decided (2026-11-25):** In `stdio` mode, `Allowed Paths` remains optional (unrestricted when unset) for local ergonomics and backward compatibility, with `MD_SHARE_DIR` honored as a deprecated fallback when `MD_ALLOWED_PATHS` is unset. In `http` mode, networked servers fail closed unless `MD_ALLOWED_PATHS` or an explicit unrestricted opt-out is configured (see D9, U4).
+- **Decided (2026-11-26):** `MD_ALLOWED_PATHS` is the sole environment variable for configuring `Allowed Paths` (`D23`). In `stdio` mode, `Allowed Paths` defaults to unrestricted when `MD_ALLOWED_PATHS` is unset for local ergonomics. In `http` mode, networked servers fail closed unless `MD_ALLOWED_PATHS` or the explicit unrestricted opt-out (`D23`) is configured (see D9, D23, D24).
 
 ### D7. Bounded timeouts and URL download size limit
 
@@ -171,7 +173,7 @@ for an undecided rule and will change with it.
 
 ### D9. HTTP mode fails closed by disabling local file tools when Allowed Paths is unset
 
-- **Decided (2026-11-25):** When started in `--transport=http` without `MD_ALLOWED_PATHS` (or `MD_SHARE_DIR`) and without an explicit opt-out, the HTTP server still starts and serves Web URL and Git Repository tools, while all local file-input tools (`pdf-to-markdown`, `image-to-markdown`, `audio-to-markdown`, `docx-to-markdown`, `xlsx-to-markdown`, `pptx-to-markdown`, `get-markdown-file`) fail closed with a structured MCP tool error (`isError: true`). Resolves U1; exact opt-out flag/env name is tracked in U4.
+- **Decided (2026-11-26):** When started in `--transport=http` without `MD_ALLOWED_PATHS` and without the explicit unrestricted opt-out (`D23`), the HTTP server still starts and serves Web URL and Git Repository tools, while all local file-input tools (`pdf-to-markdown`, `image-to-markdown`, `audio-to-markdown`, `docx-to-markdown`, `xlsx-to-markdown`, `pptx-to-markdown`, `get-markdown-file`) fail closed with a structured MCP tool error (`isError: true`). Resolves U1; opt-out flag and env var are settled in D23.
 
 ### D10. Web URL format inference via `Content-Type` and pathname
 
@@ -201,13 +203,44 @@ for an undecided rule and will change with it.
 
 - **Decided (2026-11-25):** When `markitdown` exits 0 with empty or whitespace-only output (such as an image URL without LLM vision config or a blank page), return an empty Markdown Result rather than failing. Only fail on unconverted HTML, non-zero exit, timeout, or missing binary.
 
+### D17. Pre-validate local files before spawning `markitdown`
+
+- **Decided (2026-11-26):** Before invoking `markitdown` on a Local File, verify the path exists, is a regular file (not a directory), and is readable, returning clean structured domain errors immediately instead of spawning Python and surfacing a traceback.
+
+### D18. Require absolute or `~`-prefixed paths for local file tools
+
+- **Decided (2026-11-26):** Local file conversion tools require an absolute path (POSIX `/...` or Windows drive/UNC path) or a `~`-prefixed home-relative path (`~/...`), rejecting bare relative paths like `foo.pdf` at validation time.
+
+### D19. No separate local input file size cap
+
+- **Decided (2026-11-26):** Local File conversions do not enforce a separate pre-check input file size limit, relying on `markitdown`'s 60-second timeout (`MD_MARKITDOWN_TIMEOUT_MS`) and 50 MB stdout buffer limit (D13) because local files are operator-controlled.
+
+### D20. Unconverted HTML rejection applies to Web URLs only
+
+- **Decided (2026-11-26):** Rejecting `markitdown` stdout that starts with `<!DOCTYPE` or `<html` applies only to Web URL conversions (to detect JS-rendered SPAs), not to Local File conversions.
+
+### D21. Enforce Allowed Paths before checking file existence
+
+- **Decided (2026-11-26):** Whenever Allowed Paths is active (I2), containment is checked before existence, regular-file, or readability checks so requests targeting paths outside Allowed Paths never disclose whether those paths exist on disk.
+
+### D22. Actionable hint on `markitdown` missing optional dependency errors
+
+- **Decided (2026-11-26):** When `markitdown` fails with a `MissingDependencyException` (such as audio or image extras missing in the slim Docker `pdf` image, D4), include an actionable hint explaining that the format requires the full `markitdown[all]` local install rather than the slim Docker `pdf` profile.
+
+### D23. HTTP unrestricted opt-out and removal of `MD_SHARE_DIR`
+
+- **Decided (2026-11-26):** Opting out of HTTP fail-closed local file blocking (`D9`) is supported via either the `--allow-unrestricted-paths` CLI flag or `MCP_ALLOW_UNRESTRICTED_PATHS=true`. The deprecated `MD_SHARE_DIR` fallback is removed; `MD_ALLOWED_PATHS` is the sole environment variable for configuring `Allowed Paths` (`D6`). Resolves U4.
+
+### D24. Fail closed on empty or delimiter-only `MD_ALLOWED_PATHS`
+
+- **Decided (2026-11-26):** Whenever `MD_ALLOWED_PATHS` is explicitly set in the environment (`!== undefined`) but parses to zero directory entries (e.g. `""`, whitespace-only, or delimiter-only such as `":"`), local file-input tools fail closed with a structured configuration error (`isError: true`) rather than falling back to unrestricted access.
+
 ## Undecided Questions
 
-| #   | Question                                                                                                                                                                                       | Meanwhile                                                                                                               |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| U2  | _(Convert Git Repository)_ What is the default timeout duration and env var override for `repomix` subprocesses?                                                                               | Keep existing 100 MB stdout buffer and no extra timeout until settled in Convert Git Repository                         |
-| U4  | _(Serve & Configure Server)_ What are the exact CLI flag and environment variable names to opt out of HTTP fail-closed file blocking, and what is the deprecation timeline for `MD_SHARE_DIR`? | Assume `--allow-unrestricted-paths` / `MCP_ALLOW_UNRESTRICTED_PATHS` and continue honoring `MD_SHARE_DIR` until settled |
-| U5  | _(Convert Web URL)_ Should the server support custom authentication headers or cookies for paywalled or logged-in Web URLs?                                                                    | Out of scope; send unauthenticated HTTP requests only                                                                   |
+| #   | Question                                                                                                                    | Meanwhile                                                                                       |
+| --- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| U2  | _(Convert Git Repository)_ What is the default timeout duration and env var override for `repomix` subprocesses?            | Keep existing 100 MB stdout buffer and no extra timeout until settled in Convert Git Repository |
+| U5  | _(Convert Web URL)_ Should the server support custom authentication headers or cookies for paywalled or logged-in Web URLs? | Out of scope; send unauthenticated HTTP requests only                                           |
 
 ### Resolved questions
 
@@ -217,3 +250,4 @@ Pointers only, so an old reference to a U# still leads somewhere. The decision s
 | --- | ----------- |
 | U1  | D9          |
 | U3  | D14         |
+| U4  | D23         |
