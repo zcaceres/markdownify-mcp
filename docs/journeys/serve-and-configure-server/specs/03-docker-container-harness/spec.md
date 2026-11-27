@@ -11,12 +11,12 @@ DD harness (`bun run harness docker`):
 
 1. **Docker harness runner (`cli/docker.ts` — SC-9, D4, D11, D22, D34, I2):**
    - Builds `Dockerfile` (`docker build -t <image> .`, defaulting to `IMAGE` env var or `markdownify-mcp:harness`, with optional `--no-build` and `--image=<tag>`).
-   - Connects to `docker run --rm -i -v <repo>/src/sample-data:/data:ro -e MD_ALLOWED_PATHS=/data <image>` using `@modelcontextprotocol/sdk` `Client` + `StdioClientTransport`.
+   - Connects to `docker run --rm -i -v <repo>/src/sample-data:/data:ro -v <temp-probe>:/slim-probe:ro -e MD_ALLOWED_PATHS=/data:/slim-probe <image>` using `@modelcontextprotocol/sdk` `Client` + `StdioClientTransport` (staging a minimal binary `.docx` ZIP-header probe in `/slim-probe/sample.docx` so MarkItDown invokes `DocxConverter` rather than falling back to `PlainTextConverter`).
    - Verifies four checks against the live container:
      1. `tools/list` returns all 11 stable MCP tools (`D3`).
      2. `pdf-to-markdown /data/test.pdf` succeeds (`isError !== true`) and contains `"Test PDF content"` (`D4`, `D11`, `D34`).
      3. `pdf-to-markdown /etc/passwd` fails closed (`isError === true`) with `"outside the allowed directories"` (`I2`, `D34`).
-     4. `docx-to-markdown /data/test.docx` fails (`isError === true`) with the `D22` slim-Docker `markitdown[all]` hint (`D4`, `D22`, `D34`).
+     4. `docx-to-markdown /slim-probe/sample.docx` fails (`isError === true`) with the `D22` slim-Docker `markitdown[all]` hint (`D4`, `D22`, `D34`).
    - Closes the MCP client cleanly in `finally` so the `--rm` container exits immediately without fixed sleeps.
 2. **CLI wiring (`cli/main.ts`):**
    - Adds `harness docker [--no-build] [--image=<tag>]` mode.

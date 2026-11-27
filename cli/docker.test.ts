@@ -74,7 +74,7 @@ describe("runDockerChecks (SC-9, D4, D11, D22, D34, I2)", () => {
 				}
 				if (
 					name === "docx-to-markdown" &&
-					args?.filepath === "/data/test.docx"
+					args?.filepath === "/slim-probe/sample.docx"
 				) {
 					return {
 						isError: true,
@@ -99,10 +99,23 @@ describe("runDockerChecks (SC-9, D4, D11, D22, D34, I2)", () => {
 	test("reports failures cleanly when container violates Allowed Paths or omits D22 hint", async () => {
 		const client: DockerMcpClient = {
 			listTools: async () => ({ tools: [{ name: "pdf-to-markdown" }] }),
-			callTool: async () => ({
-				isError: false,
-				content: [{ type: "text", text: "unexpected" }],
-			}),
+			callTool: async ({ name }) => {
+				if (name === "docx-to-markdown") {
+					return {
+						isError: true,
+						content: [
+							{
+								type: "text",
+								text: "raw traceback mentioning pip install 'markitdown[all]' without D22 hint",
+							},
+						],
+					};
+				}
+				return {
+					isError: false,
+					content: [{ type: "text", text: "unexpected" }],
+				};
+			},
 		};
 
 		const results = await runDockerChecks(client);
