@@ -22,7 +22,12 @@ bun run harness     # interactive (mock); or bun run harness --live
 
 ```bash
 bun run harness run scenarios/convert-local-file
+bun run harness live scenarios/live/convert-local-file.live.txt
 ```
+
+| Live suite                                   | Shows                                                                                                                                                           |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scenarios/live/convert-local-file.live.txt` | Real `src/sample-data/*` conversions (`PDF`, `DOCX`, `XLSX`, `PPTX`, `JPG`), live `Allowed Paths`, `D13` timeout, `D17` pre-validation, `D24`, and `D9` [LF-12] |
 
 ## By hand
 

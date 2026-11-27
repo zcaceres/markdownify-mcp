@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import { parseLive, passedLive, runLive } from "../../cli/live.js";
 import { createSession } from "../../cli/session.js";
 import { createLiveWorld } from "../../cli/world.js";
-import { createLiveFilesystem } from "./filesystem/live.js";
+import { createLiveFilesystem, statRealLocalFile } from "./filesystem/live.js";
 import { createLiveMarkitdown } from "./markitdown/live.js";
 
 const projectRoot = path.resolve(import.meta.dir, "../..");
@@ -122,4 +124,94 @@ describe("live harness world guards", () => {
 			"active temp dirs: 0",
 		]);
 	});
+});
+
+describe("live local file verification (LF-5, LF-12, D17, I2, I3)", () => {
+	test("statRealLocalFile distinguishes missing, directory, not-a-file, unreadable (including EACCES), and file", () => {
+		expect(statRealLocalFile(path.join(sampleDataDir, "test.pdf"))).toEqual({
+			kind: "file",
+		});
+		expect(statRealLocalFile(sampleDataDir)).toEqual({ kind: "directory" });
+		expect(
+			statRealLocalFile(path.join(sampleDataDir, "definitely-missing.pdf")),
+		).toEqual({ kind: "missing" });
+
+		if (process.platform !== "win32") {
+			expect(statRealLocalFile("/dev/null")).toEqual({ kind: "not-a-file" });
+		}
+
+		const isRoot =
+			typeof process.getuid === "function" && process.getuid() === 0;
+		if (process.platform !== "win32" && !isRoot) {
+			const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mdfy-stat-"));
+			const lockedFile = path.join(tmp, "locked.pdf");
+			const lockedDir = path.join(tmp, "locked-dir");
+			const hiddenFile = path.join(lockedDir, "secret.pdf");
+			try {
+				fs.writeFileSync(lockedFile, "secret");
+				fs.chmodSync(lockedFile, 0o000);
+				expect(statRealLocalFile(lockedFile)).toEqual({ kind: "unreadable" });
+
+				fs.mkdirSync(lockedDir);
+				fs.writeFileSync(hiddenFile, "secret");
+				fs.chmodSync(lockedDir, 0o000);
+				expect(statRealLocalFile(hiddenFile)).toEqual({ kind: "unreadable" });
+			} finally {
+				fs.chmodSync(lockedDir, 0o700);
+				fs.chmodSync(lockedFile, 0o600);
+				fs.rmSync(tmp, { recursive: true, force: true });
+			}
+		}
+	});
+
+	test(
+		"enforces live Allowed Paths on real symlinks (refuses escape, converts in-bounds link)",
+		async () => {
+			const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mdfy-live-link-"));
+			const allowedDir = path.join(tmp, "allowed");
+			const localCopy = path.join(allowedDir, "copy.pdf");
+			const inBoundsLink = path.join(allowedDir, "alias.pdf");
+			const escapeLink = path.join(allowedDir, "escape.pdf");
+			fs.mkdirSync(allowedDir);
+			fs.copyFileSync(path.join(sampleDataDir, "test.pdf"), localCopy);
+			fs.symlinkSync(localCopy, inBoundsLink);
+			fs.symlinkSync(path.join(sampleDataDir, "test.pdf"), escapeLink);
+
+			try {
+				const session = createSession({ connect: createLiveWorld });
+				await session.exec(`config set MD_ALLOWED_PATHS ${allowedDir}`);
+
+				const escaped = await session.exec(
+					`convert pdf-to-markdown ${escapeLink}`,
+				);
+				expect(escaped[0]).toContain("outside the allowed directories");
+
+				const allowed = await session.exec(
+					`convert pdf-to-markdown ${inBoundsLink}`,
+				);
+				expect(allowed[0]).toBe("ok: pdf-to-markdown (path: none)");
+				expect(allowed.join("\n")).toContain("Test PDF content");
+			} finally {
+				fs.rmSync(tmp, { recursive: true, force: true });
+			}
+		},
+		conversionTimeout,
+	);
+
+	test(
+		"replays scenarios/live/convert-local-file.live.txt end-to-end against src/sample-data/",
+		async () => {
+			const suitePath = path.join(
+				projectRoot,
+				"scenarios/live/convert-local-file.live.txt",
+			);
+			const text = fs.readFileSync(suitePath, "utf8");
+			const ran = await runLive(
+				parseLive(text, { REPO_ROOT: projectRoot }),
+				createSession({ connect: createLiveWorld }),
+			);
+			expect(passedLive(ran)).toBe(true);
+		},
+		conversionTimeout,
+	);
 });

@@ -72,8 +72,22 @@ const parseAssertion = (line: string): LiveAssertion => {
 	throw new Error(`Unknown live assertion directive: "${line}"`);
 };
 
-export const parseLive = (text: string): LiveStep[] => {
-	const lines = text.split("\n");
+const expandLiveVars = (
+	text: string,
+	vars?: Readonly<Record<string, string>>,
+): string => {
+	if (!vars) return text;
+	return text.replace(/\{\{([A-Z0-9_]+)\}\}/g, (match, name: string) => {
+		const replacement = vars[name];
+		return replacement !== undefined ? replacement : match;
+	});
+};
+
+export const parseLive = (
+	text: string,
+	vars?: Readonly<Record<string, string>>,
+): LiveStep[] => {
+	const lines = expandLiveVars(text, vars).split("\n");
 	const steps: LiveStep[] = [];
 	let i = 0;
 	while (i < lines.length) {
