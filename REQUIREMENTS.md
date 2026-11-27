@@ -11,6 +11,7 @@ What each journey's users can do and see is in its acceptance criteria, which ci
 - **Convert Web URL:** MCP Client converts a Web URL (webpage, YouTube video, Bing search, or hosted document) into a Markdown Result ([acceptance criteria](docs/journeys/convert-web-url/acceptance-criteria.md)).
 - **Convert Local File:** MCP Client converts a Local File (PDF, image, audio, DOCX, XLSX, PPTX) within Allowed Paths into a Markdown Result ([acceptance criteria](docs/journeys/convert-local-file/acceptance-criteria.md)).
 - **Retrieve Markdown File:** MCP Client retrieves an existing local Markdown File (`.md` or `.markdown`, case-insensitive) within Allowed Paths and receives its resolved path and verbatim UTF-8 text as a Markdown Result ([acceptance criteria](docs/journeys/retrieve-markdown-file/acceptance-criteria.md)).
+- **Convert Git Repository:** MCP Client converts a public remote Git Repository (`http(s)` URL or GitHub `owner/repo` shorthand, with optional branch/tag/commit and Tree-sitter compression) into a Markdown Result via `repomix` ([acceptance criteria](docs/journeys/convert-git-repo/acceptance-criteria.md)).
 
 ## Sources
 
@@ -88,7 +89,7 @@ D#.
 
 ### Git Repository Conversion
 
-- `git-repo-to-markdown` validates the Git Repository identifier (public `http(s)` URL or GitHub `owner/repo` shorthand) and optional branch/tag/commit, then invokes `repomix` to produce a single Markdown Result with optional Tree-sitter compression (D3, D5, I1, I3).
+- `git-repo-to-markdown` validates the Git Repository identifier (public `http(s)` URL without embedded credentials, or GitHub `owner/repo` shorthand) and optional branch/tag/commit, validates DNS for `http(s)` URLs against SSRF rules, then invokes `repomix` within bounded timeout and stdout limits to produce a single non-empty Markdown Result with optional Tree-sitter compression (D3, D5, D7, D28, D29, D30, D31, I1, I3).
 
 ### Server Configuration & Transports
 
@@ -107,7 +108,7 @@ D#.
 
 ### Reliability & Resource Bounds
 
-- Web URL fetches enforce a 30s timeout (`MD_FETCH_TIMEOUT_MS`), 25 MB max download size (`MD_MAX_DOWNLOAD_BYTES`), and 10 max redirects (`MD_MAX_REDIRECTS`); `markitdown` enforces a 60s timeout (`MD_MARKITDOWN_TIMEOUT_MS`) and 50 MB stdout buffer; `repomix` enforces a 100 MB stdout buffer and bounded timeout (D7, D13, U2).
+- Web URL fetches enforce a 30s timeout (`MD_FETCH_TIMEOUT_MS`), 25 MB max download size (`MD_MAX_DOWNLOAD_BYTES`), and 10 max redirects (`MD_MAX_REDIRECTS`); `markitdown` enforces a 60s timeout (`MD_MARKITDOWN_TIMEOUT_MS`) and 50 MB stdout buffer; `repomix` enforces a 120s timeout (`MD_REPOMIX_TIMEOUT_MS`) and 100 MB stdout buffer (D7, D13, D28).
 - The server holds no persistent state across requests and cleans up every Temporary File on completion or error (D1, I4).
 
 ### Platforms, Packaging & Capabilities
@@ -166,7 +167,7 @@ for an undecided rule and will change with it.
 
 ### D7. Bounded timeouts and URL download size limit
 
-- **Decided (2026-11-25):** Enforce bounded timeouts on Web URL fetches, `markitdown` subprocesses, and `repomix` subprocesses, plus a maximum download size for fetched Web URLs, alongside subprocess stdout buffer limits (currently 50 MB for `markitdown`, 100 MB for `repomix`). Exact default thresholds and overrides are tracked in U2.
+- **Decided (2026-11-26):** Enforce bounded timeouts on Web URL fetches, `markitdown` subprocesses, and `repomix` subprocesses, plus a maximum download size for fetched Web URLs, alongside subprocess stdout buffer limits (50 MB for `markitdown`, 100 MB for `repomix`). Concrete thresholds and env var overrides are settled in D13 and D28.
 
 ### D8. Uniform MCP tool error contract and case-insensitive Markdown extensions
 
@@ -248,12 +249,27 @@ for an undecided rule and will change with it.
 
 - **Decided (2026-11-26):** `get-markdown-file` returns a derived `Markdown Result` (D5) whose `path` is the `realpath`-resolved file path and whose `text` preserves the exact UTF-8 contents verbatim (including empty or whitespace-only files, without D16 whitespace trimming).
 
+### D28. Default `repomix` subprocess timeout and `MD_REPOMIX_TIMEOUT_MS` override
+
+- **Decided (2026-11-26):** Enforce a 120-second (`120_000` ms) default timeout on `repomix` subprocesses (`git-repo-to-markdown`), configurable via `MD_REPOMIX_TIMEOUT_MS` (positive integer, matching D13 validation rules), alongside the existing 100 MB stdout buffer limit (D7). Resolves U2.
+
+### D29. Reject embedded credentials in Git Repository URLs
+
+- **Decided (2026-11-26):** Reject `http:`/`https:` Git Repository URLs containing embedded username or password credentials (e.g. `https://token@github.com/owner/repo`) at validation time so secrets cannot leak into subprocess arguments, logs, or error messages.
+
+### D30. Empty or whitespace-only `repomix` output is an error
+
+- **Decided (2026-11-26):** Unlike `markitdown` (D16), if `repomix` exits 0 with empty or whitespace-only stdout, fail conversion with a structured MCP tool error (`repomix produced no output...`) rather than returning an empty `Markdown Result`.
+
+### D31. Uniform `repomix` error and timeout formatting
+
+- **Decided (2026-11-26):** Format `repomix` missing binary (`ENOENT`), timeout (`Conversion timed out after <ms>ms`), and non-zero exit failures (`Conversion failed: <reason>`) as clean structured domain errors (D8) rather than surfacing raw `execFile` command strings.
+
 ## Undecided Questions
 
-| #   | Question                                                                                                                    | Meanwhile                                                                                       |
-| --- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| U2  | _(Convert Git Repository)_ What is the default timeout duration and env var override for `repomix` subprocesses?            | Keep existing 100 MB stdout buffer and no extra timeout until settled in Convert Git Repository |
-| U5  | _(Convert Web URL)_ Should the server support custom authentication headers or cookies for paywalled or logged-in Web URLs? | Out of scope; send unauthenticated HTTP requests only                                           |
+| #   | Question                                                                                                                    | Meanwhile                                             |
+| --- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| U5  | _(Convert Web URL)_ Should the server support custom authentication headers or cookies for paywalled or logged-in Web URLs? | Out of scope; send unauthenticated HTTP requests only |
 
 ### Resolved questions
 
@@ -262,5 +278,6 @@ Pointers only, so an old reference to a U# still leads somewhere. The decision s
 | #   | Resolved by |
 | --- | ----------- |
 | U1  | D9          |
+| U2  | D28         |
 | U3  | D14         |
 | U4  | D23         |
