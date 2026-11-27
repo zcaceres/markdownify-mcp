@@ -63,7 +63,7 @@ Normal installs consume the committed lockfiles; they do not upgrade packages.
 
 - JavaScript: update the intended ranges in `package.json`, run `bun update --ignore-scripts`, then commit `package.json` and `bun.lock`.
 - Python: update `pyproject.toml` as needed, run `uv lock --upgrade`, then commit `pyproject.toml` and `uv.lock`. Both the local `all` and Docker `pdf` profiles are resolved in this one lockfile.
-- Verify with `uv lock --check`, `node preinstall.js`, `bun run build`, `bun test`, and `bash scripts/docker-smoke-test.sh` when Docker is available.
+- Verify with `uv lock --check`, `node preinstall.js`, `bun run build`, `bun test`, and `bun run harness docker` (or `bash scripts/docker-smoke-test.sh`) when Docker is available.
 
 ## Usage with Desktop App
 

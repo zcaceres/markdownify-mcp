@@ -63,13 +63,19 @@ describe("parseCliArgs", () => {
 		});
 	});
 
-	test("rejects unknown transport and invalid ports", () => {
+	test("rejects unknown transport, invalid ports, and unknown CLI flags (D32)", () => {
 		expect(() => parseCliArgs(["--transport=ws"], {})).toThrow(
 			'Unknown transport "ws"',
 		);
 		expect(() => parseCliArgs(["--port=0"], {})).toThrow("Invalid port");
 		expect(() => parseCliArgs(["--port=70000"], {})).toThrow("Invalid port");
 		expect(() => parseCliArgs(["--port=abc"], {})).toThrow("Invalid port");
+		expect(() => parseCliArgs(["--transprot=http"], {})).toThrow(
+			'Unknown CLI argument "--transprot=http"',
+		);
+		expect(() => parseCliArgs(["unexpected"], {})).toThrow(
+			'Unknown CLI argument "unexpected"',
+		);
 	});
 });
 
@@ -134,7 +140,11 @@ describe("Streamable HTTP server", () => {
 	});
 
 	async function listen(
-		opts: { allowedHosts?: string[]; allowedOrigins?: string[] } = {},
+		opts: {
+			allowedHosts?: string[];
+			allowedOrigins?: string[];
+			allowUnrestrictedPaths?: boolean;
+		} = {},
 	): Promise<number> {
 		const activeServer = createHttpServer({
 			host: "127.0.0.1",
@@ -152,6 +162,14 @@ describe("Streamable HTTP server", () => {
 		return addr.port;
 	}
 
+	async function closeServer(): Promise<void> {
+		const activeServer = server;
+		if (activeServer) {
+			await new Promise<void>((resolve) => activeServer.close(() => resolve()));
+			server = null;
+		}
+	}
+
 	function rawRequest(
 		port: number,
 		options: {
@@ -160,7 +178,11 @@ describe("Streamable HTTP server", () => {
 			headers?: Record<string, string>;
 			body?: string;
 		},
-	): Promise<{ status: number; body: string }> {
+	): Promise<{
+		status: number;
+		headers: http.IncomingHttpHeaders;
+		body: string;
+	}> {
 		return new Promise((resolve, reject) => {
 			const req = http.request(
 				{
@@ -174,7 +196,11 @@ describe("Streamable HTTP server", () => {
 					let data = "";
 					res.on("data", (chunk) => (data += chunk));
 					res.on("end", () =>
-						resolve({ status: res.statusCode ?? 0, body: data }),
+						resolve({
+							status: res.statusCode ?? 0,
+							headers: res.headers,
+							body: data,
+						}),
 					);
 				},
 			);
@@ -184,7 +210,24 @@ describe("Streamable HTTP server", () => {
 		});
 	}
 
-	test("handles MCP tools/list POST on /mcp and /", async () => {
+	function parseMcpJsonRpc(body: string): Record<string, unknown> {
+		const trimmed = body.trim();
+		if (trimmed.startsWith("{")) {
+			return JSON.parse(trimmed) as Record<string, unknown>;
+		}
+		const dataLine = trimmed
+			.split(/\r?\n/)
+			.find((line) => line.startsWith("data:"));
+		if (!dataLine) {
+			throw new Error(`Unable to parse MCP HTTP payload: ${body}`);
+		}
+		return JSON.parse(dataLine.slice("data:".length).trim()) as Record<
+			string,
+			unknown
+		>;
+	}
+
+	test("handles MCP tools/list POST on /mcp and / with all 11 stable tools (SC-3, SC-8, D3)", async () => {
 		const port = await listen();
 		const payload = JSON.stringify({
 			jsonrpc: "2.0",
@@ -192,6 +235,20 @@ describe("Streamable HTTP server", () => {
 			method: "tools/list",
 			params: {},
 		});
+
+		const expectedTools = [
+			"audio-to-markdown",
+			"bing-search-to-markdown",
+			"docx-to-markdown",
+			"get-markdown-file",
+			"git-repo-to-markdown",
+			"image-to-markdown",
+			"pdf-to-markdown",
+			"pptx-to-markdown",
+			"webpage-to-markdown",
+			"xlsx-to-markdown",
+			"youtube-to-markdown",
+		];
 
 		for (const reqPath of ["/mcp", "/"]) {
 			const res = await rawRequest(port, {
@@ -203,21 +260,26 @@ describe("Streamable HTTP server", () => {
 				body: payload,
 			});
 			expect(res.status).toBe(200);
-			expect(res.body).toContain("pdf-to-markdown");
-			expect(res.body).toContain("git-repo-to-markdown");
+			const parsed = parseMcpJsonRpc(res.body);
+			const result = parsed.result as { tools?: Array<{ name: string }> };
+			const names = (result.tools ?? []).map((t) => t.name).sort();
+			expect(names).toEqual(expectedTools);
 		}
 	});
 
-	test("returns 404 on unknown paths and 405 on GET", async () => {
+	test("returns 404 on unknown paths and 405 with Allow: POST on GET and DELETE (SC-4, SC-8, D33)", async () => {
 		const port = await listen();
 		const notFound = await rawRequest(port, { path: "/unknown" });
 		expect(notFound.status).toBe(404);
 
-		const methodNotAllowed = await rawRequest(port, {
-			method: "GET",
-			path: "/mcp",
-		});
-		expect(methodNotAllowed.status).toBe(405);
+		for (const method of ["GET", "DELETE"]) {
+			const methodNotAllowed = await rawRequest(port, {
+				method,
+				path: "/mcp",
+			});
+			expect(methodNotAllowed.status).toBe(405);
+			expect(methodNotAllowed.headers.allow).toBe("POST");
+		}
 	});
 
 	test("rejects DNS-rebinding Host headers and cross-origin Origin headers with 403", async () => {
@@ -260,5 +322,77 @@ describe("Streamable HTTP server", () => {
 			body: payload,
 		});
 		expect(goodOrigin.status).toBe(200);
+	});
+
+	test("enforces D9 fail-closed local file blocking, D23 opt-out, and D8 unknown tool error over live HTTP POST /mcp (SC-3, SC-8, D8, D9, D23)", async () => {
+		const savedAllowed = process.env.MD_ALLOWED_PATHS;
+		const savedOptOut = process.env.MCP_ALLOW_UNRESTRICTED_PATHS;
+		delete process.env.MD_ALLOWED_PATHS;
+		delete process.env.MCP_ALLOW_UNRESTRICTED_PATHS;
+
+		const callOverHttp = async (
+			port: number,
+			name: string,
+			args: Record<string, unknown>,
+		) => {
+			const res = await rawRequest(port, {
+				path: "/mcp",
+				headers: {
+					"Content-Type": "application/json",
+					Accept: "application/json, text/event-stream",
+				},
+				body: JSON.stringify({
+					jsonrpc: "2.0",
+					id: 2,
+					method: "tools/call",
+					params: { name, arguments: args },
+				}),
+			});
+			expect(res.status).toBe(200);
+			const parsed = parseMcpJsonRpc(res.body);
+			return parsed.result as {
+				isError?: boolean;
+				content?: Array<{ type: string; text?: string }>;
+			};
+		};
+
+		try {
+			const port = await listen();
+			const pdfResult = await callOverHttp(port, "pdf-to-markdown", {
+				filepath: "/data/report.pdf",
+			});
+			expect(pdfResult.isError).toBe(true);
+			expect(pdfResult.content?.[0]?.text).toContain(
+				"Local file tools are disabled in HTTP mode",
+			);
+
+			const mdResult = await callOverHttp(port, "get-markdown-file", {
+				filepath: "/data/notes.md",
+			});
+			expect(mdResult.isError).toBe(true);
+			expect(mdResult.content?.[0]?.text).toContain(
+				"Local file tools are disabled in HTTP mode",
+			);
+
+			const unknownResult = await callOverHttp(port, "no-such-tool", {});
+			expect(unknownResult.isError).toBe(true);
+			expect(unknownResult.content?.[0]?.text).toBe("Error: Tool not found");
+
+			await closeServer();
+
+			// D23 opt-out passes the HTTP fail-closed gate and reaches filesystem validation
+			const optOutPort = await listen({ allowUnrestrictedPaths: true });
+			const optOutResult = await callOverHttp(optOutPort, "pdf-to-markdown", {
+				filepath: "/nonexistent/http-d23-check.pdf",
+			});
+			expect(optOutResult.isError).toBe(true);
+			expect(optOutResult.content?.[0]?.text).toContain("File does not exist:");
+		} finally {
+			if (savedAllowed === undefined) delete process.env.MD_ALLOWED_PATHS;
+			else process.env.MD_ALLOWED_PATHS = savedAllowed;
+			if (savedOptOut === undefined)
+				delete process.env.MCP_ALLOW_UNRESTRICTED_PATHS;
+			else process.env.MCP_ALLOW_UNRESTRICTED_PATHS = savedOptOut;
+		}
 	});
 });
