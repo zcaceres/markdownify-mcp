@@ -1,5 +1,31 @@
 import type { Tool } from "@modelcontextprotocol/server";
 
+export const CONVERSION_OUTPUT_SCHEMA: NonNullable<Tool["outputSchema"]> = {
+	type: "object",
+	properties: {
+		markdown: {
+			type: "string",
+			description: "Full untruncated Markdown produced by the conversion",
+		},
+	},
+	required: ["markdown"],
+};
+
+export const MARKDOWN_FILE_OUTPUT_SCHEMA: NonNullable<Tool["outputSchema"]> = {
+	type: "object",
+	properties: {
+		path: {
+			type: "string",
+			description: "Resolved realpath of the retrieved Markdown file",
+		},
+		markdown: {
+			type: "string",
+			description: "Verbatim untruncated UTF-8 contents of the Markdown file",
+		},
+	},
+	required: ["path", "markdown"],
+};
+
 export const YouTubeToMarkdownTool: Tool = {
 	name: "youtube-to-markdown",
 	title: "YouTube to Markdown",
@@ -16,6 +42,7 @@ export const YouTubeToMarkdownTool: Tool = {
 		},
 		required: ["url"],
 	},
+	outputSchema: CONVERSION_OUTPUT_SCHEMA,
 	annotations: {
 		title: "YouTube to Markdown",
 		readOnlyHint: true,
@@ -41,6 +68,7 @@ export const PDFToMarkdownTool: Tool = {
 		},
 		required: ["filepath"],
 	},
+	outputSchema: CONVERSION_OUTPUT_SCHEMA,
 	annotations: {
 		title: "PDF to Markdown",
 		readOnlyHint: true,
@@ -66,6 +94,7 @@ export const BingSearchResultToMarkdownTool: Tool = {
 		},
 		required: ["url"],
 	},
+	outputSchema: CONVERSION_OUTPUT_SCHEMA,
 	annotations: {
 		title: "Bing Search to Markdown",
 		readOnlyHint: true,
@@ -91,6 +120,7 @@ export const WebpageToMarkdownTool: Tool = {
 		},
 		required: ["url"],
 	},
+	outputSchema: CONVERSION_OUTPUT_SCHEMA,
 	annotations: {
 		title: "Webpage to Markdown",
 		readOnlyHint: true,
@@ -116,6 +146,7 @@ export const ImageToMarkdownTool: Tool = {
 		},
 		required: ["filepath"],
 	},
+	outputSchema: CONVERSION_OUTPUT_SCHEMA,
 	annotations: {
 		title: "Image to Markdown",
 		readOnlyHint: true,
@@ -141,6 +172,7 @@ export const AudioToMarkdownTool: Tool = {
 		},
 		required: ["filepath"],
 	},
+	outputSchema: CONVERSION_OUTPUT_SCHEMA,
 	annotations: {
 		title: "Audio to Markdown",
 		readOnlyHint: true,
@@ -166,6 +198,7 @@ export const DocxToMarkdownTool: Tool = {
 		},
 		required: ["filepath"],
 	},
+	outputSchema: CONVERSION_OUTPUT_SCHEMA,
 	annotations: {
 		title: "DOCX to Markdown",
 		readOnlyHint: true,
@@ -191,6 +224,7 @@ export const XlsxToMarkdownTool: Tool = {
 		},
 		required: ["filepath"],
 	},
+	outputSchema: CONVERSION_OUTPUT_SCHEMA,
 	annotations: {
 		title: "XLSX to Markdown",
 		readOnlyHint: true,
@@ -216,6 +250,7 @@ export const PptxToMarkdownTool: Tool = {
 		},
 		required: ["filepath"],
 	},
+	outputSchema: CONVERSION_OUTPUT_SCHEMA,
 	annotations: {
 		title: "PPTX to Markdown",
 		readOnlyHint: true,
@@ -251,6 +286,7 @@ export const GitRepoToMarkdownTool: Tool = {
 		},
 		required: ["url"],
 	},
+	outputSchema: CONVERSION_OUTPUT_SCHEMA,
 	annotations: {
 		title: "Git Repo to Markdown",
 		readOnlyHint: true,
@@ -276,6 +312,7 @@ export const GetMarkdownFileTool: Tool = {
 		},
 		required: ["filepath"],
 	},
+	outputSchema: MARKDOWN_FILE_OUTPUT_SCHEMA,
 	annotations: {
 		title: "Get Markdown File",
 		readOnlyHint: true,
@@ -284,3 +321,17 @@ export const GetMarkdownFileTool: Tool = {
 		openWorldHint: false,
 	},
 };
+
+export const CLASSIC_TOOLS: readonly Tool[] = [
+	YouTubeToMarkdownTool,
+	PDFToMarkdownTool,
+	BingSearchResultToMarkdownTool,
+	WebpageToMarkdownTool,
+	ImageToMarkdownTool,
+	AudioToMarkdownTool,
+	DocxToMarkdownTool,
+	XlsxToMarkdownTool,
+	PptxToMarkdownTool,
+	GitRepoToMarkdownTool,
+	GetMarkdownFileTool,
+];

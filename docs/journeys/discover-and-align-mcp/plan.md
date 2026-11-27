@@ -54,13 +54,14 @@ Each slice is one capability, wired through every part of the system with a scen
 
 1. **01-metadata-and-strict-schemas** _(tracer bullet)_ — Built `src/mcp-contract/` (`serverMetadata`, `serverInstructions`, `serverCacheHints`, `auditToolCatalog`, per-tool Zod `.strict()` `validateToolArguments`), enriched [src/tools.ts](../../../src/tools.ts) (top-level `title`, all 4 explicit `ToolAnnotations` booleans, 2–4 sentence tool/param descriptions, Gemini-safe flat `inputSchema`) and [src/server.ts](../../../src/server.ts) (`Implementation` metadata, `instructions`, `cacheHints`, per-tool strict validation), wired `cli/commands/mcp-contract.ts`, and verified with unit/boundary tests and `scenarios/discover-and-align-mcp/01-metadata-and-strict-schemas.txt`. Covers **MC-1, MC-2, MC-3, MC-4, MC-5** (D47, D48, D52).
    ([spec](specs/01-metadata-and-strict-schemas/spec.md), `scenarios/discover-and-align-mcp/01-metadata-and-strict-schemas.txt`)
+2. **02-structured-outputs** — Added Gemini-safe JSON Schema `outputSchema` to every tool (`{ markdown }` for conversions, `{ path, markdown }` for `get-markdown-file`), wired `formatStructuredToolResult` in `src/server.ts` to return matching `structuredContent` alongside backwards-compatible `content` text blocks without truncation (D50) while omitting `structuredContent` on `isError: true`, extended `auditToolCatalog`, and verified with unit/boundary tests and `scenarios/discover-and-align-mcp/02-structured-outputs.txt`. Covers **MC-6** (D49, D50).
+   ([spec](specs/02-structured-outputs/spec.md), `scenarios/discover-and-align-mcp/02-structured-outputs.txt`)
 
 ### Next
 
 In the order we expect to build them; reorder freely.
 
-1. **02-structured-outputs** — Add JSON Schema `outputSchema` to every tool (`{ markdown }` for conversions, `{ path, markdown }` for `get-markdown-file`), return matching `structuredContent` alongside backwards-compatible `content` text blocks on successful `tools/call` responses, omit `structuredContent` on `isError: true`, verify full untruncated Markdown (D50), and extend `mcp audit` and `src/server.test.ts` + `src/http.test.ts`. Covers **MC-6** (D49, D50).
-2. **03-compact-toolset** — Add `Toolset` (`classic` | `compact`) to `ServerConfiguration` (`--toolset=<classic|compact>`, `MCP_TOOLSET`, D32 fail-fast on invalid values), implement the 4 capability tools (`convert-web-url`, `convert-local-file`, `convert-git-repo`, `get-markdown-file`) with tailored `instructions` and strict Toolset enforcement in `tools/call` (D51), update [README.md](../../../README.md), and add cross-provider contract checks (`D47`–`D52`) to the 6-Form-Factor E2E runner (`cli/e2e/runner.ts`). Covers **MC-7, MC-8** (D32, D51, D47–D52).
+1. **03-compact-toolset** — Add `Toolset` (`classic` | `compact`) to `ServerConfiguration` (`--toolset=<classic|compact>`, `MCP_TOOLSET`, D32 fail-fast on invalid values), implement the 4 capability tools (`convert-web-url`, `convert-local-file`, `convert-git-repo`, `get-markdown-file`) with tailored `instructions` and strict Toolset enforcement in `tools/call` (D51), update [README.md](../../../README.md), and add cross-provider contract checks (`D47`–`D52`) to the 6-Form-Factor E2E runner (`cli/e2e/runner.ts`). Covers **MC-7, MC-8** (D32, D51, D47–D52).
 
 ## Deferred
 

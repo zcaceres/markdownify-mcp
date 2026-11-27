@@ -12,7 +12,10 @@ import {
 	serverInstructions,
 	serverMetadata,
 } from "./mcp-contract/queries.js";
-import { validateToolArguments } from "./mcp-contract/verbs.js";
+import {
+	formatStructuredToolResult,
+	validateToolArguments,
+} from "./mcp-contract/verbs.js";
 import * as tools from "./tools.js";
 import { expandHome } from "./utils.js";
 import { validateWebRequest } from "./web-conversion/verbs.js";
@@ -47,7 +50,7 @@ export function createServer(options: CreateServerOptions = {}) {
 
 	server.setRequestHandler("tools/list", async () => {
 		return {
-			tools: Object.values(tools),
+			tools: [...tools.CLASSIC_TOOLS],
 		};
 	});
 
@@ -130,15 +133,7 @@ export function createServer(options: CreateServerOptions = {}) {
 					throw new Error("Tool not found");
 			}
 
-			return {
-				content: [
-					...(result.path
-						? [{ type: "text" as const, text: `Output file: ${result.path}` }]
-						: []),
-					{ type: "text", text: result.text },
-				],
-				isError: false,
-			};
+			return formatStructuredToolResult(result);
 		} catch (e) {
 			if (e instanceof Error) {
 				return {
