@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { parseCliArgs, startHttpServer } from "./http.js";
 import { createServer } from "./server.js";
 
@@ -19,9 +19,11 @@ async function main() {
 		return;
 	}
 
-	const transport = new StdioServerTransport();
-	const server = createServer();
-	await server.connect(transport);
+	serveStdio(() => createServer(), {
+		onerror: (error) => {
+			console.error("[stdio error]", error);
+		},
+	});
 }
 
 main().catch((error) => {

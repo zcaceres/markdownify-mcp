@@ -1,6 +1,6 @@
-import { ToolSchema } from "@modelcontextprotocol/sdk/types.js";
+import type { Tool } from "@modelcontextprotocol/server";
 
-export const YouTubeToMarkdownTool = ToolSchema.parse({
+export const YouTubeToMarkdownTool: Tool = {
 	name: "youtube-to-markdown",
 	description:
 		"Convert a YouTube video to markdown, including transcript if available",
@@ -19,9 +19,9 @@ export const YouTubeToMarkdownTool = ToolSchema.parse({
 		readOnlyHint: true,
 		openWorldHint: true,
 	},
-});
+};
 
-export const PDFToMarkdownTool = ToolSchema.parse({
+export const PDFToMarkdownTool: Tool = {
 	name: "pdf-to-markdown",
 	description: "Convert a PDF file to markdown",
 	inputSchema: {
@@ -38,9 +38,9 @@ export const PDFToMarkdownTool = ToolSchema.parse({
 		title: "PDF to Markdown",
 		readOnlyHint: true,
 	},
-});
+};
 
-export const BingSearchResultToMarkdownTool = ToolSchema.parse({
+export const BingSearchResultToMarkdownTool: Tool = {
 	name: "bing-search-to-markdown",
 	description: "Convert a Bing search results page to markdown",
 	inputSchema: {
@@ -58,9 +58,9 @@ export const BingSearchResultToMarkdownTool = ToolSchema.parse({
 		readOnlyHint: true,
 		openWorldHint: true,
 	},
-});
+};
 
-export const WebpageToMarkdownTool = ToolSchema.parse({
+export const WebpageToMarkdownTool: Tool = {
 	name: "webpage-to-markdown",
 	description: "Convert a webpage to markdown",
 	inputSchema: {
@@ -78,9 +78,9 @@ export const WebpageToMarkdownTool = ToolSchema.parse({
 		readOnlyHint: true,
 		openWorldHint: true,
 	},
-});
+};
 
-export const ImageToMarkdownTool = ToolSchema.parse({
+export const ImageToMarkdownTool: Tool = {
 	name: "image-to-markdown",
 	description:
 		"Convert an image to markdown, including metadata and description",
@@ -98,9 +98,9 @@ export const ImageToMarkdownTool = ToolSchema.parse({
 		title: "Image to Markdown",
 		readOnlyHint: true,
 	},
-});
+};
 
-export const AudioToMarkdownTool = ToolSchema.parse({
+export const AudioToMarkdownTool: Tool = {
 	name: "audio-to-markdown",
 	description:
 		"Convert an audio file to markdown, including transcription if possible",
@@ -118,9 +118,9 @@ export const AudioToMarkdownTool = ToolSchema.parse({
 		title: "Audio to Markdown",
 		readOnlyHint: true,
 	},
-});
+};
 
-export const DocxToMarkdownTool = ToolSchema.parse({
+export const DocxToMarkdownTool: Tool = {
 	name: "docx-to-markdown",
 	description: "Convert a DOCX file to markdown",
 	inputSchema: {
@@ -137,9 +137,9 @@ export const DocxToMarkdownTool = ToolSchema.parse({
 		title: "DOCX to Markdown",
 		readOnlyHint: true,
 	},
-});
+};
 
-export const XlsxToMarkdownTool = ToolSchema.parse({
+export const XlsxToMarkdownTool: Tool = {
 	name: "xlsx-to-markdown",
 	description: "Convert an XLSX file to markdown",
 	inputSchema: {
@@ -156,9 +156,9 @@ export const XlsxToMarkdownTool = ToolSchema.parse({
 		title: "XLSX to Markdown",
 		readOnlyHint: true,
 	},
-});
+};
 
-export const PptxToMarkdownTool = ToolSchema.parse({
+export const PptxToMarkdownTool: Tool = {
 	name: "pptx-to-markdown",
 	description: "Convert a PPTX file to markdown",
 	inputSchema: {
@@ -175,9 +175,9 @@ export const PptxToMarkdownTool = ToolSchema.parse({
 		title: "PPTX to Markdown",
 		readOnlyHint: true,
 	},
-});
+};
 
-export const GitRepoToMarkdownTool = ToolSchema.parse({
+export const GitRepoToMarkdownTool: Tool = {
 	name: "git-repo-to-markdown",
 	description:
 		"Convert a git repository into a single markdown document containing the file tree and source code. Supports GitHub URLs and shorthand (e.g. 'owner/repo').",
@@ -207,9 +207,9 @@ export const GitRepoToMarkdownTool = ToolSchema.parse({
 		readOnlyHint: true,
 		openWorldHint: true,
 	},
-});
+};
 
-export const GetMarkdownFileTool = ToolSchema.parse({
+export const GetMarkdownFileTool: Tool = {
 	name: "get-markdown-file",
 	description: "Get a markdown file by absolute file path",
 	inputSchema: {
@@ -226,4 +226,4 @@ export const GetMarkdownFileTool = ToolSchema.parse({
 		title: "Get Markdown File",
 		readOnlyHint: true,
 	},
-});
+};

@@ -1,5 +1,6 @@
 import http from "node:http";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { toNodeHandler } from "@modelcontextprotocol/node";
+import { createMcpHandler } from "@modelcontextprotocol/server";
 import { createServer } from "./server.js";
 import { startupDiagnostics } from "./server-config/queries.js";
 import {
@@ -73,7 +74,25 @@ export function createHttpServer(options: HttpServerOptions): http.Server {
 		allowUnrestrictedPaths,
 	} = options;
 
-	return http.createServer(async (req, res) => {
+	const mcpHandler = createMcpHandler(
+		() =>
+			createServer({
+				transport: "http",
+				allowUnrestrictedPaths,
+			}),
+		{
+			onerror: (error) => {
+				console.error("[transport error]", error);
+			},
+		},
+	);
+	const nodeHandler = toNodeHandler(mcpHandler, {
+		onerror: (error) => {
+			console.error("Error handling MCP HTTP request:", error);
+		},
+	});
+
+	const httpServer = http.createServer(async (req, res) => {
 		const pathname = new URL(req.url ?? "/", "http://localhost").pathname;
 		const originHeader = Array.isArray(req.headers.origin)
 			? req.headers.origin[0]
@@ -98,37 +117,14 @@ export function createHttpServer(options: HttpServerOptions): http.Server {
 			return;
 		}
 
-		const transport = new StreamableHTTPServerTransport({
-			sessionIdGenerator: undefined,
-		});
-		transport.onerror = (error) => {
-			console.error("[transport error]", error);
-		};
-		const server = createServer({
-			transport: "http",
-			allowUnrestrictedPaths,
-		});
-
-		let closed = false;
-		const cleanup = () => {
-			if (closed) return;
-			closed = true;
-			transport.close().catch(() => {});
-			server.close().catch(() => {});
-		};
-		res.on("close", cleanup);
-
-		try {
-			await server.connect(transport);
-			await transport.handleRequest(req, res);
-		} catch (error) {
-			cleanup();
-			console.error("Error handling MCP HTTP request:", error);
-			if (!res.headersSent) {
-				sendJsonError(res, 500, -32603, "Internal server error");
-			}
-		}
+		await nodeHandler(req, res);
 	});
+
+	httpServer.on("close", () => {
+		mcpHandler.close().catch(() => {});
+	});
+
+	return httpServer;
 }
 
 export async function startHttpServer(
