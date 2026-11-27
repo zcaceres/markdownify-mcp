@@ -10,6 +10,7 @@ What each journey's users can do and see is in its acceptance criteria, which ci
 
 - **Convert Web URL:** MCP Client converts a Web URL (webpage, YouTube video, Bing search, or hosted document) into a Markdown Result ([acceptance criteria](docs/journeys/convert-web-url/acceptance-criteria.md)).
 - **Convert Local File:** MCP Client converts a Local File (PDF, image, audio, DOCX, XLSX, PPTX) within Allowed Paths into a Markdown Result ([acceptance criteria](docs/journeys/convert-local-file/acceptance-criteria.md)).
+- **Retrieve Markdown File:** MCP Client retrieves an existing local Markdown File (`.md` or `.markdown`, case-insensitive) within Allowed Paths and receives its resolved path and verbatim UTF-8 text as a Markdown Result ([acceptance criteria](docs/journeys/retrieve-markdown-file/acceptance-criteria.md)).
 
 ## Sources
 
@@ -74,7 +75,7 @@ D#.
 ### Local File & Markdown Retrieval
 
 - File conversion tools require an absolute or `~`-prefixed path, validate Allowed Paths before checking existence, verify the target exists and is a readable regular file, convert it via `markitdown` (without applying Web URL raw-HTML rejection or a separate input file byte cap), and return the derived Markdown Result text (D3, D4, D5, D17, D18, D19, D20).
-- `get-markdown-file` retrieves an existing local Markdown File (`.md` or `.markdown`, case-insensitively) and returns its resolved path and contents as a Markdown Result (D3, D5, D8).
+- `get-markdown-file` requires an absolute or `~`-prefixed path, validates the `.md`/`.markdown` extension case-insensitively on both the requested path and the `realpath` target, checks Allowed Paths before existence, verifies the target is a readable regular file, and returns the resolved path and verbatim UTF-8 contents as a Markdown Result without a separate byte cap (D3, D5, D8, D17, D18, D19, D21, D25, D26, D27).
 - Whenever Allowed Paths is active, Local File and Markdown File reads are validated against Allowed Paths after `~` expansion and `realpath` resolution (D6, I2).
 
 ### Web URL Conversion
@@ -234,6 +235,18 @@ for an undecided rule and will change with it.
 ### D24. Fail closed on empty or delimiter-only `MD_ALLOWED_PATHS`
 
 - **Decided (2026-11-26):** Whenever `MD_ALLOWED_PATHS` is explicitly set in the environment (`!== undefined`) but parses to zero directory entries (e.g. `""`, whitespace-only, or delimiter-only such as `":"`), local file-input tools fail closed with a structured configuration error (`isError: true`) rather than falling back to unrestricted access.
+
+### D25. `get-markdown-file` shares local-file path shape, pre-validation, and size-cap rules
+
+- **Decided (2026-11-26):** `get-markdown-file` requires an absolute or `~`-prefixed path (same as D18), pre-validates that the target exists, is a regular file (not a directory or special file), and is readable before reading (same as D17), and enforces no separate local input byte cap (same as D19).
+
+### D26. `get-markdown-file` validates Markdown extension on both requested path and `realpath` target
+
+- **Decided (2026-11-26):** `get-markdown-file` requires a `.md` or `.markdown` extension (case-insensitively, D8) on both the requested path and the `realpath`-resolved target (checked after `Allowed Paths` containment, D21, I2), preventing a `.md` symlink from reading a non-Markdown file inside `Allowed Paths`.
+
+### D27. `get-markdown-file` returns resolved `realpath` and verbatim UTF-8 text
+
+- **Decided (2026-11-26):** `get-markdown-file` returns a derived `Markdown Result` (D5) whose `path` is the `realpath`-resolved file path and whose `text` preserves the exact UTF-8 contents verbatim (including empty or whitespace-only files, without D16 whitespace trimming).
 
 ## Undecided Questions
 
