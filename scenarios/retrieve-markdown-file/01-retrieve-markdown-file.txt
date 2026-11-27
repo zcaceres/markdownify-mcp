@@ -1,0 +1,132 @@
+# Slice 01: Retrieve Markdown File (RM-1..RM-7)
+
+# RM-1 (D3, D8, D18, D25): missing and bare relative file paths are refused without touching the filesystem
+> retrieve
+error: File path is required for this tool
+
+> retrieve README.md
+error: File path "README.md" must be an absolute path or start with ~/
+
+> retrieve ./docs/notes.md
+error: File path "./docs/notes.md" must be an absolute path or start with ~/
+
+# RM-2 (D8, D26): non-Markdown extensions are refused
+> retrieve /data/report.pdf
+error: Required file is not a Markdown file.
+
+> retrieve /data/notes.txt
+error: Required file is not a Markdown file.
+
+> retrieve /data/README
+error: Required file is not a Markdown file.
+
+# RM-5 (D8, D17, D25): missing file, directory named *.md, and unreadable file are refused before reading
+> retrieve /data/missing.md
+error: File does not exist: /data/missing.md
+
+> filesystem mkdir /data/folder.md
+created dir /data/folder.md
+
+> retrieve /data/folder.md
+error: Path is a directory, not a file: /data/folder.md
+
+> filesystem unreadable /data/locked.md
+created unreadable file /data/locked.md
+
+> retrieve /data/locked.md
+error: File is not readable: /data/locked.md
+
+# RM-2, RM-6 (D3, D5, D8, D19, D26, D27): .md, .MD, .markdown, and ~/ paths return resolved path and verbatim UTF-8 text
+> filesystem put /data/README.MD # Uppercase\nLine 2
+created file /data/README.MD
+
+> retrieve /data/README.MD
+ok: get-markdown-file (path: /data/README.MD)
+| # Uppercase
+| Line 2
+
+> filesystem put /home/user/docs/guide.Markdown # Home Guide
+created file /home/user/docs/guide.Markdown
+
+> retrieve ~/docs/guide.Markdown
+ok: get-markdown-file (path: /home/user/docs/guide.Markdown)
+| # Home Guide
+
+# RM-7 (D5, D27): empty and whitespace-only Markdown Files preserve exact contents verbatim
+> filesystem put /data/empty.md
+created file /data/empty.md
+
+> retrieve /data/empty.md
+ok: get-markdown-file (path: /data/empty.md)
+(empty)
+
+> filesystem put /data/blank-line.md \n
+created file /data/blank-line.md
+
+> retrieve /data/blank-line.md
+ok: get-markdown-file (path: /data/blank-line.md)
+| 
+| 
+
+# RM-4 (D6, D21, D23, D26, I2): Allowed Paths containment, escaping symlinks, in-bounds realpath, and .md -> .txt symlink refusal
+> config set MD_ALLOWED_PATHS /data
+config MD_ALLOWED_PATHS = /data
+
+> retrieve /etc/missing.md
+error: Path "/etc/missing.md" is outside the allowed directories. Set MD_ALLOWED_PATHS to a :-separated list that includes a parent directory (currently allowed: /data).
+
+> retrieve /data/../etc/passwd.md
+error: Path "/data/../etc/passwd.md" is outside the allowed directories. Set MD_ALLOWED_PATHS to a :-separated list that includes a parent directory (currently allowed: /data).
+
+> filesystem put /outside/secret.md # Secret
+created file /outside/secret.md
+
+> filesystem symlink /data/escape.md /outside/secret.md
+created symlink /data/escape.md -> /outside/secret.md
+
+> retrieve /data/escape.md
+error: Path "/data/escape.md" is outside the allowed directories. Set MD_ALLOWED_PATHS to a :-separated list that includes a parent directory (currently allowed: /data).
+
+> filesystem put /data/secret.txt top-secret
+created file /data/secret.txt
+
+> filesystem symlink /data/disguised.md /data/secret.txt
+created symlink /data/disguised.md -> /data/secret.txt
+
+> retrieve /data/disguised.md
+error: Required file is not a Markdown file.
+
+> filesystem symlink /data/alias.md /data/README.MD
+created symlink /data/alias.md -> /data/README.MD
+
+> retrieve /data/alias.md
+ok: get-markdown-file (path: /data/README.MD)
+| # Uppercase
+| Line 2
+
+# RM-4 (D8, D24): explicitly set empty or delimiter-only MD_ALLOWED_PATHS fails closed
+> config set MD_ALLOWED_PATHS :
+config MD_ALLOWED_PATHS = :
+
+> retrieve /data/README.MD
+error: MD_ALLOWED_PATHS is set but contains no valid directories. Specify at least one directory or unset MD_ALLOWED_PATHS.
+
+# RM-3 (D6, D8, D9, D23): HTTP mode fails closed when MD_ALLOWED_PATHS is unset unless opted out
+> reset
+the world is back to its fixtures
+
+> config set MCP_TRANSPORT http
+config MCP_TRANSPORT = http
+
+> filesystem put /data/notes.md # HTTP Note
+created file /data/notes.md
+
+> retrieve /data/notes.md
+error: Local file tools are disabled in HTTP mode when MD_ALLOWED_PATHS is unset. Set MD_ALLOWED_PATHS, or pass --allow-unrestricted-paths / MCP_ALLOW_UNRESTRICTED_PATHS=true to opt out.
+
+> config set MCP_ALLOW_UNRESTRICTED_PATHS true
+config MCP_ALLOW_UNRESTRICTED_PATHS = true
+
+> retrieve /data/notes.md
+ok: get-markdown-file (path: /data/notes.md)
+| # HTTP Note

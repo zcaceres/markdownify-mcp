@@ -210,7 +210,7 @@ test("Markdownify.get retrieves existing Markdown file", async () => {
 	const result = await Markdownify.get({ filePath: tempFilePath });
 
 	expect(result).toBeDefined();
-	expect(result.path).toBe(tempFilePath);
+	expect(result.path).toBe(fs.realpathSync.native(tempFilePath));
 	expect(result.text).toBe(mdContent);
 
 	fs.unlinkSync(tempFilePath);
@@ -230,7 +230,7 @@ test("Markdownify.get expands ~ and reads from the resolved path", async () => {
 		const tildePath = `~/${relFromHome}`;
 		const result = await Markdownify.get({ filePath: tildePath });
 		expect(result).toBeDefined();
-		expect(result.path).toBe(path.resolve(mdFile));
+		expect(result.path).toBe(fs.realpathSync.native(mdFile));
 		expect(result.text).toBe(mdContent);
 	} finally {
 		fs.rmSync(dir, { recursive: true, force: true });
@@ -259,6 +259,40 @@ test("Markdownify.get throws error for non-existent file", async () => {
 	await expect(Markdownify.get({ filePath: nonExistentPath })).rejects.toThrow(
 		"File does not exist",
 	);
+});
+
+test("Markdownify.get rejects relative paths, directories, and .md symlinks to non-Markdown targets while accepting .MD and returning realpath (D8, D25, D26, D27)", async () => {
+	await expect(Markdownify.get({ filePath: "README.md" })).rejects.toThrow(
+		'File path "README.md" must be an absolute path or start with ~/',
+	);
+
+	const dir = fs.mkdtempSync(path.join(tempDir, "mdfy-get-rules-"));
+	const dirNamedMd = path.join(dir, "folder.md");
+	const upperMd = path.join(dir, "README.MD");
+	const aliasMd = path.join(dir, "alias.md");
+	const secretTxt = path.join(dir, "secret.txt");
+	const disguisedMd = path.join(dir, "disguised.md");
+	fs.mkdirSync(dirNamedMd);
+	fs.writeFileSync(upperMd, "  \n");
+	fs.writeFileSync(secretTxt, "SECRET=1");
+	fs.symlinkSync(upperMd, aliasMd);
+	fs.symlinkSync(secretTxt, disguisedMd);
+
+	try {
+		await expect(Markdownify.get({ filePath: dirNamedMd })).rejects.toThrow(
+			"Path is a directory, not a file:",
+		);
+		await expect(Markdownify.get({ filePath: disguisedMd })).rejects.toThrow(
+			"Required file is not a Markdown file.",
+		);
+		const res = await Markdownify.get({ filePath: aliasMd });
+		expect(res).toEqual({
+			path: fs.realpathSync.native(upperMd),
+			text: "  \n",
+		});
+	} finally {
+		fs.rmSync(dir, { recursive: true, force: true });
+	}
 });
 
 test("Markdownify.fromRepo converts a git repo to markdown via shorthand", async () => {

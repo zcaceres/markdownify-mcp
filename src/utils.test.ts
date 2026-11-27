@@ -318,6 +318,12 @@ describe("isMarkdownFile", () => {
 		expect(isMarkdownFile("/path/to/file.markdown")).toBe(true);
 	});
 
+	test("accepts .md and .markdown case-insensitively (D8)", () => {
+		expect(isMarkdownFile("/path/to/README.MD")).toBe(true);
+		expect(isMarkdownFile("/path/to/Guide.Markdown")).toBe(true);
+		expect(isMarkdownFile("/path/to/NOTES.MARKDOWN")).toBe(true);
+	});
+
 	test("rejects .txt files", () => {
 		expect(isMarkdownFile("/path/to/file.txt")).toBe(false);
 	});

@@ -5,7 +5,8 @@ import type {
 	ResolveRealpath,
 	StatFile,
 } from "../../local-file-conversion/ports.js";
-import { ok, type Result } from "../../shared/types.js";
+import type { ReadTextFile } from "../../markdown-retrieval/ports.js";
+import { err, ok, type Result } from "../../shared/types.js";
 import type { TemporaryFile } from "../../web-conversion/nouns.js";
 import type {
 	CleanupTempFile,
@@ -25,7 +26,8 @@ export type FilesystemMock = {
 	readonly expandHome: ExpandHome;
 	readonly resolveRealpath: ResolveRealpath;
 	readonly statFile: StatFile;
-	readonly putFile: (filePath: string) => void;
+	readonly readTextFile: ReadTextFile;
+	readonly putFile: (filePath: string, content?: string) => void;
 	readonly mkdir: (dirPath: string) => void;
 	readonly putUnreadable: (filePath: string) => void;
 	readonly symlink: (linkPath: string, targetPath: string) => void;
@@ -36,6 +38,7 @@ export const createFilesystemMock = (): FilesystemMock => {
 	let totalStaged = 0;
 	const activeDirs = new Map<string, Uint8Array>();
 	const entries = new Map<string, MockEntry>();
+	const contents = new Map<string, string>();
 	const symlinks = new Map<string, string>();
 
 	const resolveRealpathSync = (targetPath: string): string => {
@@ -99,8 +102,20 @@ export const createFilesystemMock = (): FilesystemMock => {
 			if (!entry) return { kind: "missing" };
 			return { kind: entry };
 		},
-		putFile: (filePath: string) => {
-			entries.set(path.posix.resolve(filePath), "file");
+		readTextFile: async (
+			resolvedPath: string,
+		): Promise<Result<string, string>> => {
+			const realPath = resolveRealpathSync(resolvedPath);
+			const entry = entries.get(realPath);
+			if (entry !== "file") {
+				return err(`Cannot read "${realPath}"`);
+			}
+			return ok(contents.get(realPath) ?? "");
+		},
+		putFile: (filePath: string, content = "") => {
+			const normalized = path.posix.resolve(filePath);
+			entries.set(normalized, "file");
+			contents.set(normalized, content);
 		},
 		mkdir: (dirPath: string) => {
 			entries.set(path.posix.resolve(dirPath), "directory");

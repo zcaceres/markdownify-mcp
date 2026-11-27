@@ -11,6 +11,7 @@ import {
 	validateLocalFileRequest,
 } from "./local-file-conversion/verbs.js";
 import { Markdownify, type MarkdownResult } from "./Markdownify.js";
+import { validateMarkdownRetrievalRequest } from "./markdown-retrieval/verbs.js";
 import * as tools from "./tools.js";
 import { expandHome } from "./utils.js";
 import { validateWebRequest } from "./web-conversion/verbs.js";
@@ -123,15 +124,19 @@ export function createServer(options: CreateServerOptions = {}) {
 						});
 						break;
 
-					case tools.GetMarkdownFileTool.name:
-						if (!validatedArgs.filepath) {
-							throw new Error("File path is required for this tool");
+					case tools.GetMarkdownFileTool.name: {
+						const validatedMd = validateMarkdownRetrievalRequest(
+							validatedArgs.filepath,
+						);
+						if (!validatedMd.ok) {
+							throw new Error(validatedMd.error);
 						}
 						assertLocalFileAccessEnabled();
 						result = await Markdownify.get({
-							filePath: validatedArgs.filepath,
+							filePath: validatedMd.value.filePath,
 						});
 						break;
+					}
 
 					default:
 						throw new Error("Tool not found");

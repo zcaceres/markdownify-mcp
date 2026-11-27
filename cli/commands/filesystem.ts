@@ -4,7 +4,7 @@ import type { Command } from "../command.ts";
 export const filesystem: Command = {
 	kind: "world",
 	usage:
-		"filesystem temp-count | filesystem staged-count | filesystem put <path> | filesystem mkdir <path> | filesystem unreadable <path> | filesystem symlink <link> <target>",
+		"filesystem temp-count | filesystem staged-count | filesystem put <path> [content...] | filesystem mkdir <path> | filesystem unreadable <path> | filesystem symlink <link> <target>",
 	summary: "inspect temporary file state or stage mock local files",
 	run: async ([sub, target, ...extra], world) => {
 		if (sub === "temp-count" || sub === "staged-count") {
@@ -25,13 +25,19 @@ export const filesystem: Command = {
 			world.filesystem.symlink(target, linkTarget);
 			return ok([`created symlink ${target} -> ${linkTarget}`]);
 		}
+		if (sub === "put") {
+			if (!target) {
+				return err(`usage: ${filesystem.usage}`);
+			}
+			const content =
+				extra.length > 0 ? extra.join(" ").replace(/\\n/g, "\n") : "";
+			world.filesystem.putFile(target, content);
+			return ok([`created file ${target}`]);
+		}
 		if (!target || extra.length > 0) {
 			return err(`usage: ${filesystem.usage}`);
 		}
 		switch (sub) {
-			case "put":
-				world.filesystem.putFile(target);
-				return ok([`created file ${target}`]);
 			case "mkdir":
 				world.filesystem.mkdir(target);
 				return ok([`created dir ${target}`]);

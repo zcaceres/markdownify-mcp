@@ -8,6 +8,7 @@ import type {
 	ResolveRealpath,
 	StatFile,
 } from "../../local-file-conversion/ports.js";
+import type { ReadTextFile } from "../../markdown-retrieval/ports.js";
 import { err, ok, type Result } from "../../shared/types.js";
 import { expandHome as expandOsHome, realpathOrAncestor } from "../../utils.js";
 import type { TemporaryFile } from "../../web-conversion/nouns.js";
@@ -24,6 +25,7 @@ export type LiveFilesystem = {
 	readonly expandHome: ExpandHome;
 	readonly resolveRealpath: ResolveRealpath;
 	readonly statFile: StatFile;
+	readonly readTextFile: ReadTextFile;
 };
 
 const getErrorCode = (error: unknown): string | undefined => {
@@ -101,5 +103,17 @@ export const createLiveFilesystem = (): LiveFilesystem => {
 			realpathOrAncestor(resolvedPath),
 		statFile: async (resolvedPath: string): Promise<FileStat> =>
 			statRealLocalFile(resolvedPath),
+		readTextFile: async (
+			resolvedPath: string,
+		): Promise<Result<string, string>> => {
+			try {
+				const text = await fs.promises.readFile(resolvedPath, "utf-8");
+				return ok(text);
+			} catch (error: unknown) {
+				const message =
+					error instanceof Error ? error.message : "Unknown filesystem error";
+				return err(message);
+			}
+		},
 	};
 };

@@ -87,6 +87,24 @@ describe("MCP server boundary (WU-1, D8)", () => {
 			expect(firstText(rel)).toBe(
 				'Error: File path "report.pdf" must be an absolute path or start with ~/',
 			);
+
+			const relMd = await client.callTool({
+				name: "get-markdown-file",
+				arguments: { filepath: "README.md" },
+			});
+			expect(relMd.isError).toBe(true);
+			expect(firstText(relMd)).toBe(
+				'Error: File path "README.md" must be an absolute path or start with ~/',
+			);
+
+			const nonMd = await client.callTool({
+				name: "get-markdown-file",
+				arguments: { filepath: "/data/notes.txt" },
+			});
+			expect(nonMd.isError).toBe(true);
+			expect(firstText(nonMd)).toBe(
+				"Error: Required file is not a Markdown file.",
+			);
 		});
 	});
 
