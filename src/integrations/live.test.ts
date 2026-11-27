@@ -79,7 +79,11 @@ describe("createLiveMarkitdown with repo sample-data (I3, D16)", () => {
 				60_000,
 			);
 			expect(img.ok).toBe(true);
-			if (img.ok) expect(img.value.trim()).toBe("");
+			if (img.ok) {
+				expect(
+					img.value.trim() === "" || img.value.includes("ImageSize: 1x1"),
+				).toBe(true);
+			}
 		},
 		conversionTimeout,
 	);

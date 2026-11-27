@@ -40,4 +40,4 @@ bun run harness docker
 # or: bash scripts/docker-smoke-test.sh
 ```
 
-Verifies `pdf-to-markdown` on `/data/test.pdf` [LF-6, LF-11], `MD_ALLOWED_PATHS` blocking `/etc/passwd` [LF-4], and the `D22` slim-Docker `markitdown[all]` hint on the binary `.docx` probe [LF-9].
+Verifies `pdf-to-markdown` on `/data/test.pdf` [LF-6, LF-11], `MD_ALLOWED_PATHS` blocking `/etc/passwd` [LF-4], and the `D22` slim-Docker `markitdown[all]` hint on `/data/test.docx` [LF-9].

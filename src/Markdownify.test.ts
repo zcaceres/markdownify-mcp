@@ -81,8 +81,10 @@ test(
 		const result = await Markdownify.toMarkdown({ filePath: imagePath });
 
 		expect(result).toBeDefined();
-		// markitdown returns only whitespace for images without LLM vision config
-		expect(result.text.trim()).toBe("");
+		// Real 1x1 JPEG returns EXIF metadata when exiftool is installed, or empty string otherwise (D4, D16, D42)
+		expect(
+			result.text.trim() === "" || result.text.includes("ImageSize: 1x1"),
+		).toBe(true);
 	},
 	conversionTimeout,
 );
