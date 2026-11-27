@@ -1,6 +1,7 @@
+import type { Toolset } from "../../src/mcp-contract/nouns.ts";
 import {
 	auditToolCatalog,
-	CLASSIC_OPEN_WORLD_BY_TOOL,
+	expectedOpenWorldByToolset,
 	serverCacheHints,
 	serverInstructions,
 	serverMetadata,
@@ -10,20 +11,30 @@ import {
 	validateToolArguments,
 } from "../../src/mcp-contract/verbs.ts";
 import { err, ok } from "../../src/shared/types.ts";
-import { CLASSIC_TOOLS } from "../../src/tools.ts";
+import { toolsForToolset } from "../../src/tools.ts";
 import type { Command } from "../command.ts";
+
+const parseToolsetArg = (raw: string | undefined): Toolset | undefined => {
+	if (raw === undefined || raw === "classic") return "classic";
+	if (raw === "compact") return "compact";
+	return undefined;
+};
 
 export const mcp: Command = {
 	kind: "domain",
 	usage:
-		"mcp info | mcp audit | mcp validate-args <tool> <json> | mcp format-result <text> [path=<p>]",
+		"mcp info [classic|compact] | mcp audit [classic|compact] | mcp validate-args <tool> <json> [toolset=classic|compact] | mcp format-result <text> [path=<p>]",
 	summary:
 		"inspect MCP server metadata/instructions/cacheHints, audit tool contracts, validate strict per-tool arguments, and format structured tool results",
 	run: async ([sub, ...rest]) => {
 		if (sub === "info") {
+			const toolset = parseToolsetArg(rest[0]);
+			if (!toolset || rest.length > 1) {
+				return err(`usage: ${mcp.usage}`);
+			}
 			const meta = serverMetadata();
 			const hints = serverCacheHints();
-			const instructions = serverInstructions().trim();
+			const instructions = serverInstructions(toolset).trim();
 			const listHint = hints["tools/list"];
 			const discoverHint = hints["server/discover"];
 			return ok([
@@ -35,9 +46,13 @@ export const mcp: Command = {
 		}
 
 		if (sub === "audit") {
+			const toolset = parseToolsetArg(rest[0]);
+			if (!toolset || rest.length > 1) {
+				return err(`usage: ${mcp.usage}`);
+			}
 			const report = auditToolCatalog(
-				CLASSIC_TOOLS,
-				CLASSIC_OPEN_WORLD_BY_TOOL,
+				toolsForToolset(toolset),
+				expectedOpenWorldByToolset(toolset),
 			);
 			if (!report.ok) {
 				return err(
@@ -50,9 +65,25 @@ export const mcp: Command = {
 		}
 
 		if (sub === "validate-args") {
-			const [toolName, ...jsonParts] = rest;
+			const [toolName, ...remaining] = rest;
+			if (!toolName || remaining.length === 0) {
+				return err(`usage: ${mcp.usage}`);
+			}
+			let toolset: Toolset = "classic";
+			const last = remaining[remaining.length - 1];
+			let jsonParts = remaining;
+			if (last?.startsWith("toolset=")) {
+				const parsedToolset = parseToolsetArg(last.slice("toolset=".length));
+				if (!parsedToolset) {
+					return err(
+						`Unknown toolset "${last.slice("toolset=".length)}". Supported values: classic, compact`,
+					);
+				}
+				toolset = parsedToolset;
+				jsonParts = remaining.slice(0, -1);
+			}
 			const rawJson = jsonParts.join(" ").trim();
-			if (!toolName || !rawJson) {
+			if (!rawJson) {
 				return err(`usage: ${mcp.usage}`);
 			}
 			let parsedJson: unknown;
@@ -61,7 +92,7 @@ export const mcp: Command = {
 			} catch {
 				return err("Invalid arguments: expected valid JSON");
 			}
-			const validated = validateToolArguments(toolName, parsedJson);
+			const validated = validateToolArguments(toolName, parsedJson, toolset);
 			if (!validated.ok) return err(validated.error);
 			return ok([`ok: ${toolName} ${JSON.stringify(validated.value)}`]);
 		}

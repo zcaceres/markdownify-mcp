@@ -1,6 +1,7 @@
 import http from "node:http";
 import { toNodeHandler } from "@modelcontextprotocol/node";
 import { createMcpHandler } from "@modelcontextprotocol/server";
+import type { Toolset } from "./mcp-contract/nouns.js";
 import { createServer } from "./server.js";
 import { startupDiagnostics } from "./server-config/queries.js";
 import {
@@ -21,6 +22,7 @@ export type CliConfig = {
 	allowedHosts: string[];
 	allowedOrigins: string[];
 	allowUnrestrictedPaths: boolean;
+	toolset: Toolset;
 };
 
 export type HttpServerOptions = {
@@ -29,6 +31,7 @@ export type HttpServerOptions = {
 	allowedHosts?: string[];
 	allowedOrigins?: string[];
 	allowUnrestrictedPaths?: boolean;
+	toolset?: Toolset;
 };
 
 export function parseCliArgs(
@@ -72,6 +75,7 @@ export function createHttpServer(options: HttpServerOptions): http.Server {
 		allowedHosts = [],
 		allowedOrigins = [],
 		allowUnrestrictedPaths,
+		toolset = "classic",
 	} = options;
 
 	const mcpHandler = createMcpHandler(
@@ -79,6 +83,7 @@ export function createHttpServer(options: HttpServerOptions): http.Server {
 			createServer({
 				transport: "http",
 				allowUnrestrictedPaths,
+				toolset,
 			}),
 		{
 			onerror: (error) => {
@@ -138,6 +143,7 @@ export async function startHttpServer(
 			allowedHosts: options.allowedHosts ?? [],
 			allowedOrigins: options.allowedOrigins ?? [],
 			allowUnrestrictedPaths: options.allowUnrestrictedPaths === true,
+			toolset: options.toolset ?? "classic",
 		},
 		process.env,
 		expandHome,

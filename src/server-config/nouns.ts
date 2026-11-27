@@ -1,3 +1,5 @@
+import type { Toolset } from "../mcp-contract/nouns.js";
+
 export type TransportMode = "stdio" | "http";
 
 export type ServerConfiguration = {
@@ -7,6 +9,7 @@ export type ServerConfiguration = {
 	readonly allowedHosts: readonly string[];
 	readonly allowedOrigins: readonly string[];
 	readonly allowUnrestrictedPaths: boolean;
+	readonly toolset: Toolset;
 };
 
 export type HttpGuardConfig = {

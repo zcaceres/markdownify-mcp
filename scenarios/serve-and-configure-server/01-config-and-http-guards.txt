@@ -8,6 +8,7 @@ port: 3000
 allowed-hosts: (default)
 allowed-origins: (default)
 allow-unrestricted-paths: false
+toolset: classic
 
 > config set MCP_TRANSPORT stdio
 config MCP_TRANSPORT = stdio
@@ -28,16 +29,17 @@ port: 4123
 allowed-hosts: mcp.example.com, localhost:4123
 allowed-origins: https://app.example.com
 allow-unrestricted-paths: true
+toolset: classic
 
 # SC-2 (D2, D32): unknown CLI flags, positional args, bad transport, bad port, and empty host fail fast
 > serve config --transprot=http
-error: Unknown CLI argument "--transprot=http". Supported flags: --transport=stdio|http, --host=HOST, --port=N, --allow-unrestricted-paths
+error: Unknown CLI argument "--transprot=http". Supported flags: --transport=stdio|http, --host=HOST, --port=N, --allow-unrestricted-paths, --toolset=classic|compact
 
 > serve config --allow-unrestricted
-error: Unknown CLI argument "--allow-unrestricted". Supported flags: --transport=stdio|http, --host=HOST, --port=N, --allow-unrestricted-paths
+error: Unknown CLI argument "--allow-unrestricted". Supported flags: --transport=stdio|http, --host=HOST, --port=N, --allow-unrestricted-paths, --toolset=classic|compact
 
 > serve config extra-arg
-error: Unknown CLI argument "extra-arg". Supported flags: --transport=stdio|http, --host=HOST, --port=N, --allow-unrestricted-paths
+error: Unknown CLI argument "extra-arg". Supported flags: --transport=stdio|http, --host=HOST, --port=N, --allow-unrestricted-paths, --toolset=classic|compact
 
 > serve config --transport=ws
 error: Unknown transport "ws". Supported values: stdio, http

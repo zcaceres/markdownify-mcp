@@ -24,6 +24,7 @@ export const serve: Command = {
 				`allowed-hosts: ${cfg.allowedHosts.length > 0 ? cfg.allowedHosts.join(", ") : "(default)"}`,
 				`allowed-origins: ${cfg.allowedOrigins.length > 0 ? cfg.allowedOrigins.join(", ") : "(default)"}`,
 				`allow-unrestricted-paths: ${cfg.allowUnrestrictedPaths}`,
+				`toolset: ${cfg.toolset}`,
 			]);
 		}
 

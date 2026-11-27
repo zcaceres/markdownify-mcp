@@ -7,6 +7,7 @@ import {
 } from "./local-file-conversion/verbs.js";
 import { Markdownify, type MarkdownResult } from "./Markdownify.js";
 import { validateMarkdownRetrievalRequest } from "./markdown-retrieval/verbs.js";
+import type { Toolset } from "./mcp-contract/nouns.js";
 import {
 	serverCacheHints,
 	serverInstructions,
@@ -23,15 +24,17 @@ import { validateWebRequest } from "./web-conversion/verbs.js";
 export type CreateServerOptions = {
 	readonly transport?: "stdio" | "http";
 	readonly allowUnrestrictedPaths?: boolean;
+	readonly toolset?: Toolset;
 };
 
 export function createServer(options: CreateServerOptions = {}) {
 	const transport = options.transport ?? "stdio";
+	const toolset: Toolset = options.toolset ?? "classic";
 	const server = new Server(serverMetadata(), {
 		capabilities: {
 			tools: {},
 		},
-		instructions: serverInstructions(),
+		instructions: serverInstructions(toolset),
 		cacheHints: serverCacheHints(),
 	});
 
@@ -50,7 +53,7 @@ export function createServer(options: CreateServerOptions = {}) {
 
 	server.setRequestHandler("tools/list", async () => {
 		return {
-			tools: [...tools.CLASSIC_TOOLS],
+			tools: [...tools.toolsForToolset(toolset)],
 		};
 	});
 
@@ -58,7 +61,7 @@ export function createServer(options: CreateServerOptions = {}) {
 		const { name, arguments: args } = request.params;
 
 		try {
-			const validatedResult = validateToolArguments(name, args);
+			const validatedResult = validateToolArguments(name, args, toolset);
 			if (!validatedResult.ok) {
 				throw new Error(validatedResult.error);
 			}
@@ -67,7 +70,8 @@ export function createServer(options: CreateServerOptions = {}) {
 			switch (name) {
 				case tools.YouTubeToMarkdownTool.name:
 				case tools.BingSearchResultToMarkdownTool.name:
-				case tools.WebpageToMarkdownTool.name: {
+				case tools.WebpageToMarkdownTool.name:
+				case tools.ConvertWebUrlTool.name: {
 					const validatedWeb = validateWebRequest(name, validatedArgs.url);
 					if (!validatedWeb.ok) {
 						throw new Error(validatedWeb.error);
@@ -83,7 +87,8 @@ export function createServer(options: CreateServerOptions = {}) {
 				case tools.AudioToMarkdownTool.name:
 				case tools.DocxToMarkdownTool.name:
 				case tools.XlsxToMarkdownTool.name:
-				case tools.PptxToMarkdownTool.name: {
+				case tools.PptxToMarkdownTool.name:
+				case tools.ConvertLocalFileTool.name: {
 					const validatedFile = validateLocalFileRequest(
 						name,
 						validatedArgs.filepath,
@@ -98,7 +103,8 @@ export function createServer(options: CreateServerOptions = {}) {
 					break;
 				}
 
-				case tools.GitRepoToMarkdownTool.name: {
+				case tools.GitRepoToMarkdownTool.name:
+				case tools.ConvertGitRepoTool.name: {
 					const validatedRepo = validateGitRepoRequest(
 						validatedArgs.url,
 						validatedArgs.branch,

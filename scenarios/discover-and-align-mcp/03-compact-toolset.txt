@@ -1,0 +1,55 @@
+# Slice 03: Compact Toolset Selection and Strict Enforcement (MC-7, D2, D3, D8, D32, D47, D48, D49, D51, D52)
+
+# MC-7 (D2, D32, D51): Server Configuration defaults to classic, respects MCP_TOOLSET, lets CLI win, and fails fast on unknown values
+> serve config
+transport: stdio
+host: 127.0.0.1
+port: 3000
+allowed-hosts: (default)
+allowed-origins: (default)
+allow-unrestricted-paths: false
+toolset: classic
+
+> config set MCP_TOOLSET compact
+config MCP_TOOLSET = compact
+
+> serve config
+transport: stdio
+host: 127.0.0.1
+port: 3000
+allowed-hosts: (default)
+allowed-origins: (default)
+allow-unrestricted-paths: false
+toolset: compact
+
+> serve config --toolset=classic
+transport: stdio
+host: 127.0.0.1
+port: 3000
+allowed-hosts: (default)
+allowed-origins: (default)
+allow-unrestricted-paths: false
+toolset: classic
+
+> serve config --toolset=minimal
+error: Unknown toolset "minimal". Supported values: classic, compact
+
+# MC-7 (D47, D48, D49, D51, D52): compact Toolset exposes 4 capability tools that pass full cross-provider contract audit
+> mcp audit compact
+ok: audited 4 tools (0 issues)
+
+# MC-7 (D8, D51, D52): strict Toolset enforcement accepts compact tools in compact mode and rejects unexposed classic names (and vice versa)
+> mcp validate-args convert-web-url {"url":"https://example.com"} toolset=compact
+ok: convert-web-url {"url":"https://example.com"}
+
+> mcp validate-args convert-local-file {"filepath":"/data/report.pdf"} toolset=compact
+ok: convert-local-file {"filepath":"/data/report.pdf"}
+
+> mcp validate-args convert-git-repo {"url":"octocat/Hello-World","branch":"main","compress":true} toolset=compact
+ok: convert-git-repo {"url":"octocat/Hello-World","branch":"main","compress":true}
+
+> mcp validate-args pdf-to-markdown {"filepath":"/data/report.pdf"} toolset=compact
+error: Tool not found
+
+> mcp validate-args convert-local-file {"filepath":"/data/report.pdf"} toolset=classic
+error: Tool not found

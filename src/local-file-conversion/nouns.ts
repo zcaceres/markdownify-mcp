@@ -15,6 +15,7 @@ export const LOCAL_FILE_TOOLS = [
 	"docx-to-markdown",
 	"xlsx-to-markdown",
 	"pptx-to-markdown",
+	"convert-local-file",
 ] as const;
 
 export type LocalFileTool = (typeof LOCAL_FILE_TOOLS)[number];

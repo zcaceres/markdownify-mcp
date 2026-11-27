@@ -5,6 +5,7 @@ import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import {
 	auditToolCatalog,
 	CLASSIC_OPEN_WORLD_BY_TOOL,
+	COMPACT_OPEN_WORLD_BY_TOOL,
 } from "./mcp-contract/queries.js";
 import { createServer } from "./server.js";
 
@@ -318,6 +319,91 @@ describe("MCP server boundary (WU-1, D8)", () => {
 					"MD_ALLOWED_PATHS is set but contains no valid directories",
 				);
 			});
+		} finally {
+			if (savedAllowed === undefined) delete process.env.MD_ALLOWED_PATHS;
+			else process.env.MD_ALLOWED_PATHS = savedAllowed;
+			if (savedOptOut === undefined)
+				delete process.env.MCP_ALLOW_UNRESTRICTED_PATHS;
+			else process.env.MCP_ALLOW_UNRESTRICTED_PATHS = savedOptOut;
+		}
+	});
+
+	test("compact Toolset exposes 4 capability tools, enforces strict Toolset membership, HTTP D9 gating, and structured outputs (MC-7, D9, D47-D52)", async () => {
+		const savedAllowed = process.env.MD_ALLOWED_PATHS;
+		const savedOptOut = process.env.MCP_ALLOW_UNRESTRICTED_PATHS;
+		delete process.env.MD_ALLOWED_PATHS;
+		delete process.env.MCP_ALLOW_UNRESTRICTED_PATHS;
+		const sampleMd = resolve(import.meta.dir, "sample-data", "test.md");
+		const expectedRealPath = realpathSync(sampleMd);
+
+		try {
+			await withClient(
+				async (client) => {
+					const listed = await client.listTools();
+					expect(listed.tools.map((t) => t.name).sort()).toEqual([
+						"convert-git-repo",
+						"convert-local-file",
+						"convert-web-url",
+						"get-markdown-file",
+					]);
+					const audit = auditToolCatalog(
+						listed.tools,
+						COMPACT_OPEN_WORLD_BY_TOOL,
+					);
+					expect(audit.issues).toEqual([]);
+					expect(audit.ok).toBe(true);
+					expect(client.getInstructions()).toContain("convert-web-url");
+
+					const classicRejected = await client.callTool({
+						name: "pdf-to-markdown",
+						arguments: { filepath: "/data/report.pdf" },
+					});
+					expect(classicRejected.isError).toBe(true);
+					expect(firstText(classicRejected)).toBe("Error: Tool not found");
+
+					const mdRes = await client.callTool({
+						name: "get-markdown-file",
+						arguments: { filepath: sampleMd },
+					});
+					expect(mdRes.isError).toBe(false);
+					expect(mdRes.structuredContent).toEqual({
+						path: expectedRealPath,
+						markdown: expect.stringContaining("# Test Markdown Sample"),
+					});
+				},
+				{ toolset: "compact" },
+			);
+
+			await withClient(
+				async (client) => {
+					const localBlocked = await client.callTool({
+						name: "convert-local-file",
+						arguments: { filepath: "/data/report.pdf" },
+					});
+					expect(localBlocked.isError).toBe(true);
+					expect(firstText(localBlocked)).toContain(
+						"Local file tools are disabled in HTTP mode",
+					);
+
+					const webBadUrl = await client.callTool({
+						name: "convert-web-url",
+						arguments: { url: "not-a-url" },
+					});
+					expect(webBadUrl.isError).toBe(true);
+					expect(firstText(webBadUrl)).toBe('Error: Invalid URL "not-a-url"');
+
+					const gitBadBranch = await client.callTool({
+						name: "convert-git-repo",
+						arguments: {
+							url: "octocat/Hello-World",
+							branch: "--upload-pack=id",
+						},
+					});
+					expect(gitBadBranch.isError).toBe(true);
+					expect(firstText(gitBadBranch)).toContain("Invalid branch name");
+				},
+				{ transport: "http", toolset: "compact" },
+			);
 		} finally {
 			if (savedAllowed === undefined) delete process.env.MD_ALLOWED_PATHS;
 			else process.env.MD_ALLOWED_PATHS = savedAllowed;

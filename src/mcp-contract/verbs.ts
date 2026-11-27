@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { err, ok, type Result } from "../shared/types.js";
-import type { StructuredToolResult, ValidatedToolArguments } from "./nouns.js";
+import type {
+	StructuredToolResult,
+	Toolset,
+	ValidatedToolArguments,
+} from "./nouns.js";
 
 const UrlOnlySchema = z.strictObject({
 	url: z.string().optional(),
@@ -16,7 +20,7 @@ const GitRepoSchema = z.strictObject({
 	compress: z.boolean().optional(),
 });
 
-const TOOL_ARGUMENT_SCHEMAS: Readonly<
+const CLASSIC_TOOL_ARGUMENT_SCHEMAS: Readonly<
 	Record<string, z.ZodType<ValidatedToolArguments>>
 > = {
 	"youtube-to-markdown": UrlOnlySchema,
@@ -32,6 +36,15 @@ const TOOL_ARGUMENT_SCHEMAS: Readonly<
 	"git-repo-to-markdown": GitRepoSchema,
 };
 
+const COMPACT_TOOL_ARGUMENT_SCHEMAS: Readonly<
+	Record<string, z.ZodType<ValidatedToolArguments>>
+> = {
+	"convert-web-url": UrlOnlySchema,
+	"convert-local-file": FilepathOnlySchema,
+	"convert-git-repo": GitRepoSchema,
+	"get-markdown-file": FilepathOnlySchema,
+};
+
 export const formatZodError = (error: z.ZodError): string => {
 	const details = error.issues
 		.map((issue) => {
@@ -42,13 +55,18 @@ export const formatZodError = (error: z.ZodError): string => {
 	return `Invalid arguments: ${details}`;
 };
 
-/** Strictly validate tool call arguments per tool, rejecting unknown/cross-tool keys (D8, D52). */
+/** Strictly validate tool call arguments per tool within the active Toolset, rejecting unknown/cross-tool keys (D8, D51, D52). */
 export const validateToolArguments = (
 	toolName: string,
 	rawArgs: unknown,
+	toolset: Toolset = "classic",
 ): Result<ValidatedToolArguments, string> => {
-	const schema = Object.hasOwn(TOOL_ARGUMENT_SCHEMAS, toolName)
-		? TOOL_ARGUMENT_SCHEMAS[toolName]
+	const registry =
+		toolset === "compact"
+			? COMPACT_TOOL_ARGUMENT_SCHEMAS
+			: CLASSIC_TOOL_ARGUMENT_SCHEMAS;
+	const schema = Object.hasOwn(registry, toolName)
+		? registry[toolName]
 		: undefined;
 	if (!schema) {
 		return err("Tool not found");
