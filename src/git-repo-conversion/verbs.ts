@@ -14,9 +14,9 @@ import {
 import type {
 	GitRepoConversionPorts,
 	RepomixError,
-	ResolveRepoHost,
+	ResolveHost,
 } from "./ports.js";
-import { gitRepoMarkdownResult } from "./queries.js";
+import { markdownResult } from "./queries.js";
 
 const isBlockedHostname = (hostname: string): boolean =>
 	hostname === "" ||
@@ -189,7 +189,7 @@ export const parseGitRepoLimits = (
 
 export const validateRepoDestination = async (
 	repoUrl: GitRepoIdentifier,
-	resolveHost: ResolveRepoHost,
+	resolveHost: ResolveHost,
 ): Promise<Result<void, string>> => {
 	if (!repoUrl.includes("://")) {
 		return ok(undefined);
@@ -240,5 +240,5 @@ export const convertGitRepo = async (
 		return checked;
 	}
 
-	return ok(gitRepoMarkdownResult(checked.value));
+	return ok(markdownResult(checked.value));
 };

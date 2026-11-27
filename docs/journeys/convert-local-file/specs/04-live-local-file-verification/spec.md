@@ -35,7 +35,7 @@ Exercise the **Convert Local File** journey end-to-end against the real host fil
 
 **Out:**
 
-- Slim Docker `markitdown[pdf]` image check — stays a by-hand check in `runbook.md` (`bash scripts/docker-smoke-test.sh`).
+- Slim Docker `markitdown[pdf]` image check — automated via `bun run harness docker` in **Serve & Configure Server** (`D34`).
 
 ## Vocabulary
 

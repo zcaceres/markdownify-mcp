@@ -89,8 +89,8 @@ export const createFilesystemMock = (): FilesystemMock => {
 		stagedCount: () => totalStaged,
 		expandHome: (filePath: string): string => {
 			if (filePath === "~") return MOCK_HOME_DIR;
-			if (filePath.startsWith("~/")) {
-				return `${MOCK_HOME_DIR}/${filePath.slice(2)}`;
+			if (filePath.startsWith("~/") || filePath.startsWith("~\\")) {
+				return `${MOCK_HOME_DIR}/${filePath.slice(2).replaceAll("\\", "/")}`;
 			}
 			return filePath;
 		},

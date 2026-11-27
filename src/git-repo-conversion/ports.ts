@@ -1,13 +1,13 @@
 import type { Result } from "../shared/types.js";
 
-export type ResolvedRepoAddress = {
+export type ResolvedAddress = {
 	readonly address: string;
 	readonly family: number;
 };
 
-export type ResolveRepoHost = (
+export type ResolveHost = (
 	hostname: string,
-) => Promise<Result<readonly ResolvedRepoAddress[], string>>;
+) => Promise<Result<readonly ResolvedAddress[], string>>;
 
 export type RepomixOutput = {
 	readonly stdout: string;
@@ -25,6 +25,6 @@ export type RunRepomix = (
 ) => Promise<Result<RepomixOutput, RepomixError>>;
 
 export type GitRepoConversionPorts = {
-	readonly resolveHost: ResolveRepoHost;
+	readonly resolveHost: ResolveHost;
 	readonly runRepomix: RunRepomix;
 };

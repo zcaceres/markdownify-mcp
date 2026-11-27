@@ -854,3 +854,38 @@ test("Markdownify.fromRepo rejects invalid MD_REPOMIX_TIMEOUT_MS before invoking
 		else process.env.MD_REPOMIX_TIMEOUT_MS = saved;
 	}
 });
+
+test("Markdownify.toMarkdown reports fetch timeout when response body stalls past MD_FETCH_TIMEOUT_MS (WU-6, D13)", async () => {
+	const saved = process.env.MD_FETCH_TIMEOUT_MS;
+	process.env.MD_FETCH_TIMEOUT_MS = "40";
+	global.fetch = mock((_url: string, init?: RequestInit) => {
+		const stream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(new TextEncoder().encode("<html>partial"));
+				init?.signal?.addEventListener("abort", () => {
+					controller.error(
+						init.signal?.reason ??
+							new DOMException("The operation was aborted.", "TimeoutError"),
+					);
+				});
+			},
+		});
+		return Promise.resolve(
+			new Response(stream, {
+				status: 200,
+				headers: { "content-type": "text/html" },
+			}),
+		);
+	}) as any;
+
+	try {
+		await expect(
+			Markdownify.toMarkdown({ url: "https://93.184.216.34/stalled-body" }),
+		).rejects.toThrow(
+			"Fetch timed out after 40ms for https://93.184.216.34/stalled-body",
+		);
+	} finally {
+		if (saved === undefined) delete process.env.MD_FETCH_TIMEOUT_MS;
+		else process.env.MD_FETCH_TIMEOUT_MS = saved;
+	}
+});

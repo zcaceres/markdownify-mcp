@@ -15,10 +15,7 @@ import {
 	type LocalFileTool,
 	type MarkdownResult,
 } from "./nouns.js";
-import type {
-	LocalFileConversionPorts,
-	LocalMarkitdownError,
-} from "./ports.js";
+import type { LocalFileConversionPorts, MarkitdownError } from "./ports.js";
 import { markdownResult } from "./queries.js";
 
 export {
@@ -77,7 +74,7 @@ export const validateLocalFileRequest = (
 	return ok({ tool, filePath: LocalFilePath(trimmed) });
 };
 
-export const formatMarkitdownError = (error: LocalMarkitdownError): string => {
+export const formatMarkitdownError = (error: MarkitdownError): string => {
 	switch (error.kind) {
 		case "missing":
 			return "markitdown executable not found";

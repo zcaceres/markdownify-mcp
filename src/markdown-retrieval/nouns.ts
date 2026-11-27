@@ -15,7 +15,7 @@ export type MarkdownRetrievalOptions = {
 	readonly pathDelimiter?: string;
 };
 
-export type MarkdownFileResult = {
+export type MarkdownResult = {
 	readonly path: string;
 	readonly text: string;
 };

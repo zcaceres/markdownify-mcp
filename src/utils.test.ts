@@ -26,6 +26,11 @@ describe("expandHome", () => {
 		expect(result).toBe(path.join(os.homedir(), "documents"));
 	});
 
+	test("expands ~\\path to home directory (D18, D25)", () => {
+		const result = expandHome("~\\documents");
+		expect(result).toBe(path.join(os.homedir(), "documents"));
+	});
+
 	test("expands lone ~ to home directory", () => {
 		const result = expandHome("~");
 		expect(result).toBe(os.homedir());
@@ -656,6 +661,24 @@ describe("getAllowedPaths / assertPathAllowed", () => {
 			fs.writeFileSync(secret, "top secret");
 			const link = path.join(allowed, "link.txt");
 			fs.symlinkSync(secret, link);
+			process.env.MD_ALLOWED_PATHS = allowed;
+			expect(() => assertPathAllowed(link)).toThrow(
+				"outside the allowed directories",
+			);
+		} finally {
+			fs.rmSync(tmp, { recursive: true, force: true });
+		}
+	});
+
+	test("assertPathAllowed rejects dangling symlink inside allowed dir pointing outside (D21, I2)", () => {
+		const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mdfy-dangling-"));
+		try {
+			const allowed = path.join(tmp, "allowed");
+			const outside = path.join(tmp, "outside");
+			fs.mkdirSync(allowed);
+			fs.mkdirSync(outside);
+			const link = path.join(allowed, "dangling.pdf");
+			fs.symlinkSync(path.join(outside, "missing.pdf"), link);
 			process.env.MD_ALLOWED_PATHS = allowed;
 			expect(() => assertPathAllowed(link)).toThrow(
 				"outside the allowed directories",

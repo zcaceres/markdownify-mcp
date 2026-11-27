@@ -21,7 +21,7 @@ Every external system is mocked in memory in the harness and starts from its fix
 | `scenarios/convert-web-url/01-basic-webpage.txt`                    | Tracer bullet: request validation, HTTP 200 fetch, non-2xx rejection, Temporary File staging & cleanup, `markitdown` conversion, empty output, converter/network failure, and path-less Markdown Result [WU-1, WU-3, WU-4, WU-7, WU-10, WU-11, WU-14] |
 | `scenarios/convert-web-url/02-ssrf-and-redirects.txt`               | SSRF scheme/host/IP/DNS validation and manual redirect traversal with per-hop SSRF validation and redirect cap [WU-2, WU-5]                                                                                                                           |
 | `scenarios/convert-web-url/03-format-inference-and-passthrough.txt` | `Content-Type`/pathname/`.html` extension inference, canonical YouTube/Bing direct pass-through without staging, and unconverted raw HTML rejection with cleanup [WU-8, WU-9, WU-12]                                                                  |
-| `scenarios/convert-web-url/04-timeouts-and-size-limits.txt`         | Fetch timeout (30s), streaming download size cap (25 MB), `markitdown` timeout (60s) with cleanup, and `MD_*` env var overrides [WU-6, WU-13]                                                                                                         |
+| `scenarios/convert-web-url/04-timeouts-and-size-limits.txt`         | Default fetch timeout, streaming download cap, `markitdown` timeout with cleanup, and `MD_*` env var overrides (`D7`, `D13`) [WU-6, WU-13]                                                                                                            |
 
 ```bash
 bun run harness run scenarios/convert-web-url

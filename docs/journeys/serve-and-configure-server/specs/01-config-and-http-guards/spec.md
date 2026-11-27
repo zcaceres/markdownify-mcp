@@ -16,7 +16,7 @@ and enforce **D32** (fail fast on unknown CLI flags):
    invalid port, or empty host (**D1, D2, D23, D32**).
 2. Evaluate incoming HTTP requests via `checkHttpRequest` (routing `/` and `/mcp` → 404 otherwise, `Host` header check
    → 403, `Origin` header check → 403, `POST`-only → 405 with `Allow: POST`, **D33, I5**).
-3. Derive HTTP startup notices via `startupNotices(config, env, expandHome)` (**D9, D23, D24, D33**).
+3. Derive HTTP Startup Diagnostics via `startupDiagnostics(config, env, expandHome)` (**D9, D23, D24, D33, D35, D36**).
 
 **Done when:** the tests below pass, `bun run lint` and `bun run build` pass, and
 `scenarios/serve-and-configure-server/01-config-and-http-guards.txt` replays cleanly
@@ -35,16 +35,16 @@ and enforce **D32** (fail fast on unknown CLI flags):
 
 ## Vocabulary
 
-- **Operator**, **Server Configuration**, **Allowed Paths**, **serve**, **validate**.
+- **Operator**, **Server Configuration**, **Allowed Paths**, **File Access Policy** _(derived)_, **Startup Diagnostic** _(derived)_, **serve**, **validate**.
 
 ## What it reads and writes
 
-| Payload                     | Shape                                                                                                                                                                                                                 |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `TransportMode`             | `"stdio" \| "http"`                                                                                                                                                                                                   |
-| `ServerConfiguration`       | `{ readonly transport: TransportMode; readonly port: number; readonly host: string; readonly allowedHosts: readonly string[]; readonly allowedOrigins: readonly string[]; readonly allowUnrestrictedPaths: boolean }` |
-| `HttpRequestGuardResult`    | `{ readonly allowed: true } \| { readonly allowed: false; readonly status: 403 \| 404 \| 405; readonly message: string; readonly allowHeader?: "POST" }`                                                              |
-| `StartupNotice` _(derived)_ | `{ readonly level: "notice" \| "warning"; readonly message: string }`                                                                                                                                                 |
+| Payload                         | Shape                                                                                                                                                                                                                 |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TransportMode`                 | `"stdio" \| "http"`                                                                                                                                                                                                   |
+| `ServerConfiguration`           | `{ readonly transport: TransportMode; readonly port: number; readonly host: string; readonly allowedHosts: readonly string[]; readonly allowedOrigins: readonly string[]; readonly allowUnrestrictedPaths: boolean }` |
+| `HttpRequestGuardResult`        | `{ readonly allowed: true } \| { readonly allowed: false; readonly status: 403 \| 404 \| 405; readonly message: string; readonly allowHeader?: "POST" }`                                                              |
+| `StartupDiagnostic` _(derived)_ | `{ readonly level: "notice" \| "warning"; readonly message: string }`                                                                                                                                                 |
 
 ## Verbs (`src/server-config/verbs.ts`)
 
@@ -58,9 +58,9 @@ and enforce **D32** (fail fast on unknown CLI flags):
 
 ## Queries (`src/server-config/queries.ts`)
 
-| Function                                  | Definition                                                                                                                                                  |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `startupNotices(config, env, expandHome)` | Computes HTTP startup notices/warnings for `MD_ALLOWED_PATHS` (disabled D9, unrestricted opt-in D23, invalid empty D24) and non-loopback host binding (D33) |
+| Function                                      | Definition                                                                                                                                                              |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `startupDiagnostics(config, env, expandHome)` | Computes HTTP Startup Diagnostics (`D36`) for File Access Policy (`D35`: disabled D9, unrestricted opt-in D23, invalid empty D24) and non-loopback host binding (`D33`) |
 
 ## Harness
 
@@ -68,14 +68,14 @@ and enforce **D32** (fail fast on unknown CLI flags):
 | ---------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------- |
 | `serve config [flags...]`                                  | domain | Parses Server Configuration from `[flags...]` + `world.env` and prints resolved settings or `error: ...` |
 | `serve check-http <method> <path> [host=<h>] [origin=<o>]` | domain | Evaluates HTTP routing and `Host`/`Origin` guards against current `world.env` Server Configuration       |
-| `serve notices [flags...]`                                 | domain | Prints derived HTTP startup notices/warnings for `[flags...]` + `world.env` (or `(none)`)                |
+| `serve diagnostics [flags...]`                             | domain | Prints derived HTTP Startup Diagnostics for `[flags...]` + `world.env` (or `(none)`)                     |
 
 ## Placeholders
 
-_(None — all rules are settled by D1, D2, D6, D9, D23, D24, D32, D33, and I5.)_
+_(None — all rules are settled by D1, D2, D6, D9, D23, D24, D32, D33, D35, D36, and I5.)_
 
 ## Tests
 
-- **Example tests** (`src/server-config/server-config.test.ts`): unit tests for `parseServerConfiguration` (defaults, CLI overrides, unknown flag D32, positional arg D32, invalid transport/port/host), `checkHttpRequest` (404, 405, 403 Host, 403 Origin, 200 pass, non-loopback rules), and `startupNotices` (D9, D23, D24, D33).
+- **Example tests** (`src/server-config/server-config.test.ts`): unit tests for `parseServerConfiguration` (defaults, CLI overrides, unknown flag D32, positional arg D32, invalid transport/port/host), `checkHttpRequest` (404, 405, 403 Host, 403 Origin, 200 pass, non-loopback rules), and `startupDiagnostics` (D9, D23, D24, D33, D35, D36).
 - **HTTP parser tests** (`src/http.test.ts`): verify `parseCliArgs` rejects unknown CLI flags (`D32`).
 - **Scenario:** `scenarios/serve-and-configure-server/01-config-and-http-guards.txt`.

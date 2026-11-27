@@ -11,19 +11,19 @@ export type {
 	StatFile,
 } from "../shared/local-access.js";
 
-export type LocalMarkitdownError =
+export type MarkitdownError =
 	| { readonly kind: "missing" }
 	| { readonly kind: "timeout"; readonly timeoutMs: number }
 	| { readonly kind: "failed"; readonly reason: string };
 
-export type ConvertLocalWithMarkitdown = (
+export type ConvertWithMarkitdown = (
 	inputPath: string,
 	timeoutMs: number,
-) => Promise<Result<string, LocalMarkitdownError>>;
+) => Promise<Result<string, MarkitdownError>>;
 
 export type LocalFileConversionPorts = {
 	readonly expandHome: ExpandHome;
 	readonly resolveRealpath: ResolveRealpath;
 	readonly statFile: StatFile;
-	readonly convertWithMarkitdown: ConvertLocalWithMarkitdown;
+	readonly convertWithMarkitdown: ConvertWithMarkitdown;
 };

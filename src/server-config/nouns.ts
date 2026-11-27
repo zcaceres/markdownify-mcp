@@ -31,7 +31,7 @@ export type HttpRequestGuardResult =
 			readonly allowHeader?: "POST";
 	  };
 
-export type StartupNotice = {
+export type StartupDiagnostic = {
 	readonly level: "notice" | "warning";
 	readonly message: string;
 };

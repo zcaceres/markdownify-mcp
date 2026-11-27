@@ -3,7 +3,7 @@
 Covers [SC-3](../../acceptance-criteria.md#3-guard-http-requests--serve-stateless-mcp) and
 [SC-8](../../acceptance-criteria.md#3-guard-http-requests--serve-stateless-mcp) from
 [Serve & Configure Server](../../plan.md). Cites **D1, D3, D8, D9, D23, D33, I5** from
-[`REQUIREMENTS.md`](../../../../REQUIREMENTS.md).
+[`REQUIREMENTS.md`](../../../../../REQUIREMENTS.md).
 
 ## Scope
 

@@ -31,7 +31,7 @@ streaming download cap and `AbortSignal.timeout` / `execFile` timeout in `src/Ma
 
 **Out:**
 
-- `repomix` subprocess timeout — belongs to **Convert Git Repository** (`U2`).
+- `repomix` subprocess timeout — belongs to **Convert Git Repository** (`D28`).
 - Custom auth headers or cookies — deferred (`U5`).
 
 ## Vocabulary

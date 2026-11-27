@@ -767,4 +767,38 @@ describe("convertWebUrl Slice 04 timeouts and size limits (WU-6, WU-13, D7, D13,
 		expect(result).toEqual(err("Conversion timed out after 60000ms"));
 		expect(cleanedUp).toEqual(["/tmp/markdownify-1"]);
 	});
+
+	test("appends D22 slim-Docker hint on MissingDependencyException during Web URL conversion (D4, D22)", async () => {
+		const result = await convertWebUrl(
+			{
+				tool: "webpage-to-markdown",
+				url: WebUrl("https://example.com/doc.docx"),
+			},
+			{
+				resolveHost: async () => ok([{ address: "93.184.216.34", family: 4 }]),
+				fetchWebUrl: async (url) =>
+					ok({
+						status: 200,
+						body: new Uint8Array([0x50, 0x4b, 0x03, 0x04]),
+						finalUrl: url,
+					}),
+				stageTempFile: async () =>
+					ok({
+						path: "/tmp/markdownify-1/file.docx",
+						cleanupDir: "/tmp/markdownify-1",
+					}),
+				cleanupTempFile: async () => {},
+				convertWithMarkitdown: async () =>
+					err({
+						kind: "failed",
+						reason: "DocxConverter threw MissingDependencyException",
+					}),
+			},
+		);
+		expect(result).toEqual(
+			err(
+				"Conversion failed: DocxConverter threw MissingDependencyException. This format requires markitdown[all] (full local install) rather than the slim Docker pdf profile.",
+			),
+		);
+	});
 });

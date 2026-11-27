@@ -92,25 +92,25 @@ http: 403 Forbidden: invalid Host header
 > serve check-http POST /mcp host=mcp.example.com origin=https://app.example.com
 http: allow
 
-# SC-7 (D6, D9, D23, D24, D33): HTTP startup notices reflect file-access policy and non-loopback binding
+# SC-7 (D6, D9, D23, D24, D33, D35, D36): HTTP Startup Diagnostics reflect File Access Policy and non-loopback binding
 > reset
 the world is back to its fixtures
 
-> serve notices --transport=http
+> serve diagnostics --transport=http
 notice: Notice: starting HTTP transport with MD_ALLOWED_PATHS unset; local file tools are disabled by default.
 
-> serve notices --transport=http --allow-unrestricted-paths --host=0.0.0.0
+> serve diagnostics --transport=http --allow-unrestricted-paths --host=0.0.0.0
 warning: Warning: starting HTTP transport with unrestricted local file access opted in; file-input tools can read any file accessible to this process.
 warning: Warning: binding unauthenticated HTTP transport to non-loopback host "0.0.0.0". Place behind an authenticating reverse proxy and set MCP_ALLOWED_HOSTS / MCP_ALLOWED_ORIGINS.
 
 > config set MD_ALLOWED_PATHS :
 config MD_ALLOWED_PATHS = :
 
-> serve notices --transport=http
+> serve diagnostics --transport=http
 warning: Warning: MD_ALLOWED_PATHS is set but contains no valid directories. Specify at least one directory or unset MD_ALLOWED_PATHS.
 
 > config set MD_ALLOWED_PATHS /data
 config MD_ALLOWED_PATHS = /data
 
-> serve notices --transport=http
+> serve diagnostics --transport=http
 (none)

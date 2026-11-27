@@ -27,9 +27,9 @@ Where this journey lives in the code. Shared pure local file-access primitives (
 `isAbsoluteOrHomePath`, `resolveFileAccessPolicy`, `checkFileAccess`, `verifyReadableFile`) move to
 `src/shared/local-access.ts` (re-exported by `src/local-file-conversion/` so bounded contexts never import each other).
 
-| Context                   | Nouns                                                                | Verbs                                                                             | Queries              | Harness commands      |
-| ------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------- | -------------------- | --------------------- |
-| `src/markdown-retrieval/` | `MarkdownFilePath`, `MarkdownRetrievalRequest`, `MarkdownFileResult` | `isMarkdownExtension`, `validateMarkdownRetrievalRequest`, `retrieveMarkdownFile` | `markdownFileResult` | `retrieve [filepath]` |
+| Context                   | Nouns                                                            | Verbs                                                                             | Queries          | Harness commands      |
+| ------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------- | ---------------- | --------------------- |
+| `src/markdown-retrieval/` | `MarkdownFilePath`, `MarkdownRetrievalRequest`, `MarkdownResult` | `isMarkdownExtension`, `validateMarkdownRetrievalRequest`, `retrieveMarkdownFile` | `markdownResult` | `retrieve [filepath]` |
 
 ## External systems
 

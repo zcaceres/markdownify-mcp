@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { err, ok } from "../shared/types.js";
 import { MarkdownFilePath } from "./nouns.js";
 import type { MarkdownRetrievalPorts } from "./ports.js";
-import { markdownFileResult } from "./queries.js";
+import { markdownResult } from "./queries.js";
 import {
 	isMarkdownExtension,
 	retrieveMarkdownFile,
@@ -54,17 +54,17 @@ describe("isMarkdownExtension & validateMarkdownRetrievalRequest (RM-1, RM-2, D8
 	});
 });
 
-describe("markdownFileResult (RM-6, RM-7, D5, D27)", () => {
+describe("markdownResult (RM-6, RM-7, D5, D27)", () => {
 	test("preserves exact UTF-8 text verbatim including empty and whitespace-only content", () => {
-		expect(markdownFileResult("/data/a.md", "# Title\n")).toEqual({
+		expect(markdownResult("/data/a.md", "# Title\n")).toEqual({
 			path: "/data/a.md",
 			text: "# Title\n",
 		});
-		expect(markdownFileResult("/data/empty.md", "")).toEqual({
+		expect(markdownResult("/data/empty.md", "")).toEqual({
 			path: "/data/empty.md",
 			text: "",
 		});
-		expect(markdownFileResult("/data/ws.md", "  \n\t ")).toEqual({
+		expect(markdownResult("/data/ws.md", "  \n\t ")).toEqual({
 			path: "/data/ws.md",
 			text: "  \n\t ",
 		});

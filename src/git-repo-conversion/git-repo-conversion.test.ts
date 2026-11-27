@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { err, ok } from "../shared/types.js";
 import { GitBranchName, GitRepoIdentifier } from "./nouns.js";
 import type { GitRepoConversionPorts } from "./ports.js";
-import { gitRepoMarkdownResult } from "./queries.js";
+import { markdownResult } from "./queries.js";
 import {
 	buildRepomixArgs,
 	checkRepomixOutput,
@@ -203,7 +203,7 @@ describe("convertGitRepo (GR-4..GR-7, D5, D28, D30, D31, I1)", () => {
 			},
 			ctx.ports,
 		);
-		expect(res).toEqual(ok(gitRepoMarkdownResult("# Packed Repo")));
+		expect(res).toEqual(ok(markdownResult("# Packed Repo")));
 		expect(ctx.seenArgs).toEqual([
 			[
 				"--remote",

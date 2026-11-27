@@ -13,9 +13,9 @@ bun run harness     # interactive (mock)
 
 ## Scenarios
 
-| Scenario                                                             | Shows                                                                                                                                                                    |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `scenarios/serve-and-configure-server/01-config-and-http-guards.txt` | Default & CLI-override Server Configuration, D32 unknown-flag rejection, HTTP 404/405 routing, Host/Origin 403 guards (I5), and startup notices [SC-1, SC-2, SC-4..SC-7] |
+| Scenario                                                             | Shows                                                                                                                                                                        |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scenarios/serve-and-configure-server/01-config-and-http-guards.txt` | Default & CLI-override Server Configuration, D32 unknown-flag rejection, HTTP 404/405 routing, Host/Origin 403 guards (I5), and Startup Diagnostics [SC-1, SC-2, SC-4..SC-7] |
 
 ```bash
 bun run harness run scenarios/serve-and-configure-server
