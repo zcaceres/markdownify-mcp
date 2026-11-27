@@ -4,7 +4,10 @@ import { isIP } from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { URL } from "node:url";
-import { isValidRemoteValue } from "repomix";
+import {
+	validateGitBranch,
+	validateRepoIdentifier,
+} from "./git-repo-conversion/verbs.js";
 import { isMarkdownExtension } from "./markdown-retrieval/verbs.js";
 import { isPrivateOrReservedIp, normalizeHostname } from "./shared/ip.js";
 import { EMPTY_ALLOWED_PATHS_MESSAGE } from "./shared/local-access.js";
@@ -154,42 +157,16 @@ export async function validateUrlDestination(
 }
 
 export function validateRepoUrl(repoUrl: string): void {
-	if (!repoUrl?.trim()) {
-		throw new Error("Repository URL is required");
-	}
-	// Block non-http(s) explicit URLs, scp-style SSH shorthand, and private/reserved targets
-	if (repoUrl.includes("://")) {
-		const parsed = new URL(repoUrl);
-		if (!["http:", "https:"].includes(parsed.protocol)) {
-			throw new Error("Only http: and https: repository URLs are allowed.");
-		}
-		validateUrl(repoUrl);
-	} else if (/^(?:[^/\s@]+@)?[^/\s@]+:/.test(repoUrl)) {
-		throw new Error(
-			`Repository shorthand "${repoUrl}" uses scp-style SSH syntax, which is not allowed. Use an http(s) URL (e.g. https://github.com/owner/repo).`,
-		);
-	}
-	if (!isValidRemoteValue(repoUrl)) {
-		throw new Error(
-			`Invalid repository URL or shorthand: ${repoUrl}. Use a GitHub URL (https://github.com/owner/repo) or shorthand (owner/repo).`,
-		);
+	const validated = validateRepoIdentifier(repoUrl);
+	if (!validated.ok) {
+		throw new Error(validated.error);
 	}
 }
 
 export function validateBranchName(branch: string): void {
-	if (!branch?.trim()) {
-		throw new Error("Invalid branch name: must not be empty.");
-	}
-	if (
-		branch.startsWith("-") ||
-		branch.includes("..") ||
-		branch.includes("@{") ||
-		branch.endsWith(".lock") ||
-		!/^[a-zA-Z0-9][a-zA-Z0-9._/@-]*$/.test(branch)
-	) {
-		throw new Error(
-			`Invalid branch name "${branch}". Branch names must not start with "-" or contain unsafe characters.`,
-		);
+	const validated = validateGitBranch(branch);
+	if (!validated.ok) {
+		throw new Error(validated.error);
 	}
 }
 

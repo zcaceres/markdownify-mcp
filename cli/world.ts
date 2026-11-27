@@ -32,6 +32,14 @@ import {
 	createNetworkMock,
 	type NetworkMock,
 } from "../src/integrations/network/mock.ts";
+import {
+	createLiveRepomix,
+	type LiveRepomix,
+} from "../src/integrations/repomix/live.ts";
+import {
+	createRepomixMock,
+	type RepomixMock,
+} from "../src/integrations/repomix/mock.ts";
 
 const projectRoot = path.resolve(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -47,6 +55,7 @@ export type MockWorld = {
 	readonly clock: ClockMock;
 	readonly network: NetworkMock;
 	readonly markitdown: MarkitdownMock;
+	readonly repomix: RepomixMock;
 	readonly filesystem: FilesystemMock;
 	readonly env: Record<string, string | undefined>;
 };
@@ -56,6 +65,7 @@ export type LiveWorld = {
 	readonly clock: LiveClock;
 	readonly network: LiveNetwork;
 	readonly markitdown: LiveMarkitdown;
+	readonly repomix: LiveRepomix;
 	readonly filesystem: LiveFilesystem;
 	readonly env: Record<string, string | undefined>;
 };
@@ -69,6 +79,7 @@ export const createWorld = (): MockWorld => {
 		clock,
 		network: createNetworkMock(clock),
 		markitdown: createMarkitdownMock(clock),
+		repomix: createRepomixMock(clock),
 		filesystem: createFilesystemMock(),
 		env: {},
 	};
@@ -79,6 +90,7 @@ export const createLiveWorld = (): LiveWorld => ({
 	clock: createLiveClock(),
 	network: createLiveNetwork(),
 	markitdown: createLiveMarkitdown(projectRoot),
+	repomix: createLiveRepomix(projectRoot),
 	filesystem: createLiveFilesystem(),
 	env: { ...process.env },
 });

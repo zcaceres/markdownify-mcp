@@ -839,3 +839,18 @@ test("Markdownify.toMarkdown enforces MD_MARKITDOWN_TIMEOUT_MS on local files wi
 		else process.env.MD_FETCH_TIMEOUT_MS = savedFetch;
 	}
 });
+
+test("Markdownify.fromRepo rejects invalid MD_REPOMIX_TIMEOUT_MS before invoking repomix (GR-7, D28)", async () => {
+	const saved = process.env.MD_REPOMIX_TIMEOUT_MS;
+	try {
+		process.env.MD_REPOMIX_TIMEOUT_MS = "0";
+		await expect(
+			Markdownify.fromRepo({ repoUrl: "octocat/Hello-World" }),
+		).rejects.toThrow(
+			'Invalid MD_REPOMIX_TIMEOUT_MS "0": must be a positive integer',
+		);
+	} finally {
+		if (saved === undefined) delete process.env.MD_REPOMIX_TIMEOUT_MS;
+		else process.env.MD_REPOMIX_TIMEOUT_MS = saved;
+	}
+});

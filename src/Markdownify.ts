@@ -5,6 +5,14 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { gitRepoMarkdownResult } from "./git-repo-conversion/queries.js";
+import {
+	buildRepomixArgs,
+	checkRepomixOutput,
+	formatRepomixError,
+	parseGitRepoLimits,
+	validateGitRepoRequest,
+} from "./git-repo-conversion/verbs.js";
 import { statRealLocalFile } from "./integrations/filesystem/live.js";
 import {
 	formatMarkitdownError,
@@ -27,8 +35,6 @@ import {
 	resolveMarkitdownPath,
 	resolveRepomixPath,
 	shouldPassUrlToMarkitdown,
-	validateBranchName,
-	validateRepoUrl,
 	validateUrlDestination,
 } from "./utils.js";
 import { markdownResult } from "./web-conversion/queries.js";
@@ -331,56 +337,57 @@ export class Markdownify {
 		branch?: string;
 		compress?: boolean;
 	}): Promise<MarkdownResult> {
-		validateRepoUrl(repoUrl);
-		if (repoUrl.includes("://")) {
-			await validateUrlDestination(repoUrl);
+		const validated = validateGitRepoRequest(repoUrl, branch, compress);
+		if (!validated.ok) {
+			throw new Error(validated.error);
+		}
+		const limitsResult = parseGitRepoLimits(process.env);
+		if (!limitsResult.ok) {
+			throw new Error(limitsResult.error);
+		}
+		const { repomixTimeoutMs } = limitsResult.value;
+		if (validated.value.repoUrl.includes("://")) {
+			await validateUrlDestination(validated.value.repoUrl);
 		}
 
 		const projectRoot = path.resolve(__dirname, "..");
 		const repomixPath = resolveRepomixPath(projectRoot);
-
-		const args = [
-			"--remote",
-			repoUrl,
-			"--style",
-			"markdown",
-			"--stdout",
-			"--quiet",
-		];
-
-		if (branch !== undefined) {
-			validateBranchName(branch);
-			args.push("--remote-branch", branch);
-		}
-
-		if (compress) {
-			args.push("--compress");
-		}
+		const args = [...buildRepomixArgs(validated.value)];
 
 		let stdout: string;
 		let stderr: string;
 		try {
 			({ stdout, stderr } = await execFileAsync(repomixPath, args, {
 				maxBuffer: 100 * 1024 * 1024, // 100 MB
+				timeout: repomixTimeoutMs,
 			}));
 		} catch (e: unknown) {
-			const err = e as NodeJS.ErrnoException;
+			const err = e as NodeJS.ErrnoException & {
+				killed?: boolean;
+				stderr?: string;
+			};
 			if (err?.code === "ENOENT") {
 				throw new Error(
 					`repomix executable not found (looked up "${repomixPath}"). ` +
 						`Set REPOMIX_PATH or install it on PATH (\`bun add -g repomix\`).`,
 				);
 			}
-			throw e;
+			if (err?.killed || err?.code === "ETIMEDOUT") {
+				throw new Error(
+					formatRepomixError({ kind: "timeout", timeoutMs: repomixTimeoutMs }),
+				);
+			}
+			const detail =
+				err?.stderr?.trim() || (e instanceof Error ? e.message : "unknown");
+			throw new Error(formatRepomixError({ kind: "failed", reason: detail }));
 		}
 
-		if (!stdout) {
-			throw new Error(
-				`repomix produced no output${stderr ? `: ${stderr}` : ""}`,
-			);
+		const checked = checkRepomixOutput(stdout, stderr);
+		if (!checked.ok) {
+			throw new Error(checked.error);
 		}
 
-		return { text: stdout };
+		return gitRepoMarkdownResult(checked.value);
 	}
 
 	static async get({

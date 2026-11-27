@@ -7,6 +7,7 @@ import { createSession } from "../../cli/session.js";
 import { createLiveWorld } from "../../cli/world.js";
 import { createLiveFilesystem, statRealLocalFile } from "./filesystem/live.js";
 import { createLiveMarkitdown } from "./markitdown/live.js";
+import { createLiveRepomix } from "./repomix/live.js";
 
 const projectRoot = path.resolve(import.meta.dir, "../..");
 const sampleDataDir = path.join(projectRoot, "src/sample-data");
@@ -285,5 +286,51 @@ describe("live markdown retrieval verification (RM-8, D8, D17, D25, D26, D27, I2
 			createSession({ connect: createLiveWorld }),
 		);
 		expect(passedLive(ran)).toBe(true);
+	});
+});
+
+describe("createLiveRepomix offline checks (GR-9, D28, D29, D31, I1, I3)", () => {
+	test("returns missing error when REPOMIX_PATH points to a non-existent binary", async () => {
+		const saved = process.env.REPOMIX_PATH;
+		process.env.REPOMIX_PATH = "/nonexistent/repomix-missing-bin";
+		try {
+			const liveRepomix = createLiveRepomix(projectRoot);
+			const res = await liveRepomix.run(["--version"], 5_000);
+			expect(res).toEqual({ ok: false, error: { kind: "missing" } });
+			expect(liveRepomix.lastArgs()).toEqual(["--version"]);
+		} finally {
+			if (saved === undefined) delete process.env.REPOMIX_PATH;
+			else process.env.REPOMIX_PATH = saved;
+		}
+	});
+
+	test("aborts real repomix binary when timeoutMs is exceeded (D28)", async () => {
+		const liveRepomix = createLiveRepomix(projectRoot);
+		const res = await liveRepomix.run(["--version"], 1);
+		expect(res).toEqual({
+			ok: false,
+			error: { kind: "timeout", timeoutMs: 1 },
+		});
+	});
+
+	test("enforces live SSRF and embedded-credentials guards before invoking repomix", async () => {
+		const session = createSession({ connect: createLiveWorld });
+		expect(
+			await session.exec(
+				"convert git-repo-to-markdown http://127.0.0.1/owner/repo",
+			),
+		).toEqual([
+			"error: Fetching http://127.0.0.1/owner/repo is potentially dangerous, aborting.",
+		]);
+		expect(
+			await session.exec(
+				"convert git-repo-to-markdown https://token@github.com/owner/repo",
+			),
+		).toEqual([
+			"error: Repository URLs with embedded credentials are not allowed.",
+		]);
+		expect(await session.exec("repomix last-args")).toEqual([
+			"last args: (none)",
+		]);
 	});
 });

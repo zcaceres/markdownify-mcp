@@ -5,6 +5,7 @@ import {
 	ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { validateGitRepoRequest } from "./git-repo-conversion/verbs.js";
 import {
 	HTTP_LOCAL_FILES_DISABLED_MESSAGE,
 	resolveFileAccessPolicy,
@@ -113,16 +114,22 @@ export function createServer(options: CreateServerOptions = {}) {
 						break;
 					}
 
-					case tools.GitRepoToMarkdownTool.name:
-						if (!validatedArgs.url) {
-							throw new Error("URL is required for this tool");
+					case tools.GitRepoToMarkdownTool.name: {
+						const validatedRepo = validateGitRepoRequest(
+							validatedArgs.url,
+							validatedArgs.branch,
+							validatedArgs.compress,
+						);
+						if (!validatedRepo.ok) {
+							throw new Error(validatedRepo.error);
 						}
 						result = await Markdownify.fromRepo({
-							repoUrl: validatedArgs.url,
-							branch: validatedArgs.branch,
-							compress: validatedArgs.compress,
+							repoUrl: validatedRepo.value.repoUrl,
+							branch: validatedRepo.value.branch,
+							compress: validatedRepo.value.compress,
 						});
 						break;
+					}
 
 					case tools.GetMarkdownFileTool.name: {
 						const validatedMd = validateMarkdownRetrievalRequest(

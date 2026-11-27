@@ -1,0 +1,75 @@
+# Slice 01: Basic Git Repository Conversion (GR-1, GR-2, GR-3, GR-5, GR-6, GR-8)
+
+# GR-1, GR-2 (D3, D8, D29, I1, I3): missing url, disallowed schemes, scp-SSH, embedded credentials, and injection are refused
+> convert git-repo-to-markdown
+error: Repository URL is required
+
+> convert git-repo-to-markdown file:///etc/passwd
+error: Only http: and https: repository URLs are allowed.
+
+> convert git-repo-to-markdown ssh://git@github.com/owner/repo
+error: Only http: and https: repository URLs are allowed.
+
+> convert git-repo-to-markdown git@github.com:owner/repo.git
+error: Repository shorthand "git@github.com:owner/repo.git" uses scp-style SSH syntax, which is not allowed. Use an http(s) URL (e.g. https://github.com/owner/repo).
+
+> convert git-repo-to-markdown https://token@github.com/owner/repo
+error: Repository URLs with embedded credentials are not allowed.
+
+> convert git-repo-to-markdown --help
+error: Invalid repository URL or shorthand: --help. Use a GitHub URL (https://github.com/owner/repo) or shorthand (owner/repo).
+
+# GR-3 (D8, I3): unsafe branch refs are refused before invoking repomix
+> convert git-repo-to-markdown octocat/Hello-World --branch=--upload-pack=id
+error: Invalid branch name "--upload-pack=id". Branch names must not start with "-" or contain unsafe characters.
+
+> convert git-repo-to-markdown octocat/Hello-World --branch=main..other
+error: Invalid branch name "main..other". Branch names must not start with "-" or contain unsafe characters.
+
+> repomix last-args
+last args: (none)
+
+# GR-5 (D3, D5, I3): shorthand and full URL convert via repomix with explicit argument arrays (and optional branch/compress)
+> repomix stub # Repo Summary
+repomix stubbed
+
+> convert git-repo-to-markdown octocat/Hello-World
+ok: git-repo-to-markdown (path: none)
+| # Repo Summary
+
+> repomix last-args
+last args: --remote octocat/Hello-World --style markdown --stdout --quiet
+
+> convert git-repo-to-markdown https://github.com/octocat/Hello-World --branch=main --compress
+ok: git-repo-to-markdown (path: none)
+| # Repo Summary
+
+> repomix last-args
+last args: --remote https://github.com/octocat/Hello-World --style markdown --stdout --quiet --remote-branch main --compress
+
+# GR-8 (D6, D9): git-repo-to-markdown remains available in HTTP mode even when MD_ALLOWED_PATHS is unset
+> config set MCP_TRANSPORT http
+config MCP_TRANSPORT = http
+
+> convert git-repo-to-markdown octocat/Hello-World
+ok: git-repo-to-markdown (path: none)
+| # Repo Summary
+
+# GR-6 (D8, D30, D31): empty/whitespace stdout, non-zero exit, and missing repomix binary return clean errors
+> repomix empty
+repomix set to empty output
+
+> convert git-repo-to-markdown octocat/Hello-World
+error: repomix produced no output
+
+> repomix fail Repository not found
+repomix set to fail
+
+> convert git-repo-to-markdown octocat/Hello-World
+error: Conversion failed: Repository not found
+
+> repomix missing
+repomix set to missing
+
+> convert git-repo-to-markdown octocat/Hello-World
+error: repomix executable not found
