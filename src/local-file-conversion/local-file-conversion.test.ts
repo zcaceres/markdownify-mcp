@@ -7,6 +7,7 @@ import {
 	checkFileAccess,
 	convertLocalFile,
 	formatMarkitdownError,
+	parseLocalFileLimits,
 	resolveFileAccessPolicy,
 	validateLocalFileRequest,
 	verifyReadableFile,
@@ -358,5 +359,48 @@ describe("resolveFileAccessPolicy & checkFileAccess (LF-3, LF-4, D6, D9, D23, D2
 				)
 			).ok,
 		).toBe(false);
+	});
+});
+
+describe("parseLocalFileLimits & timeout enforcement (LF-10, D7, D13)", () => {
+	test("defaults to 60_000ms and parses positive integer overrides", () => {
+		expect(parseLocalFileLimits({})).toEqual(
+			ok({ markitdownTimeoutMs: 60_000 }),
+		);
+		expect(parseLocalFileLimits({ MD_MARKITDOWN_TIMEOUT_MS: "   " })).toEqual(
+			ok({ markitdownTimeoutMs: 60_000 }),
+		);
+		expect(
+			parseLocalFileLimits({ MD_MARKITDOWN_TIMEOUT_MS: " 5000 " }),
+		).toEqual(ok({ markitdownTimeoutMs: 5_000 }));
+	});
+
+	test("rejects zero, negative, non-numeric, float, and unsafe integer values", () => {
+		for (const bad of ["0", "-10", "fast", "12.5", "99999999999999999999"]) {
+			expect(parseLocalFileLimits({ MD_MARKITDOWN_TIMEOUT_MS: bad })).toEqual(
+				err(
+					`Invalid MD_MARKITDOWN_TIMEOUT_MS "${bad}": must be a positive integer`,
+				),
+			);
+		}
+	});
+
+	test("passes custom markitdownTimeoutMs and formats timeout errors", async () => {
+		let seenTimeout: number | undefined;
+		const result = await convertLocalFile(
+			{ tool: "pdf-to-markdown", filePath: LocalFilePath("/data/large.pdf") },
+			{
+				expandHome: (p) => p,
+				resolveRealpath: async (p) => p,
+				statFile: async () => ({ kind: "file" }),
+				convertWithMarkitdown: async (_inputPath, timeoutMs) => {
+					seenTimeout = timeoutMs;
+					return err({ kind: "timeout", timeoutMs });
+				},
+			},
+			{ markitdownTimeoutMs: 5_000 },
+		);
+		expect(seenTimeout).toBe(5_000);
+		expect(result).toEqual(err("Conversion timed out after 5000ms"));
 	});
 });

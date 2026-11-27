@@ -1,6 +1,7 @@
 import { LOCAL_FILE_TOOLS } from "../../src/local-file-conversion/nouns.ts";
 import {
 	convertLocalFile,
+	parseLocalFileLimits,
 	resolveFileAccessPolicy,
 	validateLocalFileRequest,
 } from "../../src/local-file-conversion/verbs.ts";
@@ -44,6 +45,9 @@ export const convert: Command = {
 			);
 			if (!policyResult.ok) return err(policyResult.error);
 
+			const limitsResult = parseLocalFileLimits(world.env);
+			if (!limitsResult.ok) return err(limitsResult.error);
+
 			const result = await convertLocalFile(
 				validated.value,
 				{
@@ -52,7 +56,11 @@ export const convert: Command = {
 					statFile: world.filesystem.statFile,
 					convertWithMarkitdown: world.markitdown.convert,
 				},
-				{ accessPolicy: policyResult.value, pathDelimiter: delimiter },
+				{
+					accessPolicy: policyResult.value,
+					markitdownTimeoutMs: limitsResult.value.markitdownTimeoutMs,
+					pathDelimiter: delimiter,
+				},
 			);
 			if (!result.ok) return err(result.error);
 			return ok(formatOutput(validated.value.tool, result.value.text));

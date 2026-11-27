@@ -30,6 +30,10 @@ export type FileAccessPolicy =
 	  }
 	| { readonly kind: "disabled" };
 
+export type LocalFileConversionLimits = {
+	readonly markitdownTimeoutMs: number;
+};
+
 export type LocalFileConversionOptions = {
 	readonly accessPolicy?: FileAccessPolicy;
 	readonly markitdownTimeoutMs?: number;

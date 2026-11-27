@@ -6,6 +6,7 @@ import {
 	type FileStat,
 	HTTP_UNRESTRICTED_ENV_VAR,
 	LOCAL_FILE_TOOLS,
+	type LocalFileConversionLimits,
 	type LocalFileConversionOptions,
 	type LocalFileConversionRequest,
 	LocalFilePath,
@@ -38,6 +39,28 @@ const isWithinDirectory = (filePath: string, directory: string): boolean => {
 	return (
 		rel !== ".." && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel)
 	);
+};
+
+export const parseLocalFileLimits = (
+	env: Readonly<Record<string, string | undefined>>,
+): Result<LocalFileConversionLimits, string> => {
+	const raw = env.MD_MARKITDOWN_TIMEOUT_MS;
+	if (raw === undefined || raw.trim() === "") {
+		return ok({ markitdownTimeoutMs: DEFAULT_LOCAL_MARKITDOWN_TIMEOUT_MS });
+	}
+	const trimmed = raw.trim();
+	if (!/^\d+$/.test(trimmed)) {
+		return err(
+			`Invalid MD_MARKITDOWN_TIMEOUT_MS "${raw}": must be a positive integer`,
+		);
+	}
+	const parsed = Number.parseInt(trimmed, 10);
+	if (!Number.isSafeInteger(parsed) || parsed < 1) {
+		return err(
+			`Invalid MD_MARKITDOWN_TIMEOUT_MS "${raw}": must be a positive integer`,
+		);
+	}
+	return ok({ markitdownTimeoutMs: parsed });
 };
 
 export const resolveFileAccessPolicy = (
