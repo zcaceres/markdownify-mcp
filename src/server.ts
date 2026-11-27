@@ -1,5 +1,4 @@
 import { type CallToolRequest, Server } from "@modelcontextprotocol/server";
-import { z } from "zod";
 import { validateGitRepoRequest } from "./git-repo-conversion/verbs.js";
 import {
 	HTTP_LOCAL_FILES_DISABLED_MESSAGE,
@@ -8,6 +7,12 @@ import {
 } from "./local-file-conversion/verbs.js";
 import { Markdownify, type MarkdownResult } from "./Markdownify.js";
 import { validateMarkdownRetrievalRequest } from "./markdown-retrieval/verbs.js";
+import {
+	serverCacheHints,
+	serverInstructions,
+	serverMetadata,
+} from "./mcp-contract/queries.js";
+import { validateToolArguments } from "./mcp-contract/verbs.js";
 import * as tools from "./tools.js";
 import { expandHome } from "./utils.js";
 import { validateWebRequest } from "./web-conversion/verbs.js";
@@ -17,36 +22,15 @@ export type CreateServerOptions = {
 	readonly allowUnrestrictedPaths?: boolean;
 };
 
-const RequestPayloadSchema = z.object({
-	filepath: z.string().optional(),
-	url: z.string().optional(),
-	branch: z.string().optional(),
-	compress: z.boolean().optional(),
-});
-
-function formatZodError(error: z.ZodError): string {
-	const details = error.issues
-		.map((issue) => {
-			const field = issue.path.length > 0 ? `${issue.path.join(".")}: ` : "";
-			return `${field}${issue.message}`;
-		})
-		.join("; ");
-	return `Invalid arguments: ${details}`;
-}
-
 export function createServer(options: CreateServerOptions = {}) {
 	const transport = options.transport ?? "stdio";
-	const server = new Server(
-		{
-			name: "mcp-markdownify-server",
-			version: "1.2.0",
+	const server = new Server(serverMetadata(), {
+		capabilities: {
+			tools: {},
 		},
-		{
-			capabilities: {
-				tools: {},
-			},
-		},
-	);
+		instructions: serverInstructions(),
+		cacheHints: serverCacheHints(),
+	});
 
 	const assertLocalFileAccessEnabled = () => {
 		const policy = resolveFileAccessPolicy(process.env, expandHome, {
@@ -71,7 +55,11 @@ export function createServer(options: CreateServerOptions = {}) {
 		const { name, arguments: args } = request.params;
 
 		try {
-			const validatedArgs = RequestPayloadSchema.parse(args ?? {});
+			const validatedResult = validateToolArguments(name, args);
+			if (!validatedResult.ok) {
+				throw new Error(validatedResult.error);
+			}
+			const validatedArgs = validatedResult.value;
 			let result: MarkdownResult;
 			switch (name) {
 				case tools.YouTubeToMarkdownTool.name:
@@ -152,12 +140,6 @@ export function createServer(options: CreateServerOptions = {}) {
 				isError: false,
 			};
 		} catch (e) {
-			if (e instanceof z.ZodError) {
-				return {
-					content: [{ type: "text", text: `Error: ${formatZodError(e)}` }],
-					isError: true,
-				};
-			}
 			if (e instanceof Error) {
 				return {
 					content: [{ type: "text", text: `Error: ${e.message}` }],

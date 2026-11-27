@@ -14,6 +14,7 @@ What each journey's users can do and see is in its acceptance criteria, which ci
 - **Convert Git Repository:** MCP Client converts a public remote Git Repository (`http(s)` URL or GitHub `owner/repo` shorthand, with optional branch/tag/commit and Tree-sitter compression) into a Markdown Result via `repomix` ([acceptance criteria](docs/journeys/convert-git-repo/acceptance-criteria.md)).
 - **Serve & Configure Server:** Operator configures and runs Markdownify MCP over `stdio`, stateless Streamable HTTP, or slim Docker, and MCP Client discovers all 11 tools and invokes them under HTTP `Host`/`Origin` guards ([acceptance criteria](docs/journeys/serve-and-configure-server/acceptance-criteria.md)).
 - **Verify Across Form Factors:** Operator (or coding agent) verifies Markdownify MCP end-to-end as a real MCP Client across all six supported Form Factors (`node-stdio`, `bun-stdio`, `local-http`, `docker-stdio`, `docker-http`, `npm-package`) and a curated real-world Verification Corpus (plus ad-hoc URL/file probes), producing a three-state Verification Report (`PASS`/`FAIL`/`BLOCKED`, exit `0`/`1`/`2`) ([acceptance criteria](docs/journeys/verify-across-form-factors/acceptance-criteria.md)).
+- **Discover & Align MCP:** MCP Client discovers server identity, `instructions`, `cacheHints`, complete `ToolAnnotations`, rich tool descriptions, Gemini-safe schemas with strict runtime argument validation, typed `outputSchema`/`structuredContent`, and Operator-selectable `Toolset` (`classic` 11-tool default or opt-in `compact` 4-tool mode) across Anthropic, Google Gemini, and OpenAI hosts ([acceptance criteria](docs/journeys/discover-and-align-mcp/acceptance-criteria.md)).
 
 ## Sources
 
@@ -23,6 +24,7 @@ something they cover.
 - [README.md](README.md): project overview, setup, transport/Docker usage, environment variables, and tool list (read 2026-11-25).
 - [src/](src/): current TypeScript implementation (`index.ts`, `server.ts`, `tools.ts`, `Markdownify.ts`, `http.ts`, `utils.ts`) and tests (read 2026-11-25).
 - [package.json](package.json), [pyproject.toml](pyproject.toml), [Dockerfile](Dockerfile), [preinstall.js](preinstall.js), [scripts/docker-smoke-test.sh](scripts/docker-smoke-test.sh): runtime, packaging, Python dependency profiles, and container setup (read 2026-11-25).
+- External MCP best-practice docs (read 2026-11-27): MCP 2025/2026 specification (`modelcontextprotocol.io`), Anthropic _Writing Effective Tools for Agents_ & MCP server best practices, Google Gemini API / Gemini CLI MCP schema compatibility docs, and OpenAI ChatGPT Apps / Responses API / Agents SDK MCP guidelines.
 
 ## Terminology
 
@@ -44,7 +46,8 @@ noun marked _(derived)_ is computed from others, never stored, and its entry say
 - **Markdown Result** _(derived)_: the Markdown `text` (and resolved `path` when retrieving a Markdown File) produced on demand by converting a source or retrieving a Markdown File; never persisted by the server (D1, D5).
 - **Allowed Paths:** the Operator-configured list of directories (`MD_ALLOWED_PATHS`) bounding filesystem reads after `~` expansion and realpath resolution (D5, D6, D23).
 - **File Access Policy** _(derived)_: the effective local-file access mode (`unrestricted`, `allowed-paths`, or HTTP fail-closed `disabled`) computed from Server Configuration and `MD_ALLOWED_PATHS` (D5, D6, D9, D23, D24, D35).
-- **Server Configuration:** the Operator-supplied CLI flags and environment variables (`transport`, `host`, `port`, `allowedHosts`, `allowedOrigins`, `allowUnrestrictedPaths`, `MARKITDOWN_PATH`, `REPOMIX_PATH`, `MD_ALLOWED_PATHS`) parsed at startup (D2, D5, D6, D23).
+- **Server Configuration:** the Operator-supplied CLI flags and environment variables (`transport`, `host`, `port`, `allowedHosts`, `allowedOrigins`, `allowUnrestrictedPaths`, `toolset`, `MARKITDOWN_PATH`, `REPOMIX_PATH`, `MD_ALLOWED_PATHS`) parsed at startup (D2, D5, D6, D23, D51).
+- **Toolset:** the active MCP tool catalog selected by Server Configuration — either `classic` (default, the 11 stable tools per D3) or `compact` (opt-in `--toolset=compact` / `MCP_TOOLSET=compact`, the 4 capability-aligned tools: `convert-web-url`, `convert-local-file`, `convert-git-repo`, `get-markdown-file`) (D3, D51).
 - **Startup Diagnostic** _(derived)_: an informational notice or warning emitted on HTTP server startup describing the active File Access Policy or non-loopback host binding (D5, D9, D23, D24, D33, D36).
 - **Temporary File:** a transient file written in a private random temp directory during Web URL download and deleted after conversion completes or fails (D5).
 - **Form Factor:** one of the six supported MCP runtime and packaging targets (`node-stdio`, `bun-stdio`, `local-http`, `docker-stdio`, `docker-http`, `npm-package`), defined by its runtime, MCP transport, and Python dependency profile (`full` vs `slim-pdf`) (D4, D37, D44, D46).
@@ -78,8 +81,9 @@ D#.
 
 ### MCP Tool Surface & Error Contract
 
-- The server exposes the 11 stable MCP tools (`youtube-to-markdown`, `pdf-to-markdown`, `bing-search-to-markdown`, `webpage-to-markdown`, `image-to-markdown`, `audio-to-markdown`, `docx-to-markdown`, `xlsx-to-markdown`, `pptx-to-markdown`, `git-repo-to-markdown`, `get-markdown-file`) and keeps project documentation in sync with them (D3).
-- Every tool validates its inputs at the boundary and returns a structured MCP tool error (`isError: true`) for invalid arguments, policy rejections, or runtime conversion failures (D8).
+- The server exposes the 11 stable MCP tools (`youtube-to-markdown`, `pdf-to-markdown`, `bing-search-to-markdown`, `webpage-to-markdown`, `image-to-markdown`, `audio-to-markdown`, `docx-to-markdown`, `xlsx-to-markdown`, `pptx-to-markdown`, `git-repo-to-markdown`, `get-markdown-file`) as the default `classic` Toolset, or the 4 capability-aligned tools (`convert-web-url`, `convert-local-file`, `convert-git-repo`, `get-markdown-file`) when configured with `--toolset=compact` / `MCP_TOOLSET=compact`, keeping project documentation in sync with them (D3, D51).
+- Every exposed tool declares top-level `title`, all four explicit `ToolAnnotations` booleans (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`), 2–4 sentence tool and parameter descriptions, a Gemini-safe flat `inputSchema` (without `additionalProperties`, `$schema`, `$ref`, `$defs`), and a JSON Schema `outputSchema`; the server advertises `Implementation` metadata, `instructions`, and `cacheHints` for `tools/list` and `server/discover` (D47, D48, D49, D52).
+- Every tool validates its inputs strictly per tool at the boundary (rejecting unknown keys and invalid types) and returns a structured MCP tool error (`isError: true`, omitting `structuredContent`) for invalid arguments, unexposed tools, policy rejections, or runtime conversion failures; successful calls return untruncated Markdown in both `content` text blocks and matching `structuredContent` (D8, D49, D50, D51, D52).
 
 ### Local File & Markdown Retrieval
 
@@ -275,7 +279,7 @@ for an undecided rule and will change with it.
 
 ### D32. Fail fast on unknown CLI flags
 
-- **Decided (2026-11-26):** Startup CLI argument parsing rejects unknown flags or unexpected positional arguments (anything other than `--transport=<stdio|http>`, `--host=<host>`, `--port=<1..65535>`, and `--allow-unrestricted-paths`) with a clear error rather than silently ignoring typos.
+- **Decided (2026-11-27):** Startup CLI argument parsing rejects unknown flags or unexpected positional arguments (anything other than `--transport=<stdio|http>`, `--host=<host>`, `--port=<1..65535>`, `--allow-unrestricted-paths`, and `--toolset=<classic|compact>`) with a clear error rather than silently ignoring typos.
 
 ### D33. Stateless Streamable HTTP routing and non-loopback `Host`/`Origin` defaults
 
@@ -332,6 +336,30 @@ for an undecided rule and will change with it.
 ### D46. Verification vocabulary (`Form Factor`, `Verification Corpus`, `Verification Case`, `Verification Report`)
 
 - **Decided (2026-11-27):** Add **Form Factor**, **Verification Corpus**, **Verification Case**, and **Verification Report** _(derived)_ to Terminology for end-to-end verification across supported MCP runtimes and real-world input material (D37–D45).
+
+### D47. Complete explicit `ToolAnnotations` and top-level `Tool.title`
+
+- **Decided (2026-11-27):** Every exposed MCP tool explicitly declares top-level `title` (matching `annotations.title`) and all four `ToolAnnotations` boolean hints (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) with no omitted defaults: `readOnlyHint: true`, `destructiveHint: false`, `idempotentHint: true`, and `openWorldHint: true` for network/remote tools or `openWorldHint: false` for local filesystem tools.
+
+### D48. Server `instructions`, `Implementation` metadata, rich tool descriptions, and `tools/list` cache hints
+
+- **Decided (2026-11-27):** Provide concise server-level `instructions` on `Server` (cross-tool routing guidance, local-path and HTTP-mode rules, and capability caveats), enrich `Server` `Implementation` metadata (`title`, `description`, `websiteUrl`), expand every tool and parameter description to 2–4 concise sentences covering what it does, when to use it vs. sibling tools, and key limits (JS-rendered SPAs, slim Docker `pdf` profile, image metadata-only limit), and advertise `cacheHints: { ttlMs: 3_600_000, cacheScope: "public" }` on `tools/list` and `server/discover` for 2026-07-28 MCP clients.
+
+### D49. Typed `outputSchema` and `structuredContent` alongside `content` text
+
+- **Decided (2026-11-27):** Declare a JSON Schema `outputSchema` on every MCP tool and return matching `structuredContent` on successful `tools/call` responses (`{ markdown: string }` for conversion tools; `{ path: string, markdown: string }` for `get-markdown-file`) alongside backwards-compatible `content` text blocks. Error responses (`isError: true`) omit `structuredContent` and keep the D8 single-line text error format.
+
+### D50. Full untruncated Markdown output without a server-side character cap
+
+- **Decided (2026-11-27):** Return full untruncated Markdown Results without imposing a server-side character truncation cap, relying on existing subprocess/download bounds (D7, D13, D28), `git-repo-to-markdown`'s `compress` option, and client-side context management.
+
+### D51. Opt-in `compact` Toolset alongside the default 11-tool `classic` surface
+
+- **Decided (2026-11-27):** Preserve all 11 stable MCP tools (D3) as the default **Toolset** (`classic`), and add an opt-in `compact` Toolset (`--toolset=<classic|compact>` CLI flag and `MCP_TOOLSET` env var, CLI wins, invalid values fail fast per D32) exposing 4 capability-aligned tools (`convert-web-url`, `convert-local-file`, `convert-git-repo`, `get-markdown-file`) that cleanly separate `openWorldHint: true` vs. `false`, HTTP `D9` local-file gating, and `outputSchema` shapes. `tools/call` strictly enforces the active Toolset's exposed tools, returning `"Error: Tool not found"` (D8) for tools not listed in the active `tools/list`.
+
+### D52. Gemini-safe wire `inputSchema` with per-tool runtime strict argument validation
+
+- **Decided (2026-11-27):** Keep wire JSON Schema `inputSchema` definitions flat and free of Gemini-incompatible keywords (`additionalProperties`, `$schema`, `$ref`, `$defs`) for 100% Anthropic/Gemini/OpenAI compatibility, while enforcing strict per-tool unknown-key rejection at runtime via Zod `.strict()` schemas returning concise single-line `isError: true` errors (D8).
 
 ## Undecided Questions
 

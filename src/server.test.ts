@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
+import {
+	auditToolCatalog,
+	CLASSIC_OPEN_WORLD_BY_TOOL,
+} from "./mcp-contract/queries.js";
 import { createServer } from "./server.js";
 
 describe("MCP server boundary (WU-1, D8)", () => {
@@ -54,7 +58,7 @@ describe("MCP server boundary (WU-1, D8)", () => {
 		});
 	});
 
-	test("returns concise single-line isError: true when tool arguments fail schema validation (D8)", async () => {
+	test("returns concise single-line isError: true when tool arguments fail schema validation or include unknown keys (MC-5, D8, D52)", async () => {
 		await withClient(async (client) => {
 			const res = await client.callTool({
 				name: "webpage-to-markdown",
@@ -64,6 +68,46 @@ describe("MCP server boundary (WU-1, D8)", () => {
 			const text = firstText(res);
 			expect(text).toContain("Error: Invalid arguments: url:");
 			expect(text).not.toContain("\n");
+
+			const typo = await client.callTool({
+				name: "pdf-to-markdown",
+				arguments: { file_path: "/data/report.pdf" },
+			});
+			expect(typo.isError).toBe(true);
+			expect(firstText(typo)).toBe(
+				'Error: Invalid arguments: Unrecognized key: "file_path"',
+			);
+
+			const crossTool = await client.callTool({
+				name: "webpage-to-markdown",
+				arguments: { url: "https://example.com", branch: "main" },
+			});
+			expect(crossTool.isError).toBe(true);
+			expect(firstText(crossTool)).toBe(
+				'Error: Invalid arguments: Unrecognized key: "branch"',
+			);
+		});
+	});
+
+	test("exposes enriched server info, instructions, complete ToolAnnotations, titles, descriptions, and Gemini-safe schemas (MC-1..MC-4, D47, D48, D52)", async () => {
+		await withClient(async (client) => {
+			const serverInfo = client.getServerVersion();
+			expect(serverInfo?.name).toBe("mcp-markdownify-server");
+			expect(serverInfo?.title).toBe("Markdownify MCP");
+			expect(serverInfo?.description?.length ?? 0).toBeGreaterThan(20);
+			expect(serverInfo?.websiteUrl).toBe(
+				"https://github.com/zcaceres/markdownify-mcp",
+			);
+
+			const instructions = client.getInstructions();
+			expect(instructions).toBeDefined();
+			expect(instructions).toContain("webpage-to-markdown");
+			expect(instructions).toContain("MD_ALLOWED_PATHS");
+
+			const listed = await client.listTools();
+			const audit = auditToolCatalog(listed.tools, CLASSIC_OPEN_WORLD_BY_TOOL);
+			expect(audit.issues).toEqual([]);
+			expect(audit.ok).toBe(true);
 		});
 	});
 

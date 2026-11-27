@@ -1,0 +1,38 @@
+# Slice 01: Metadata, Instructions, Cache Hints, and Strict Schemas (MC-1, MC-2, MC-3, MC-4, MC-5)
+
+# MC-1, MC-2 (D48): server exposes enriched Implementation metadata, cacheHints, and concise instructions
+> mcp info
+server: mcp-markdownify-server (Markdownify MCP) v1.2.0
+website: https://github.com/zcaceres/markdownify-mcp
+cache-hints: tools/list=3600000ms(public), server/discover=3600000ms(public)
+instructions: present
+
+# MC-3, MC-4 (D3, D47, D48, D52): all 11 classic tools pass cross-provider annotation, title, description, and Gemini-safe schema audit
+> mcp audit
+ok: audited 11 tools (0 issues)
+
+# MC-5 (D8, D52): valid per-tool arguments pass strict validation
+> mcp validate-args webpage-to-markdown {"url":"https://example.com"}
+ok: webpage-to-markdown {"url":"https://example.com"}
+
+> mcp validate-args pdf-to-markdown {"filepath":"/data/report.pdf"}
+ok: pdf-to-markdown {"filepath":"/data/report.pdf"}
+
+> mcp validate-args git-repo-to-markdown {"url":"octocat/Hello-World","branch":"main","compress":true}
+ok: git-repo-to-markdown {"url":"octocat/Hello-World","branch":"main","compress":true}
+
+# MC-5 (D8, D52): unknown keys, cross-tool keys, wrong types, and unknown tool names fail with concise D8 errors
+> mcp validate-args pdf-to-markdown {"file_path":"/data/report.pdf"}
+error: Invalid arguments: Unrecognized key: "file_path"
+
+> mcp validate-args pdf-to-markdown {"url":"https://example.com"}
+error: Invalid arguments: Unrecognized key: "url"
+
+> mcp validate-args webpage-to-markdown {"url":"https://example.com","branch":"main"}
+error: Invalid arguments: Unrecognized key: "branch"
+
+> mcp validate-args git-repo-to-markdown {"url":"octocat/Hello-World","compress":"yes"}
+error: Invalid arguments: compress: Invalid input: expected boolean, received string
+
+> mcp validate-args does-not-exist {}
+error: Tool not found

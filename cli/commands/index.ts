@@ -5,6 +5,7 @@ import { e2e } from "./e2e-verification.ts";
 import { filesystem } from "./filesystem.ts";
 import { retrieve } from "./markdown-retrieval.ts";
 import { markitdown } from "./markitdown.ts";
+import { mcp } from "./mcp-contract.ts";
 import { network } from "./network.ts";
 import { repomix } from "./repomix.ts";
 import { serve } from "./server-config.ts";
@@ -21,6 +22,7 @@ export const commands: Readonly<Record<string, Command>> = {
 	e2e,
 	filesystem,
 	markitdown,
+	mcp,
 	network,
 	repomix,
 	retrieve,
