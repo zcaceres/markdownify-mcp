@@ -68,4 +68,3 @@ _(All planned slices for Convert Local File are complete; 12/12 acceptance crite
 - Batch or recursive directory conversion (converting multiple files in a single tool call).
 - Built-in LLM vision or OCR integration for image descriptions (out of scope per D4).
 - Streaming or chunked partial Markdown responses for large documents.
-- Folding slim Docker container verification (replacing `scripts/docker-smoke-test.sh` with a harness container check over MCP stdio) — deferred to the **Serve & Configure Server** journey.

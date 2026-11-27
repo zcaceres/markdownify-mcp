@@ -22,6 +22,9 @@ const UNCONVERTED_HTML_ERROR =
 	"Conversion failed: the page returned raw HTML that could not be converted to Markdown. " +
 	"This typically happens with JavaScript-rendered pages (SPAs) that require a browser to load content.";
 
+const SLIM_DOCKER_HINT =
+	"This format requires markitdown[all] (full local install) rather than the slim Docker pdf profile.";
+
 const CONTENT_TYPE_TO_EXTENSION: Readonly<Record<string, string>> = {
 	"text/html": "html",
 	"application/xhtml+xml": "html",
@@ -377,6 +380,11 @@ export const convertWebUrl = async (
 						`Conversion timed out after ${converted.error.timeoutMs}ms`,
 					);
 				case "failed":
+					if (converted.error.reason.includes("MissingDependencyException")) {
+						return err(
+							`Conversion failed: ${converted.error.reason}. ${SLIM_DOCKER_HINT}`,
+						);
+					}
 					return err(`Conversion failed: ${converted.error.reason}`);
 				default: {
 					const exhaustive: never = converted.error;

@@ -104,7 +104,7 @@ Scenario: Converter failures, missing binary, and MissingDependencyException ret
 
 @LF-10 @D7 @D13
 Scenario: Converter exceeding MD_MARKITDOWN_TIMEOUT_MS is aborted and invalid MD_* config is refused
-  Given markitdown runs longer than MD_MARKITDOWN_TIMEOUT_MS (60s default) or MD_MARKITDOWN_TIMEOUT_MS is invalid
+  Given markitdown runs longer than the configured or default MD_MARKITDOWN_TIMEOUT_MS (D7, D13) or MD_MARKITDOWN_TIMEOUT_MS is invalid
   When the MCP Client converts a Local File
   Then the server aborts or refuses the request with a structured error (D7, D13)
 ```

@@ -21,6 +21,8 @@ export type LiveNetwork = {
 const readBodyWithLimit = async (
 	response: Response,
 	maxBytes: number,
+	signal: AbortSignal,
+	timeoutMs: number,
 ): Promise<Result<Uint8Array, FetchError>> => {
 	const rawLength = response.headers.get("content-length");
 	if (rawLength && /^\d+$/.test(rawLength.trim())) {
@@ -48,6 +50,13 @@ const readBodyWithLimit = async (
 				chunks.push(value);
 			}
 		} catch (error: unknown) {
+			if (
+				signal.aborted ||
+				(error instanceof Error &&
+					(error.name === "TimeoutError" || error.name === "AbortError"))
+			) {
+				return err({ kind: "timeout", timeoutMs });
+			}
 			const reason =
 				error instanceof Error ? error.message : "Stream read failed";
 			return err({ kind: "network", reason });
@@ -64,6 +73,13 @@ const readBodyWithLimit = async (
 		}
 		return ok(new Uint8Array(arrayBuffer));
 	} catch (error: unknown) {
+		if (
+			signal.aborted ||
+			(error instanceof Error &&
+				(error.name === "TimeoutError" || error.name === "AbortError"))
+		) {
+			return err({ kind: "timeout", timeoutMs });
+		}
 		const reason =
 			error instanceof Error ? error.message : "Failed reading response body";
 		return err({ kind: "network", reason });
@@ -128,7 +144,12 @@ export const createLiveNetwork = (): LiveNetwork => {
 				});
 			}
 
-			const bodyResult = await readBodyWithLimit(response, limits.maxBytes);
+			const bodyResult = await readBodyWithLimit(
+				response,
+				limits.maxBytes,
+				signal,
+				limits.timeoutMs,
+			);
 			if (!bodyResult.ok) {
 				return bodyResult;
 			}

@@ -2,7 +2,7 @@
 
 Covers [SC-9](../../acceptance-criteria.md#4-verify-packaged-container-runtime) from
 [Serve & Configure Server](../../plan.md). Cites **D3, D4, D11, D22, D34, I2** from
-[`REQUIREMENTS.md`](../../../../REQUIREMENTS.md).
+[`REQUIREMENTS.md`](../../../../../REQUIREMENTS.md).
 
 ## Scope
 

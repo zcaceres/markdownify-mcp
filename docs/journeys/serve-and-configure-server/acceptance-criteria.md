@@ -14,7 +14,7 @@ invariants it cites. Scenarios that share an id make up one criterion.
 ## Steps
 
 1. **Parse Server Configuration.** The server parses CLI flags and `MCP_*` environment variables (CLI flags override env vars) and fails fast on invalid values or unknown CLI flags.
-2. **Start transport & emit diagnostics.** The server selects `stdio` (default) or Streamable HTTP (`127.0.0.1:3000` default) and emits accurate startup notices/warnings for local file access policy and non-loopback binding.
+2. **Start transport & emit Startup Diagnostics.** The server selects `stdio` (default) or Streamable HTTP (`127.0.0.1:3000` default) and emits accurate Startup Diagnostics for File Access Policy and non-loopback binding.
 3. **Guard HTTP requests & serve stateless MCP.** Streamable HTTP routes `POST /mcp` and `POST /` exclusively, validates `Host` and `Origin` headers (HTTP 403), rejects non-POST methods (HTTP 405), and serves stateless MCP `tools/list` (all 11 tools) and `tools/call`.
 4. **Verify packaged container runtime.** The Operator verifies the slim Docker image (`Dockerfile`) over MCP stdio via `bun run harness docker`.
 
@@ -40,14 +40,14 @@ Scenario: Invalid transport, port, empty host, or unknown CLI flags fail fast at
   Then startup fails fast with a clear configuration error (D32)
 ```
 
-## 2. Start transport & emit diagnostics
+## 2. Start transport & emit Startup Diagnostics
 
 ```gherkin
-@SC-7 @D6 @D9 @D23 @D24 @D33
-Scenario: HTTP startup diagnostics accurately reflect file-access policy and non-loopback binding
+@SC-7 @D6 @D9 @D23 @D24 @D33 @D35 @D36
+Scenario: HTTP Startup Diagnostics accurately reflect File Access Policy and non-loopback binding
   Given HTTP transport configuration with MD_ALLOWED_PATHS unset, empty (D24), or opted out (D23), and loopback or non-loopback host binding
-  When startup notices are computed
-  Then notices report disabled local file tools (D9), unrestricted opt-in warning (D23), invalid MD_ALLOWED_PATHS warning (D24), and non-loopback reverse-proxy warning (D33)
+  When Startup Diagnostics are computed
+  Then Startup Diagnostics report disabled local file tools (D9), unrestricted opt-in warning (D23), invalid MD_ALLOWED_PATHS warning (D24), and non-loopback reverse-proxy warning (D33, D35, D36)
 ```
 
 ## 3. Guard HTTP requests & serve stateless MCP

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { err, ok } from "../shared/types.js";
-import { startupNotices } from "./queries.js";
+import { startupDiagnostics } from "./queries.js";
 import {
 	checkHttpRequest,
 	isHostHeaderAllowed,
@@ -146,10 +146,10 @@ describe("checkHttpRequest & Host/Origin helpers (SC-4, SC-5, SC-6, D33, I5)", (
 	});
 });
 
-describe("startupNotices (SC-7, D9, D23, D24, D33)", () => {
+describe("startupDiagnostics (SC-7, D9, D23, D24, D33, D35, D36)", () => {
 	const mockExpand = (p: string) => p;
 
-	test("computes notices for disabled file tools, unrestricted opt-in, empty MD_ALLOWED_PATHS, and non-loopback bind", () => {
+	test("computes Startup Diagnostics for disabled file tools, unrestricted opt-in, empty MD_ALLOWED_PATHS, and non-loopback bind", () => {
 		const base = {
 			transport: "http" as const,
 			port: 3000,
@@ -159,7 +159,7 @@ describe("startupNotices (SC-7, D9, D23, D24, D33)", () => {
 			allowUnrestrictedPaths: false,
 		};
 
-		expect(startupNotices(base, {}, mockExpand)).toEqual([
+		expect(startupDiagnostics(base, {}, mockExpand)).toEqual([
 			{
 				level: "notice",
 				message:
@@ -168,7 +168,7 @@ describe("startupNotices (SC-7, D9, D23, D24, D33)", () => {
 		]);
 
 		expect(
-			startupNotices(
+			startupDiagnostics(
 				{ ...base, host: "0.0.0.0", allowUnrestrictedPaths: true },
 				{},
 				mockExpand,
@@ -186,18 +186,18 @@ describe("startupNotices (SC-7, D9, D23, D24, D33)", () => {
 			},
 		]);
 
-		expect(startupNotices(base, { MD_ALLOWED_PATHS: ":" }, mockExpand)).toEqual(
-			[
-				{
-					level: "warning",
-					message:
-						"Warning: MD_ALLOWED_PATHS is set but contains no valid directories. Specify at least one directory or unset MD_ALLOWED_PATHS.",
-				},
-			],
-		);
+		expect(
+			startupDiagnostics(base, { MD_ALLOWED_PATHS: ":" }, mockExpand),
+		).toEqual([
+			{
+				level: "warning",
+				message:
+					"Warning: MD_ALLOWED_PATHS is set but contains no valid directories. Specify at least one directory or unset MD_ALLOWED_PATHS.",
+			},
+		]);
 
 		expect(
-			startupNotices(base, { MD_ALLOWED_PATHS: "/data" }, mockExpand),
+			startupDiagnostics(base, { MD_ALLOWED_PATHS: "/data" }, mockExpand),
 		).toEqual([]);
 	});
 });

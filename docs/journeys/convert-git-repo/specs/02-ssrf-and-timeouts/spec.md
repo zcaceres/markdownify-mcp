@@ -22,7 +22,7 @@ timeouts (**D7, D28, D31**) across `src/git-repo-conversion/`, the DD harness, a
 
 ## Scope
 
-**In:** `ResolveRepoHost` port (`src/git-repo-conversion/ports.ts`), `validateRepoDestination` and `parseGitRepoLimits`
+**In:** `ResolveHost` port (`src/git-repo-conversion/ports.ts`), `validateRepoDestination` and `parseGitRepoLimits`
 (`src/git-repo-conversion/verbs.ts`), wiring both into `convertGitRepo`, `cli/commands/web-conversion.ts`, and
 `src/Markdownify.ts`, and `scenarios/convert-git-repo/02-ssrf-and-timeouts.txt`.
 
@@ -48,7 +48,7 @@ Uses `GitRepoConversionLimits` (`{ readonly repomixTimeoutMs: number }`) from `s
 
 ## Queries (`src/git-repo-conversion/queries.ts`)
 
-Unchanged from Slice 01 (`gitRepoMarkdownResult`).
+Unchanged from Slice 01 (`markdownResult`).
 
 ## Harness
 

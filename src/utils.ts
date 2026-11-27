@@ -43,8 +43,12 @@ async function defaultHostResolver(
 }
 
 export function expandHome(filepath: string): string {
-	if (filepath.startsWith("~/") || filepath === "~") {
-		return path.join(os.homedir(), filepath.slice(1));
+	if (
+		filepath === "~" ||
+		filepath.startsWith("~/") ||
+		filepath.startsWith("~\\")
+	) {
+		return path.join(os.homedir(), filepath.slice(2));
 	}
 	return filepath;
 }
@@ -83,7 +87,8 @@ export function getAllowedPaths(): string[] | null {
 	return dirs;
 }
 
-export function realpathOrAncestor(p: string): string {
+export function realpathOrAncestor(p: string, depth = 0): string {
+	if (depth > 40) return path.resolve(p);
 	let current = path.resolve(p);
 	const suffix: string[] = [];
 	while (true) {
@@ -93,6 +98,21 @@ export function realpathOrAncestor(p: string): string {
 				? realCurrent
 				: path.join(realCurrent, ...suffix.slice().reverse());
 		} catch {
+			try {
+				if (fs.lstatSync(current).isSymbolicLink()) {
+					const resolvedTarget = path.resolve(
+						path.dirname(current),
+						fs.readlinkSync(current),
+					);
+					const next =
+						suffix.length === 0
+							? resolvedTarget
+							: path.join(resolvedTarget, ...suffix.slice().reverse());
+					return realpathOrAncestor(next, depth + 1);
+				}
+			} catch {
+				// Not a symlink (missing or inaccessible); walk up to parent.
+			}
 			const parent = path.dirname(current);
 			if (parent === current) return path.resolve(p);
 			suffix.push(path.basename(current));

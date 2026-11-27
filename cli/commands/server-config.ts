@@ -1,4 +1,4 @@
-import { startupNotices } from "../../src/server-config/queries.ts";
+import { startupDiagnostics } from "../../src/server-config/queries.ts";
 import {
 	checkHttpRequest,
 	parseServerConfiguration,
@@ -9,9 +9,9 @@ import type { Command } from "../command.ts";
 export const serve: Command = {
 	kind: "domain",
 	usage:
-		"serve config [flags...] | serve check-http <method> <path> [host=<h>] [origin=<o>] | serve notices [flags...]",
+		"serve config [flags...] | serve check-http <method> <path> [host=<h>] [origin=<o>] | serve diagnostics [flags...]",
 	summary:
-		"parse Server Configuration, check HTTP Host/Origin/routing guards, and inspect startup notices",
+		"parse Server Configuration, check HTTP Host/Origin/routing guards, and inspect Startup Diagnostics",
 	run: async ([sub, ...rest], world) => {
 		if (sub === "config") {
 			const parsed = parseServerConfiguration(rest, world.env);
@@ -55,20 +55,20 @@ export const serve: Command = {
 			return ok([`http: ${check.status} ${check.message}${suffix}`]);
 		}
 
-		if (sub === "notices") {
+		if (sub === "diagnostics") {
 			const parsed = parseServerConfiguration(rest, world.env);
 			if (!parsed.ok) return err(parsed.error);
 			const delimiter = world.mode === "mock" ? ":" : undefined;
-			const notices = startupNotices(
+			const diagnostics = startupDiagnostics(
 				parsed.value,
 				world.env,
 				world.filesystem.expandHome,
 				delimiter,
 			);
-			if (notices.length === 0) {
+			if (diagnostics.length === 0) {
 				return ok(["(none)"]);
 			}
-			return ok(notices.map((n) => `${n.level}: ${n.message}`));
+			return ok(diagnostics.map((d) => `${d.level}: ${d.message}`));
 		}
 
 		return err(`usage: ${serve.usage}`);

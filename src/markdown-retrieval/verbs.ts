@@ -7,12 +7,12 @@ import {
 import { err, ok, type Result } from "../shared/types.js";
 import {
 	MarkdownFilePath,
-	type MarkdownFileResult,
+	type MarkdownResult,
 	type MarkdownRetrievalOptions,
 	type MarkdownRetrievalRequest,
 } from "./nouns.js";
 import type { MarkdownRetrievalPorts } from "./ports.js";
-import { markdownFileResult } from "./queries.js";
+import { markdownResult } from "./queries.js";
 
 const MARKDOWN_EXTENSIONS = new Set([".md", ".markdown"]);
 
@@ -44,7 +44,7 @@ export const retrieveMarkdownFile = async (
 	request: MarkdownRetrievalRequest,
 	ports: MarkdownRetrievalPorts,
 	options: MarkdownRetrievalOptions = {},
-): Promise<Result<MarkdownFileResult, string>> => {
+): Promise<Result<MarkdownResult, string>> => {
 	const accessPolicy = options.accessPolicy ?? { kind: "unrestricted" };
 	const delimiter = options.pathDelimiter ?? path.delimiter;
 	const expandedPath = path.resolve(ports.expandHome(request.filePath));
@@ -82,5 +82,5 @@ export const retrieveMarkdownFile = async (
 		return err(`Failed to read file: ${content.error}`);
 	}
 
-	return ok(markdownFileResult(realTarget, content.value));
+	return ok(markdownResult(realTarget, content.value));
 };

@@ -1,4 +1,4 @@
-import type { FileAccessPolicy, FileStat } from "../shared/local-access.js";
+import type { FileAccessPolicy } from "../shared/local-access.js";
 import type { Brand } from "../shared/types.js";
 
 export {
@@ -44,5 +44,3 @@ export type LocalFileConversionRequest = {
 export type MarkdownResult = {
 	readonly text: string;
 };
-
-export type { FileStat as LocalFileStat };

@@ -15,7 +15,7 @@ invariants it cites. Scenarios that share an id make up one criterion.
 
 1. **Validate request, repository identifier, and branch.** The server validates the MCP Client's arguments, requires a public `http(s)` URL (without embedded credentials) or GitHub `owner/repo` shorthand, and validates optional branch/tag/commit syntax.
 2. **Validate destination (SSRF).** For explicit `http(s)` repository URLs, the server resolves DNS and blocks localhost, `.local`/`.internal`, private/reserved IPs, or unresolvable hosts before invoking `repomix`.
-3. **Invoke `repomix` within resource bounds.** The server runs `repomix` via `execFile` with explicit argument arrays within `MD_REPOMIX_TIMEOUT_MS` (120s default) and the 100 MB stdout buffer limit.
+3. **Invoke `repomix` within resource bounds.** The server runs `repomix` via `execFile` with explicit argument arrays within the configured or default `MD_REPOMIX_TIMEOUT_MS` and stdout buffer limit (D7, D28).
 4. **Return Markdown Result.** The server rejects empty or whitespace-only `repomix` stdout, formats missing-binary/timeout/non-zero failures cleanly, and returns the derived Markdown Result text (no path) or a structured MCP tool error.
 
 ## 1. Validate request, repository identifier, and branch
@@ -61,7 +61,7 @@ Scenario: Valid Git Repository converts via repomix with explicit argument array
 
 @GR-7 @D7 @D8 @D28 @D31
 Scenario: repomix exceeding MD_REPOMIX_TIMEOUT_MS is aborted and invalid timeout overrides are refused
-  Given repomix runs longer than MD_REPOMIX_TIMEOUT_MS (120s default) or MD_REPOMIX_TIMEOUT_MS is invalid
+  Given repomix runs longer than the configured or default MD_REPOMIX_TIMEOUT_MS (D7, D28) or MD_REPOMIX_TIMEOUT_MS is invalid
   When the MCP Client converts a Git Repository
   Then the server aborts or refuses the request with a structured error (D7, D8, D28, D31)
 

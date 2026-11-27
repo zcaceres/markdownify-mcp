@@ -1,7 +1,7 @@
 import http from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createServer } from "./server.js";
-import { startupNotices } from "./server-config/queries.js";
+import { startupDiagnostics } from "./server-config/queries.js";
 import {
 	checkHttpRequest,
 	isHostHeaderAllowed,
@@ -134,7 +134,7 @@ export function createHttpServer(options: HttpServerOptions): http.Server {
 export async function startHttpServer(
 	options: HttpServerOptions,
 ): Promise<http.Server> {
-	const notices = startupNotices(
+	const diagnostics = startupDiagnostics(
 		{
 			transport: "http",
 			port: options.port,
@@ -146,8 +146,8 @@ export async function startHttpServer(
 		process.env,
 		expandHome,
 	);
-	for (const notice of notices) {
-		console.error(notice.message);
+	for (const diagnostic of diagnostics) {
+		console.error(diagnostic.message);
 	}
 
 	const httpServer = createHttpServer(options);

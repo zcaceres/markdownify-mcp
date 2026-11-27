@@ -16,7 +16,7 @@ The designs and existing code behind this journey, from its design session (2026
 An **Operator** configures **Server Configuration** via CLI flags (`--transport=`, `--host=`, `--port=`,
 `--allow-unrestricted-paths`) and `MCP_*` environment variables (CLI wins; unknown flags and invalid values fail fast,
 **D2, D23, D32**). In `stdio` mode the server binds `StdioServerTransport`; in `http` mode it binds stateless
-Streamable HTTP on `127.0.0.1:3000` (default), emits accurate startup notices (**D9, D23, D24, D33**), routes
+Streamable HTTP on `127.0.0.1:3000` (default), emits accurate Startup Diagnostics (**D9, D23, D24, D33, D35, D36**), routes
 `POST /mcp` and `POST /` exclusively (**D33**), enforces `Host` and `Origin` header validation (**I5, D33**), and
 serves all 11 MCP tools statelessly (**D1, D3, D8, D9**). The Operator verifies the packaged slim Docker image via
 `bun run harness docker` over MCP `StdioClientTransport` (**D4, D11, D22, D34**).
@@ -26,9 +26,9 @@ serves all 11 MCP tools statelessly (**D1, D3, D8, D9**). The Operator verifies 
 Where this journey lives in the code. Each noun is a type in `src/server-config/nouns.ts`. Each verb is a function in
 `verbs.ts`, and each derived noun a function in `queries.ts`.
 
-| Context              | Nouns                                                                             | Verbs                                                                                                            | Queries          | Harness commands                                                                                       |
-| -------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------ |
-| `src/server-config/` | `ServerConfiguration`, `TransportMode`, `HttpRequestGuardResult`, `StartupNotice` | `parseServerConfiguration`, `isLoopbackHost`, `isHostHeaderAllowed`, `isOriginHeaderAllowed`, `checkHttpRequest` | `startupNotices` | `serve config [flags...]`, `serve check-http <method> <path> [host=<h>] [origin=<o>]`, `serve notices` |
+| Context              | Nouns                                                                                 | Verbs                                                                                                            | Queries              | Harness commands                                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `src/server-config/` | `ServerConfiguration`, `TransportMode`, `HttpRequestGuardResult`, `StartupDiagnostic` | `parseServerConfiguration`, `isLoopbackHost`, `isHostHeaderAllowed`, `isOriginHeaderAllowed`, `checkHttpRequest` | `startupDiagnostics` | `serve config [flags...]`, `serve check-http <method> <path> [host=<h>] [origin=<o>]`, `serve diagnostics` |
 
 ## External systems
 
@@ -44,7 +44,7 @@ scenario that runs it. Each has a [spec](specs/) and a scenario in `scenarios/se
 
 ### Done
 
-1. **01-config-and-http-guards.** Build `src/server-config/` (`parseServerConfiguration` with D32 unknown-flag rejection, `isLoopbackHost`, `isHostHeaderAllowed`, `isOriginHeaderAllowed`, `checkHttpRequest` D33/I5, `startupNotices` D9/D23/D24/D33), add `serve` harness command in `cli/commands/server-config.ts`, wire `src/http.ts` to delegate to `src/server-config/`, and add `scenarios/serve-and-configure-server/01-config-and-http-guards.txt`. Covers SC-1, SC-2, SC-4, SC-5, SC-6, SC-7.
+1. **01-config-and-http-guards.** Build `src/server-config/` (`parseServerConfiguration` with D32 unknown-flag rejection, `isLoopbackHost`, `isHostHeaderAllowed`, `isOriginHeaderAllowed`, `checkHttpRequest` D33/I5, `startupDiagnostics` D9/D23/D24/D33/D35/D36), add `serve` harness command in `cli/commands/server-config.ts`, wire `src/http.ts` to delegate to `src/server-config/`, and add `scenarios/serve-and-configure-server/01-config-and-http-guards.txt`. Covers SC-1, SC-2, SC-4, SC-5, SC-6, SC-7.
    ([spec](specs/01-config-and-http-guards/spec.md), `scenarios/serve-and-configure-server/01-config-and-http-guards.txt`)
 2. **02-live-server-transport.** Verify all 11 tools on `tools/list`, unknown-tool `isError: true`, and live Streamable HTTP server behavior (including HTTP `D9`/`D23` fail-closed local file blocking over real HTTP `POST /mcp`) in `src/server.test.ts` and `src/http.test.ts`. Covers SC-3, SC-8.
    ([spec](specs/02-live-server-transport/spec.md))

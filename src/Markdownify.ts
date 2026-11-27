@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { gitRepoMarkdownResult } from "./git-repo-conversion/queries.js";
+import { markdownResult as gitRepoMarkdownResult } from "./git-repo-conversion/queries.js";
 import {
 	buildRepomixArgs,
 	checkRepomixOutput,
@@ -20,7 +20,7 @@ import {
 	parseLocalFileLimits,
 	verifyReadableFile,
 } from "./local-file-conversion/verbs.js";
-import { markdownFileResult } from "./markdown-retrieval/queries.js";
+import { markdownResult as retrievalMarkdownResult } from "./markdown-retrieval/queries.js";
 import {
 	isMarkdownExtension,
 	NOT_MARKDOWN_FILE_ERROR,
@@ -143,6 +143,8 @@ export class Markdownify {
 		response: Response,
 		maxBytes: number,
 		url: string,
+		signal?: AbortSignal,
+		fetchTimeoutMs?: number,
 	): Promise<Buffer> {
 		const rawLength = response.headers?.get("content-length");
 		if (rawLength && /^\d+$/.test(rawLength.trim())) {
@@ -155,6 +157,19 @@ export class Markdownify {
 			}
 		}
 
+		const toTimeoutOrOriginal = (error: unknown): unknown => {
+			if (
+				fetchTimeoutMs !== undefined &&
+				(signal?.aborted ||
+					(error instanceof Error &&
+						(error.name === "TimeoutError" || error.name === "AbortError")))
+			) {
+				return new Error(
+					`Fetch timed out after ${fetchTimeoutMs}ms for ${url}`,
+				);
+			}
+			return error;
+		};
 		if (response.body && typeof response.body.getReader === "function") {
 			const reader = response.body.getReader();
 			const chunks: Uint8Array[] = [];
@@ -173,19 +188,25 @@ export class Markdownify {
 					}
 					chunks.push(value);
 				}
+			} catch (error: unknown) {
+				throw toTimeoutOrOriginal(error);
 			} finally {
 				reader.releaseLock();
 			}
 			return Buffer.concat(chunks);
 		}
 
-		const arrayBuffer = await response.arrayBuffer();
-		if (arrayBuffer.byteLength > maxBytes) {
-			throw new Error(
-				`Download exceeded maximum size of ${maxBytes} bytes for ${url}`,
-			);
+		try {
+			const arrayBuffer = await response.arrayBuffer();
+			if (arrayBuffer.byteLength > maxBytes) {
+				throw new Error(
+					`Download exceeded maximum size of ${maxBytes} bytes for ${url}`,
+				);
+			}
+			return Buffer.from(arrayBuffer);
+		} catch (error: unknown) {
+			throw toTimeoutOrOriginal(error);
 		}
-		return Buffer.from(arrayBuffer);
 	}
 
 	// Walks the redirect chain, validating every hop against the SSRF rules, and returns
@@ -195,7 +216,7 @@ export class Markdownify {
 		url: string,
 		maxRedirects = 10,
 		fetchTimeoutMs = 30_000,
-	): Promise<{ response: Response; finalUrl: string }> {
+	): Promise<{ response: Response; finalUrl: string; signal: AbortSignal }> {
 		let currentUrl = url;
 		for (let i = 0; i <= maxRedirects; i++) {
 			await Markdownify._validateUrlDestination(currentUrl);
@@ -221,7 +242,7 @@ export class Markdownify {
 				currentUrl = new URL(location, currentUrl).toString();
 				continue;
 			}
-			return { response, finalUrl: currentUrl };
+			return { response, finalUrl: currentUrl, signal };
 		}
 		throw new Error("Too many redirects");
 	}
@@ -248,7 +269,7 @@ export class Markdownify {
 				const limits = limitsResult.value;
 				markitdownTimeoutMs = limits.markitdownTimeoutMs;
 
-				const { response, finalUrl } = await Markdownify.safeFetch(
+				const { response, finalUrl, signal } = await Markdownify.safeFetch(
 					url,
 					limits.maxRedirects,
 					limits.fetchTimeoutMs,
@@ -272,6 +293,8 @@ export class Markdownify {
 						response,
 						limits.maxDownloadBytes,
 						finalUrl,
+						signal,
+						limits.fetchTimeoutMs,
 					);
 
 					temporaryFile = await Markdownify.saveToTempFile(content, extension);
@@ -417,6 +440,6 @@ export class Markdownify {
 
 		const text = await fs.promises.readFile(realTarget, "utf-8");
 
-		return markdownFileResult(realTarget, text);
+		return retrievalMarkdownResult(realTarget, text);
 	}
 }

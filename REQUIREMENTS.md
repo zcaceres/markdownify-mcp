@@ -42,7 +42,9 @@ noun marked _(derived)_ is computed from others, never stored, and its entry say
 - **Markdown File:** an existing local `.md` or `.markdown` file (case-insensitive) read directly without conversion (D3, D5, D8).
 - **Markdown Result** _(derived)_: the Markdown `text` (and resolved `path` when retrieving a Markdown File) produced on demand by converting a source or retrieving a Markdown File; never persisted by the server (D1, D5).
 - **Allowed Paths:** the Operator-configured list of directories (`MD_ALLOWED_PATHS`) bounding filesystem reads after `~` expansion and realpath resolution (D5, D6, D23).
+- **File Access Policy** _(derived)_: the effective local-file access mode (`unrestricted`, `allowed-paths`, or HTTP fail-closed `disabled`) computed from Server Configuration and `MD_ALLOWED_PATHS` (D5, D6, D9, D23, D24, D35).
 - **Server Configuration:** the Operator-supplied CLI flags and environment variables (`transport`, `host`, `port`, `allowedHosts`, `allowedOrigins`, `allowUnrestrictedPaths`, `MARKITDOWN_PATH`, `REPOMIX_PATH`, `MD_ALLOWED_PATHS`) parsed at startup (D2, D5, D6, D23).
+- **Startup Diagnostic** _(derived)_: an informational notice or warning emitted on HTTP server startup describing the active File Access Policy or non-loopback host binding (D5, D9, D23, D24, D33, D36).
 - **Temporary File:** a transient file written in a private random temp directory during Web URL download and deleted after conversion completes or fails (D5).
 
 ### Verbs
@@ -277,6 +279,14 @@ for an undecided rule and will change with it.
 ### D34. Slim Docker container verification via `harness docker`
 
 - **Decided (2026-11-26):** Verify the packaged slim Docker image (`Dockerfile`, D4, D11) via `bun run harness docker` using the MCP SDK `StdioClientTransport` against the built container (checking `pdf-to-markdown /data/test.pdf` succeeds, `MD_ALLOWED_PATHS=/data` blocks `/etc/passwd`, and a format requiring `markitdown[all]` surfaces the D22 slim-Docker hint), with `scripts/docker-smoke-test.sh` delegating to it.
+
+### D35. File Access Policy vocabulary
+
+- **Decided (2026-11-27):** Name the effective local-file access mode **File Access Policy** _(derived)_ in Terminology (`unrestricted`, `allowed-paths`, or HTTP fail-closed `disabled`, computed from Server Configuration and `MD_ALLOWED_PATHS`; D5, D6, D9, D23, D24). Keep `MD_*` conversion limit override environment variables (D7, D13, D28) outside Server Configuration in Terminology.
+
+### D36. Startup Diagnostic vocabulary
+
+- **Decided (2026-11-27):** Name the derived stderr messages emitted on HTTP server startup describing the active File Access Policy or non-loopback host binding **Startup Diagnostic** _(derived)_ in Terminology (`StartupDiagnostic`, `startupDiagnostics`, harness command `serve diagnostics`), replacing `StartupNotice` / `startupNotices` / `serve notices` (D5, D9, D23, D24, D33).
 
 ## Undecided Questions
 
