@@ -1,0 +1,102 @@
+# Slice 01: Basic Local File Conversion (Convert Local File tracer bullet)
+
+# LF-1, LF-2 (D3, D8, D18): missing and bare relative file paths are refused without touching the filesystem
+> convert pdf-to-markdown
+error: File path is required for this tool
+
+> convert pdf-to-markdown report.pdf
+error: File path "report.pdf" must be an absolute path or start with ~/
+
+> convert docx-to-markdown ./notes/draft.docx
+error: File path "./notes/draft.docx" must be an absolute path or start with ~/
+
+# LF-5 (D8, D17): missing file, directory, and unreadable file are refused before invoking markitdown
+> convert pdf-to-markdown /data/missing.pdf
+error: File does not exist: /data/missing.pdf
+
+> filesystem mkdir /data/folder
+created dir /data/folder
+
+> convert pdf-to-markdown /data/folder
+error: Path is a directory, not a file: /data/folder
+
+> filesystem unreadable /data/locked.pdf
+created unreadable file /data/locked.pdf
+
+> convert pdf-to-markdown /data/locked.pdf
+error: File is not readable: /data/locked.pdf
+
+> markitdown last-input
+last input: (none)
+
+# LF-6, LF-11 (D3, D5, D19, I3): readable Local File converts across local file tools and returns text with no path
+> filesystem put /data/report.pdf
+created file /data/report.pdf
+
+> markitdown stub # Quarterly Report
+markitdown stubbed
+
+> convert pdf-to-markdown /data/report.pdf
+ok: pdf-to-markdown (path: none)
+| # Quarterly Report
+
+> markitdown last-input
+last input: /data/report.pdf
+
+# LF-2, LF-11 (D3, D18): home-relative ~/ path expands and works across office and media tools
+> filesystem put /home/user/slides.pptx
+created file /home/user/slides.pptx
+
+> markitdown stub # Deck Title
+markitdown stubbed
+
+> convert pptx-to-markdown ~/slides.pptx
+ok: pptx-to-markdown (path: none)
+| # Deck Title
+
+> markitdown last-input
+last input: /home/user/slides.pptx
+
+# LF-7 (D4, D16): whitespace-only exit-0 output (e.g. image without LLM vision config) returns an empty Markdown Result
+> filesystem put /data/photo.jpg
+created file /data/photo.jpg
+
+> markitdown empty
+markitdown set to empty output
+
+> convert image-to-markdown /data/photo.jpg
+ok: image-to-markdown (path: none)
+(empty)
+
+# LF-8 (D20): Local File output beginning with <!DOCTYPE html> is preserved (not rejected as a web SPA)
+> filesystem put /data/html-guide.docx
+created file /data/html-guide.docx
+
+> markitdown stub <!DOCTYPE html><html><body>Guide</body></html>
+markitdown stubbed
+
+> convert docx-to-markdown /data/html-guide.docx
+ok: docx-to-markdown (path: none)
+| <!DOCTYPE html><html><body>Guide</body></html>
+
+# LF-9 (D4, D8, D22): MissingDependencyException appends slim Docker hint; missing binary and generic failures report cleanly
+> filesystem put /data/clip.mp3
+created file /data/clip.mp3
+
+> markitdown fail MissingDependencyException: AudioConverter requires speech_recognition
+markitdown set to fail
+
+> convert audio-to-markdown /data/clip.mp3
+error: Conversion failed: MissingDependencyException: AudioConverter requires speech_recognition. This format requires markitdown[all] (full local install) rather than the slim Docker pdf profile.
+
+> markitdown fail exit code 1
+markitdown set to fail
+
+> convert xlsx-to-markdown /data/report.pdf
+error: Conversion failed: exit code 1
+
+> markitdown missing
+markitdown set to missing
+
+> convert pdf-to-markdown /data/report.pdf
+error: markitdown executable not found

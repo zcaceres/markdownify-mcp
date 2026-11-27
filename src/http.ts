@@ -1,7 +1,12 @@
 import http from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import {
+	HTTP_UNRESTRICTED_CLI_FLAG,
+	HTTP_UNRESTRICTED_ENV_VAR,
+} from "./local-file-conversion/nouns.js";
+import { resolveFileAccessPolicy } from "./local-file-conversion/verbs.js";
 import { createServer } from "./server.js";
-import { getAllowedPaths } from "./utils.js";
+import { expandHome } from "./utils.js";
 
 export type CliConfig = {
 	transport: "stdio" | "http";
@@ -9,6 +14,7 @@ export type CliConfig = {
 	host: string;
 	allowedHosts: string[];
 	allowedOrigins: string[];
+	allowUnrestrictedPaths: boolean;
 };
 
 export type HttpServerOptions = {
@@ -16,6 +22,7 @@ export type HttpServerOptions = {
 	port: number;
 	allowedHosts?: string[];
 	allowedOrigins?: string[];
+	allowUnrestrictedPaths?: boolean;
 };
 
 function parseCsvList(raw: string | undefined): string[] {
@@ -147,12 +154,17 @@ export function parseCliArgs(
 		throw new Error("Invalid host: must not be empty.");
 	}
 
+	const allowUnrestrictedPaths =
+		argv.includes(HTTP_UNRESTRICTED_CLI_FLAG) ||
+		env[HTTP_UNRESTRICTED_ENV_VAR]?.trim().toLowerCase() === "true";
+
 	return {
 		transport,
 		port,
 		host,
 		allowedHosts: parseCsvList(env.MCP_ALLOWED_HOSTS),
 		allowedOrigins: parseCsvList(env.MCP_ALLOWED_ORIGINS),
+		allowUnrestrictedPaths,
 	};
 }
 
@@ -177,7 +189,12 @@ function sendJsonError(
 }
 
 export function createHttpServer(options: HttpServerOptions): http.Server {
-	const { host, allowedHosts = [], allowedOrigins = [] } = options;
+	const {
+		host,
+		allowedHosts = [],
+		allowedOrigins = [],
+		allowUnrestrictedPaths,
+	} = options;
 
 	return http.createServer(async (req, res) => {
 		const pathname = new URL(req.url ?? "/", "http://localhost").pathname;
@@ -210,7 +227,10 @@ export function createHttpServer(options: HttpServerOptions): http.Server {
 		transport.onerror = (error) => {
 			console.error("[transport error]", error);
 		};
-		const server = createServer();
+		const server = createServer({
+			transport: "http",
+			allowUnrestrictedPaths,
+		});
 
 		let closed = false;
 		const cleanup = () => {
@@ -237,9 +257,19 @@ export function createHttpServer(options: HttpServerOptions): http.Server {
 export async function startHttpServer(
 	options: HttpServerOptions,
 ): Promise<http.Server> {
-	if (!getAllowedPaths()) {
+	const filePolicy = resolveFileAccessPolicy(process.env, expandHome, {
+		transport: "http",
+		allowUnrestrictedPaths: options.allowUnrestrictedPaths,
+	});
+	if (!filePolicy.ok) {
+		console.error(`Warning: ${filePolicy.error}`);
+	} else if (filePolicy.value.kind === "disabled") {
 		console.error(
-			"Warning: starting HTTP transport with MD_ALLOWED_PATHS unset; file-input tools can read any file accessible to this process.",
+			"Notice: starting HTTP transport with MD_ALLOWED_PATHS unset; local file tools are disabled by default.",
+		);
+	} else if (filePolicy.value.kind === "unrestricted") {
+		console.error(
+			"Warning: starting HTTP transport with unrestricted local file access opted in; file-input tools can read any file accessible to this process.",
 		);
 	}
 	if (!isLoopbackHost(options.host)) {

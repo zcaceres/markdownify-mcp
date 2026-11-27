@@ -5,9 +5,20 @@ import {
 	ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import {
+	HTTP_LOCAL_FILES_DISABLED_MESSAGE,
+	resolveFileAccessPolicy,
+	validateLocalFileRequest,
+} from "./local-file-conversion/verbs.js";
 import { Markdownify, type MarkdownResult } from "./Markdownify.js";
 import * as tools from "./tools.js";
+import { expandHome } from "./utils.js";
 import { validateWebRequest } from "./web-conversion/verbs.js";
+
+export type CreateServerOptions = {
+	readonly transport?: "stdio" | "http";
+	readonly allowUnrestrictedPaths?: boolean;
+};
 
 const RequestPayloadSchema = z.object({
 	filepath: z.string().optional(),
@@ -26,7 +37,8 @@ function formatZodError(error: z.ZodError): string {
 	return `Invalid arguments: ${details}`;
 }
 
-export function createServer() {
+export function createServer(options: CreateServerOptions = {}) {
+	const transport = options.transport ?? "stdio";
 	const server = new Server(
 		{
 			name: "mcp-markdownify-server",
@@ -38,6 +50,19 @@ export function createServer() {
 			},
 		},
 	);
+
+	const assertLocalFileAccessEnabled = () => {
+		const policy = resolveFileAccessPolicy(process.env, expandHome, {
+			transport,
+			allowUnrestrictedPaths: options.allowUnrestrictedPaths,
+		});
+		if (!policy.ok) {
+			throw new Error(policy.error);
+		}
+		if (policy.value.kind === "disabled") {
+			throw new Error(HTTP_LOCAL_FILES_DISABLED_MESSAGE);
+		}
+	};
 
 	server.setRequestHandler(ListToolsRequestSchema, async () => {
 		return {
@@ -72,14 +97,20 @@ export function createServer() {
 					case tools.AudioToMarkdownTool.name:
 					case tools.DocxToMarkdownTool.name:
 					case tools.XlsxToMarkdownTool.name:
-					case tools.PptxToMarkdownTool.name:
-						if (!validatedArgs.filepath) {
-							throw new Error("File path is required for this tool");
+					case tools.PptxToMarkdownTool.name: {
+						const validatedFile = validateLocalFileRequest(
+							name,
+							validatedArgs.filepath,
+						);
+						if (!validatedFile.ok) {
+							throw new Error(validatedFile.error);
 						}
+						assertLocalFileAccessEnabled();
 						result = await Markdownify.toMarkdown({
-							filePath: validatedArgs.filepath,
+							filePath: validatedFile.value.filePath,
 						});
 						break;
+					}
 
 					case tools.GitRepoToMarkdownTool.name:
 						if (!validatedArgs.url) {
@@ -96,6 +127,7 @@ export function createServer() {
 						if (!validatedArgs.filepath) {
 							throw new Error("File path is required for this tool");
 						}
+						assertLocalFileAccessEnabled();
 						result = await Markdownify.get({
 							filePath: validatedArgs.filepath,
 						});

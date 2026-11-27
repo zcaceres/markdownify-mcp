@@ -5,6 +5,12 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { statRealLocalFile } from "./integrations/filesystem/live.js";
+import {
+	formatMarkitdownError,
+	isAbsoluteOrHomePath,
+	verifyReadableFile,
+} from "./local-file-conversion/verbs.js";
 import {
 	assertPathAllowed,
 	expandHome,
@@ -43,6 +49,7 @@ export class Markdownify {
 		filePath: string,
 		projectRoot: string,
 		timeoutMs?: number,
+		options: { checkUnconvertedHtml?: boolean } = {},
 	): Promise<string> {
 		const markitdownPath = resolveMarkitdownPath(projectRoot);
 
@@ -59,6 +66,7 @@ export class Markdownify {
 			const err = e as NodeJS.ErrnoException & {
 				killed?: boolean;
 				signal?: string | null;
+				stderr?: string;
 			};
 			if (err?.code === "ENOENT") {
 				throw new Error(
@@ -74,10 +82,17 @@ export class Markdownify {
 			) {
 				throw new Error(`Conversion timed out after ${timeoutMs}ms`);
 			}
+			const detail =
+				err?.stderr?.trim() || (e instanceof Error ? e.message : "");
+			if (detail.includes("MissingDependencyException")) {
+				throw new Error(
+					formatMarkitdownError({ kind: "failed", reason: detail }),
+				);
+			}
 			throw e;
 		}
 
-		if (isUnconvertedHtml(stdout)) {
+		if ((options.checkUnconvertedHtml ?? true) && isUnconvertedHtml(stdout)) {
 			throw new Error(
 				"Conversion failed: the page returned raw HTML that could not be converted to Markdown. " +
 					"This typically happens with JavaScript-rendered pages (SPAs) that require a browser to load content.",
@@ -247,8 +262,24 @@ export class Markdownify {
 					inputPath = temporaryFile.path;
 				}
 			} else if (filePath) {
-				const expanded = path.resolve(expandHome(filePath));
+				const trimmed = filePath.trim();
+				if (!trimmed) {
+					throw new Error("File path is required for this tool");
+				}
+				if (!isAbsoluteOrHomePath(trimmed)) {
+					throw new Error(
+						`File path "${trimmed}" must be an absolute path or start with ~/`,
+					);
+				}
+				const expanded = path.resolve(expandHome(trimmed));
 				assertPathAllowed(expanded);
+				const verified = verifyReadableFile(
+					expanded,
+					statRealLocalFile(expanded),
+				);
+				if (!verified.ok) {
+					throw new Error(verified.error);
+				}
 				inputPath = expanded;
 			} else {
 				throw new Error("Either filePath or url must be provided");
@@ -258,6 +289,7 @@ export class Markdownify {
 				inputPath,
 				projectRoot,
 				limits.markitdownTimeoutMs,
+				{ checkUnconvertedHtml: Boolean(url) },
 			);
 
 			return markdownResult(text);

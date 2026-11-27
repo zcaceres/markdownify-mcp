@@ -722,3 +722,47 @@ test("Markdownify.toMarkdown enforces MD_FETCH_TIMEOUT_MS on fetch abort (D13)",
 		else process.env.MD_FETCH_TIMEOUT_MS = savedTimeout;
 	}
 });
+
+test("Markdownify.toMarkdown rejects directory paths before invoking markitdown (D17)", async () => {
+	const originalMarkitdown = Markdownify["_markitdown"];
+	let markitdownCalled = false;
+	Markdownify["_markitdown"] = mock(async () => {
+		markitdownCalled = true;
+		return "should not run";
+	}) as any;
+
+	try {
+		await expect(
+			Markdownify.toMarkdown({ filePath: sampleDataDir }),
+		).rejects.toThrow("Path is a directory, not a file");
+		expect(markitdownCalled).toBe(false);
+	} finally {
+		Markdownify["_markitdown"] = originalMarkitdown;
+	}
+});
+
+test("Markdownify.toMarkdown preserves <!DOCTYPE html> output on local files (D20)", async () => {
+	const originalMarkitdown = Markdownify["_markitdown"];
+	Markdownify["_markitdown"] = mock(
+		async (
+			_filePath: string,
+			_projectRoot: string,
+			_timeoutMs?: number,
+			opts?: { checkUnconvertedHtml?: boolean },
+		) => {
+			expect(opts?.checkUnconvertedHtml).toBe(false);
+			return "<!DOCTYPE html><html><body>Snippet</body></html>";
+		},
+	) as any;
+
+	try {
+		const result = await Markdownify.toMarkdown({
+			filePath: path.join(sampleDataDir, "test.pdf"),
+		});
+		expect(result).toEqual({
+			text: "<!DOCTYPE html><html><body>Snippet</body></html>",
+		});
+	} finally {
+		Markdownify["_markitdown"] = originalMarkitdown;
+	}
+});

@@ -64,8 +64,6 @@ describe("a scenario", () => {
 		const out = await session.exec(
 			"convert webpage-to-markdown https://example.com extra-arg",
 		);
-		expect(out).toEqual([
-			"error: usage: convert <webpage-to-markdown|youtube-to-markdown|bing-search-to-markdown> [url]",
-		]);
+		expect(out).toEqual(["error: usage: convert <tool> [url|filepath]"]);
 	});
 });

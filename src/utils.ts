@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { URL } from "node:url";
 import { isValidRemoteValue } from "repomix";
+import { EMPTY_ALLOWED_PATHS_MESSAGE } from "./local-file-conversion/verbs.js";
 import { isPrivateOrReservedIp, normalizeHostname } from "./shared/ip.js";
 import {
 	checkConvertedOutput,
@@ -65,17 +66,20 @@ export function resolveRepomixPath(projectRoot: string): string {
 }
 
 export function getAllowedPaths(): string[] | null {
-	const raw = process.env.MD_ALLOWED_PATHS ?? process.env.MD_SHARE_DIR;
-	if (!raw) return null;
+	const raw = process.env.MD_ALLOWED_PATHS;
+	if (raw === undefined) return null;
 	const dirs = raw
 		.split(path.delimiter)
 		.map((p) => p.trim())
 		.filter(Boolean)
 		.map((p) => path.normalize(path.resolve(expandHome(p))));
-	return dirs.length > 0 ? dirs : null;
+	if (dirs.length === 0) {
+		throw new Error(EMPTY_ALLOWED_PATHS_MESSAGE);
+	}
+	return dirs;
 }
 
-function realpathOrAncestor(p: string): string {
+export function realpathOrAncestor(p: string): string {
 	let current = path.resolve(p);
 	const suffix: string[] = [];
 	while (true) {
