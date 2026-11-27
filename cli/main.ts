@@ -2,6 +2,7 @@ import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { runDockerHarness } from "./docker.ts";
+import { runE2eHarness } from "./e2e/runner.ts";
 import { parseLive, passedLive, reportLive, runLive } from "./live.ts";
 import { parse, passed, render, report, run } from "./scenario.ts";
 import { createSession } from "./session.ts";
@@ -102,6 +103,14 @@ if (mode === "run") {
 	try {
 		const ok = await runDockerHarness(projectRoot, rest);
 		process.exit(ok ? 0 : 1);
+	} catch (error) {
+		console.error(error instanceof Error ? error.message : String(error));
+		process.exit(1);
+	}
+} else if (mode === "e2e") {
+	try {
+		const code = await runE2eHarness(projectRoot, rest);
+		process.exit(code);
 	} catch (error) {
 		console.error(error instanceof Error ? error.message : String(error));
 		process.exit(1);
