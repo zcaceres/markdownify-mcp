@@ -1,0 +1,85 @@
+# Slice 01: E2E Verification Domain and Corpus (VF-1, VF-2, VF-5, VF-6)
+
+# VF-1 (D37, D43, D45): defaults select node-stdio, --all selects all 6 Form Factors, filters and ad-hoc probes parse cleanly
+> e2e parse
+form-factors: node-stdio
+categories: (all)
+cases: (all)
+ad-hoc: (none)
+flags: json=false preview=false no-build=false reuse-venv=false
+
+> e2e parse --all --category=static-web,git-repo --json --preview --no-build --reuse-venv
+form-factors: node-stdio, bun-stdio, local-http, docker-stdio, docker-http, npm-package
+categories: static-web, git-repo
+cases: (all)
+ad-hoc: (none)
+flags: json=true preview=true no-build=true reuse-venv=true
+
+> e2e parse --form=local-http,docker-http --tool=webpage-to-markdown --url=https://example.com
+form-factors: local-http, docker-http
+categories: (all)
+cases: (all)
+ad-hoc: webpage-to-markdown url=https://example.com
+flags: json=false preview=false no-build=false reuse-venv=false
+
+# VF-1 (D45): unknown flags, unknown Form Factors/categories, conflicting --url + --file, and missing --tool fail fast
+> e2e parse --bogus
+error: Unknown e2e argument "--bogus". Supported flags: --form=, --all, --category=, --case=, --tool=, --url=, --file=, --branch=, --compress, --json, --preview, --no-build, --reuse-venv
+
+> e2e parse --form=wasm-stdio
+error: Unknown Form Factor "wasm-stdio". Supported values: node-stdio, bun-stdio, local-http, docker-stdio, docker-http, npm-package
+
+> e2e parse --category=unknown-cat
+error: Unknown category "unknown-cat". Supported values: static-web, spa-html, hosted-binary, youtube-bing, git-repo, local-binary
+
+> e2e parse --url=https://example.com --file=/tmp/a.pdf --tool=pdf-to-markdown
+error: Cannot specify both --url and --file for an ad-hoc probe
+
+> e2e parse --url=https://example.com
+error: Ad-hoc probe requires --tool=<name>
+
+# VF-2 (D3, D38, D44): Verification Corpus manifest validates structure, tools, and unique case ids
+> e2e validate-manifest {"version":1,"cases":[{"id":"wiki-md","category":"static-web","tool":"webpage-to-markdown","args":{"url":"https://en.wikipedia.org/wiki/Markdown"},"expectByProfile":{"full":{"kind":"ok","contains":["Markdown"]},"slim-pdf":{"kind":"ok","contains":["Markdown"]}}}]}
+ok: corpus v1 (1 cases)
+
+> e2e validate-manifest {"version":1,"cases":[{"id":"bad-tool","category":"static-web","tool":"not-a-tool","args":{"url":"https://example.com"},"expectByProfile":{"full":{"kind":"ok"},"slim-pdf":{"kind":"ok"}}}]}
+error: Invalid Verification Corpus: cases.0.tool: Unknown tool "not-a-tool"
+
+> e2e validate-manifest {"version":1,"cases":[{"id":"dup","category":"static-web","tool":"webpage-to-markdown","args":{"url":"https://a.example"},"expectByProfile":{"full":{"kind":"ok"},"slim-pdf":{"kind":"ok"}}},{"id":"dup","category":"static-web","tool":"webpage-to-markdown","args":{"url":"https://b.example"},"expectByProfile":{"full":{"kind":"ok"},"slim-pdf":{"kind":"ok"}}}]}
+error: Duplicate Verification Case id "dup"
+
+# VF-5, VF-6 (D4, D22, D39, D41, D44): profile-aware PASS/FAIL/BLOCKED classification and 0/1/2 exit codes
+> reset
+the world is back to its fixtures
+
+> e2e evaluate node-stdio docx-binary ok Test DOCX content
+PASS (node-stdio/docx-binary): matched expected full profile output
+
+> e2e evaluate docker-stdio docx-binary error Error: MissingDependencyException. This format requires markitdown[all] (full local install) rather than the slim Docker pdf profile.
+PASS (docker-stdio/docx-binary): matched expected slim-pdf profile error
+
+> e2e report
+total: 2 · pass: 2 · fail: 0 · blocked: 0 · exit-code: 0
+  PASS [node-stdio] docx-binary: matched expected full profile output
+  PASS [docker-stdio] docx-binary: matched expected slim-pdf profile error
+
+# VF-5, VF-6 (D39, D41): upstream bot-wall classifies as BLOCKED and yields exit code 2 when fail === 0
+> e2e evaluate local-http youtube-watch error Error: HTTP 429 Too Many Requests - Sign in to confirm you're not a bot
+BLOCKED (local-http/youtube-watch): matched upstream blocked pattern "not a bot"
+
+> e2e report
+total: 3 · pass: 2 · fail: 0 · blocked: 1 · exit-code: 2
+  PASS [node-stdio] docx-binary: matched expected full profile output
+  PASS [docker-stdio] docx-binary: matched expected slim-pdf profile error
+  BLOCKED [local-http] youtube-watch: matched upstream blocked pattern "not a bot"
+
+# VF-5, VF-6 (D39, D41): unexpected error or timeout classifies as FAIL and yields exit code 1 (overrides BLOCKED)
+> e2e evaluate docker-http static-html timeout
+FAIL (docker-http/static-html): Case timed out
+
+> e2e report
+total: 4 · pass: 2 · fail: 1 · blocked: 1 · exit-code: 1
+  PASS [node-stdio] docx-binary: matched expected full profile output
+  PASS [docker-stdio] docx-binary: matched expected slim-pdf profile error
+  BLOCKED [local-http] youtube-watch: matched upstream blocked pattern "not a bot"
+  FAIL [docker-http] static-html: Case timed out

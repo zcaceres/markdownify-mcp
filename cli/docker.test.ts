@@ -74,7 +74,7 @@ describe("runDockerChecks (SC-9, D4, D11, D22, D34, I2)", () => {
 				}
 				if (
 					name === "docx-to-markdown" &&
-					args?.filepath === "/slim-probe/sample.docx"
+					args?.filepath === "/data/test.docx"
 				) {
 					return {
 						isError: true,

@@ -1,0 +1,447 @@
+{
+	"version": 1,
+	"cases": [
+		{
+			"id": "web-iana-reserved",
+			"category": "static-web",
+			"tool": "webpage-to-markdown",
+			"args": {
+				"url": "https://www.iana.org/domains/reserved"
+			},
+			"expectByProfile": {
+				"full": {
+					"kind": "ok",
+					"contains": ["IANA"]
+				},
+				"slim-pdf": {
+					"kind": "ok",
+					"contains": ["IANA"]
+				}
+			}
+		},
+		{
+			"id": "web-wikipedia-markdown",
+			"category": "static-web",
+			"tool": "webpage-to-markdown",
+			"args": {
+				"url": "https://en.wikipedia.org/wiki/Markdown"
+			},
+			"expectByProfile": {
+				"full": {
+					"kind": "ok",
+					"contains": ["Markdown"]
+				},
+				"slim-pdf": {
+					"kind": "ok",
+					"contains": ["Markdown"]
+				}
+			},
+			"blockedPatterns": ["429", "Too Many Requests", "Access Denied"]
+		},
+		{
+			"id": "web-redirect-wikipedia",
+			"category": "static-web",
+			"tool": "webpage-to-markdown",
+			"args": {
+				"url": "https://wikipedia.org/wiki/Markdown"
+			},
+			"expectByProfile": {
+				"full": {
+					"kind": "ok",
+					"contains": ["Markdown"]
+				},
+				"slim-pdf": {
+					"kind": "ok",
+					"contains": ["Markdown"]
+				}
+			},
+			"blockedPatterns": ["429", "Too Many Requests", "Access Denied"]
+		},
+		{
+			"id": "web-http-404",
+			"category": "static-web",
+			"tool": "webpage-to-markdown",
+			"args": {
+				"url": "https://www.w3.org/markdownify-nonexistent-404-check"
+			},
+			"expectByProfile": {
+				"full": {
+					"kind": "error",
+					"contains": ["HTTP 404"]
+				},
+				"slim-pdf": {
+					"kind": "error",
+					"contains": ["HTTP 404"]
+				}
+			}
+		},
+		{
+			"id": "web-ssrf-loopback",
+			"category": "static-web",
+			"tool": "webpage-to-markdown",
+			"args": {
+				"url": "http://127.0.0.1/secret"
+			},
+			"expectByProfile": {
+				"full": {
+					"kind": "error",
+					"contains": ["potentially dangerous"]
+				},
+				"slim-pdf": {
+					"kind": "error",
+					"contains": ["potentially dangerous"]
+				}
+			}
+		},
+		{
+			"id": "spa-js-shell",
+			"category": "spa-html",
+			"tool": "webpage-to-markdown",
+			"args": {
+				"url": "https://react.dev"
+			},
+			"expectByProfile": {
+				"full": {
+					"kind": "ok",
+					"contains": ["React"],
+					"notContains": ["<!DOCTYPE html>"]
+				},
+				"slim-pdf": {
+					"kind": "ok",
+					"contains": ["React"],
+					"notContains": ["<!DOCTYPE html>"]
+				}
+			},
+			"blockedPatterns": [
+				"429",
+				"Too Many Requests",
+				"Access Denied",
+				"Cloudflare"
+			]
+		},
+		{
+			"id": "hosted-pdf",
+			"category": "hosted-binary",
+			"tool": "webpage-to-markdown",
+			"args": {
+				"url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+			},
+			"expectByProfile": {
+				"full": {
+					"kind": "ok",
+					"contains": ["Dummy PDF file"]
+				},
+				"slim-pdf": {
+					"kind": "ok",
+					"contains": ["Dummy PDF file"]
+				}
+			}
+		},
+		{
+			"id": "hosted-docx",
+			"category": "hosted-binary",
+			"tool": "webpage-to-markdown",
+			"args": {
+				"url": "https://raw.githubusercontent.com/microsoft/markitdown/main/packages/markitdown/tests/test_files/test.docx"
+			},
+			"expectByProfile": {
+				"full": {
+					"kind": "ok"
+				},
+				"slim-pdf": {
+					"kind": "error",
+					"contains": [
+						"markitdown[all]",
+						"rather than the slim Docker pdf profile"
+					]
+				}
+			},
+			"blockedPatterns": ["429", "Too Many Requests"]
+		},
+		{
+			"id": "youtube-watch",
+			"category": "youtube-bing",
+			"tool": "youtube-to-markdown",
+			"args": {
+				"url": "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+			},
+			"timeoutMs": 60000,
+			"expectByProfile": {
+				"full": {
+					"kind": "ok",
+					"contains": ["zoo"]
+				},
+				"slim-pdf": {
+					"kind": "ok",
+					"contains": ["zoo"]
+				}
+			},
+			"blockedPatterns": [
+				"not a bot",
+				"429",
+				"Too Many Requests",
+				"Sign in",
+				"captcha",
+				"RequestBlocked",
+				"IpBlocked",
+				"Could not retrieve a transcript",
+				"MissingDependencyException"
+			]
+		},
+		{
+			"id": "youtube-shortlink",
+			"category": "youtube-bing",
+			"tool": "youtube-to-markdown",
+			"args": {
+				"url": "https://youtu.be/jNQXAC9IVRw"
+			},
+			"timeoutMs": 60000,
+			"expectByProfile": {
+				"full": {
+					"kind": "ok",
+					"contains": ["zoo"]
+				},
+				"slim-pdf": {
+					"kind": "ok",
+					"contains": ["zoo"]
+				}
+			},
+			"blockedPatterns": [
+				"not a bot",
+				"429",
+				"Too Many Requests",
+				"Sign in",
+				"captcha",
+				"RequestBlocked",
+				"IpBlocked",
+				"Could not retrieve a transcript",
+				"MissingDependencyException"
+			]
+		},
+		{
+			"id": "bing-search-markdown",
+			"category": "youtube-bing",
+			"tool": "bing-search-to-markdown",
+			"args": {
+				"url": "https://www.bing.com/search?q=markdown"
+			},
+			"timeoutMs": 45000,
+			"expectByProfile": {
+				"full": {
+					"kind": "ok",
+					"contains": ["Markdown"]
+				},
+				"slim-pdf": {
+					"kind": "ok",
+					"contains": ["Markdown"]
+				}
+			},
+			"blockedPatterns": [
+				"captcha",
+				"429",
+				"Too Many Requests",
+				"unusual traffic",
+				"bot",
+				"raw HTML",
+				"solve the challenge"
+			]
+		},
+		{
+			"id": "git-shorthand-octocat",
+			"category": "git-repo",
+			"tool": "git-repo-to-markdown",
+			"args": {
+				"url": "octocat/Hello-World"
+			},
+			"timeoutMs": 90000,
+			"expectByProfile": {
+				"full": {
+					"kind": "ok",
+					"contains": ["Hello World!"]
+				},
+				"slim-pdf": {
+					"kind": "ok",
+					"contains": ["Hello World!"]
+				}
+			},
+			"blockedPatterns": ["rate limit", "429"]
+		},
+		{
+			"id": "git-url-branch-compress",
+			"category": "git-repo",
+			"tool": "git-repo-to-markdown",
+			"args": {
+				"url": "https://github.com/octocat/Hello-World",
+				"branch": "master",
+				"compress": true
+			},
+			"timeoutMs": 90000,
+			"expectByProfile": {
+				"full": {
+					"kind": "ok",
+					"contains": ["README"]
+				},
+				"slim-pdf": {
+					"kind": "ok",
+					"contains": ["README"]
+				}
+			},
+			"blockedPatterns": ["rate limit", "429"]
+		},
+		{
+			"id": "git-creds-rejected",
+			"category": "git-repo",
+			"tool": "git-repo-to-markdown",
+			"args": {
+				"url": "https://token@github.com/owner/repo"
+			},
+			"expectByProfile": {
+				"full": {
+					"kind": "error",
+					"contains": ["embedded credentials"]
+				},
+				"slim-pdf": {
+					"kind": "error",
+					"contains": ["embedded credentials"]
+				}
+			}
+		},
+		{
+			"id": "local-pdf",
+			"category": "local-binary",
+			"tool": "pdf-to-markdown",
+			"args": {
+				"filepath": "{{SAMPLE_DIR}}/test.pdf"
+			},
+			"expectByProfile": {
+				"full": {
+					"kind": "ok",
+					"contains": ["Test PDF content"]
+				},
+				"slim-pdf": {
+					"kind": "ok",
+					"contains": ["Test PDF content"]
+				}
+			}
+		},
+		{
+			"id": "local-docx",
+			"category": "local-binary",
+			"tool": "docx-to-markdown",
+			"args": {
+				"filepath": "{{SAMPLE_DIR}}/test.docx"
+			},
+			"expectByProfile": {
+				"full": {
+					"kind": "ok",
+					"contains": ["Test DOCX content"]
+				},
+				"slim-pdf": {
+					"kind": "error",
+					"contains": [
+						"markitdown[all]",
+						"rather than the slim Docker pdf profile"
+					]
+				}
+			}
+		},
+		{
+			"id": "local-xlsx",
+			"category": "local-binary",
+			"tool": "xlsx-to-markdown",
+			"args": {
+				"filepath": "{{SAMPLE_DIR}}/test.xlsx"
+			},
+			"expectByProfile": {
+				"full": {
+					"kind": "ok",
+					"contains": ["Test XLSX content"]
+				},
+				"slim-pdf": {
+					"kind": "error",
+					"contains": [
+						"markitdown[all]",
+						"rather than the slim Docker pdf profile"
+					]
+				}
+			}
+		},
+		{
+			"id": "local-pptx",
+			"category": "local-binary",
+			"tool": "pptx-to-markdown",
+			"args": {
+				"filepath": "{{SAMPLE_DIR}}/test.pptx"
+			},
+			"expectByProfile": {
+				"full": {
+					"kind": "ok",
+					"contains": ["Test PPTX content"]
+				},
+				"slim-pdf": {
+					"kind": "error",
+					"contains": [
+						"markitdown[all]",
+						"rather than the slim Docker pdf profile"
+					]
+				}
+			}
+		},
+		{
+			"id": "local-jpg",
+			"category": "local-binary",
+			"tool": "image-to-markdown",
+			"args": {
+				"filepath": "{{SAMPLE_DIR}}/test.jpg"
+			},
+			"expectByProfile": {
+				"full": {
+					"kind": "ok",
+					"allowEmpty": true
+				},
+				"slim-pdf": {
+					"kind": "ok",
+					"allowEmpty": true
+				}
+			}
+		},
+		{
+			"id": "local-md-retrieve",
+			"category": "local-binary",
+			"tool": "get-markdown-file",
+			"args": {
+				"filepath": "{{SAMPLE_DIR}}/test.md"
+			},
+			"expectByProfile": {
+				"full": {
+					"kind": "ok",
+					"requirePath": true,
+					"contains": ["# Test Markdown Sample", "Verbatim markdown body."]
+				},
+				"slim-pdf": {
+					"kind": "ok",
+					"requirePath": true,
+					"contains": ["# Test Markdown Sample", "Verbatim markdown body."]
+				}
+			}
+		},
+		{
+			"id": "local-allowed-paths-escape",
+			"category": "local-binary",
+			"tool": "pdf-to-markdown",
+			"args": {
+				"filepath": "/etc/passwd"
+			},
+			"expectByProfile": {
+				"full": {
+					"kind": "error",
+					"contains": ["outside the allowed directories"]
+				},
+				"slim-pdf": {
+					"kind": "error",
+					"contains": ["outside the allowed directories"]
+				}
+			}
+		}
+	]
+}

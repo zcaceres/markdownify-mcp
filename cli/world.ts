@@ -1,5 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { CaseOutcome } from "../src/e2e-verification/nouns.ts";
 import {
 	createLiveClock,
 	type LiveClock,
@@ -58,6 +59,7 @@ export type MockWorld = {
 	readonly repomix: RepomixMock;
 	readonly filesystem: FilesystemMock;
 	readonly env: Record<string, string | undefined>;
+	readonly e2eOutcomes: CaseOutcome[];
 };
 
 export type LiveWorld = {
@@ -68,6 +70,7 @@ export type LiveWorld = {
 	readonly repomix: LiveRepomix;
 	readonly filesystem: LiveFilesystem;
 	readonly env: Record<string, string | undefined>;
+	readonly e2eOutcomes: CaseOutcome[];
 };
 
 export type World = MockWorld | LiveWorld;
@@ -82,6 +85,7 @@ export const createWorld = (): MockWorld => {
 		repomix: createRepomixMock(clock),
 		filesystem: createFilesystemMock(),
 		env: {},
+		e2eOutcomes: [],
 	};
 };
 
@@ -93,4 +97,5 @@ export const createLiveWorld = (): LiveWorld => ({
 	repomix: createLiveRepomix(projectRoot),
 	filesystem: createLiveFilesystem(),
 	env: { ...process.env },
+	e2eOutcomes: [],
 });

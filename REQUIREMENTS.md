@@ -13,6 +13,7 @@ What each journey's users can do and see is in its acceptance criteria, which ci
 - **Retrieve Markdown File:** MCP Client retrieves an existing local Markdown File (`.md` or `.markdown`, case-insensitive) within Allowed Paths and receives its resolved path and verbatim UTF-8 text as a Markdown Result ([acceptance criteria](docs/journeys/retrieve-markdown-file/acceptance-criteria.md)).
 - **Convert Git Repository:** MCP Client converts a public remote Git Repository (`http(s)` URL or GitHub `owner/repo` shorthand, with optional branch/tag/commit and Tree-sitter compression) into a Markdown Result via `repomix` ([acceptance criteria](docs/journeys/convert-git-repo/acceptance-criteria.md)).
 - **Serve & Configure Server:** Operator configures and runs Markdownify MCP over `stdio`, stateless Streamable HTTP, or slim Docker, and MCP Client discovers all 11 tools and invokes them under HTTP `Host`/`Origin` guards ([acceptance criteria](docs/journeys/serve-and-configure-server/acceptance-criteria.md)).
+- **Verify Across Form Factors:** Operator (or coding agent) verifies Markdownify MCP end-to-end as a real MCP Client across all six supported Form Factors (`node-stdio`, `bun-stdio`, `local-http`, `docker-stdio`, `docker-http`, `npm-package`) and a curated real-world Verification Corpus (plus ad-hoc URL/file probes), producing a three-state Verification Report (`PASS`/`FAIL`/`BLOCKED`, exit `0`/`1`/`2`) ([acceptance criteria](docs/journeys/verify-across-form-factors/acceptance-criteria.md)).
 
 ## Sources
 
@@ -46,6 +47,10 @@ noun marked _(derived)_ is computed from others, never stored, and its entry say
 - **Server Configuration:** the Operator-supplied CLI flags and environment variables (`transport`, `host`, `port`, `allowedHosts`, `allowedOrigins`, `allowUnrestrictedPaths`, `MARKITDOWN_PATH`, `REPOMIX_PATH`, `MD_ALLOWED_PATHS`) parsed at startup (D2, D5, D6, D23).
 - **Startup Diagnostic** _(derived)_: an informational notice or warning emitted on HTTP server startup describing the active File Access Policy or non-loopback host binding (D5, D9, D23, D24, D33, D36).
 - **Temporary File:** a transient file written in a private random temp directory during Web URL download and deleted after conversion completes or fails (D5).
+- **Form Factor:** one of the six supported MCP runtime and packaging targets (`node-stdio`, `bun-stdio`, `local-http`, `docker-stdio`, `docker-http`, `npm-package`), defined by its runtime, MCP transport, and Python dependency profile (`full` vs `slim-pdf`) (D4, D37, D44, D46).
+- **Verification Corpus:** the versioned manifest (`corpus/manifest.json`) and real binary fixtures (`src/sample-data/`) defining curated real-internet and local inputs across all 11 MCP tools (D38, D42, D46).
+- **Verification Case:** a single input target in the Verification Corpus (or an ad-hoc CLI probe) specifying tool, arguments, category, per-profile expectations (`full` vs `slim-pdf`), and optional upstream `BLOCKED` matchers (D38, D39, D44, D46).
+- **Verification Report** _(derived)_: the structured summary of `PASS`, `FAIL`, and `BLOCKED` outcomes, durations, and diagnostics computed across executed Form Factors and Verification Cases, rendered as human-readable text or JSON (D39, D40, D41, D46).
 
 ### Verbs
 
@@ -287,6 +292,46 @@ for an undecided rule and will change with it.
 ### D36. Startup Diagnostic vocabulary
 
 - **Decided (2026-11-27):** Name the derived stderr messages emitted on HTTP server startup describing the active File Access Policy or non-loopback host binding **Startup Diagnostic** _(derived)_ in Terminology (`StartupDiagnostic`, `startupDiagnostics`, harness command `serve diagnostics`), replacing `StartupNotice` / `startupNotices` / `serve notices` (D5, D9, D23, D24, D33).
+
+### D37. End-to-end verification across all supported MCP form factors
+
+- **Decided (2026-11-27):** Verify Markdownify MCP end-to-end as a real MCP Client across all six supported runtime form factors: `node-stdio` (`node dist/index.js`), `bun-stdio` (`bun dist/index.js`), `local-http` (`--transport=http` via `StreamableHTTPClientTransport`), `docker-stdio` (slim `Dockerfile` `pdf` profile over `StdioClientTransport`), `docker-http` (slim `Dockerfile` `pdf` profile with `--transport=http --host=0.0.0.0`), and `npm-package` (fresh install from a packed `npm pack` tarball).
+
+### D38. Curated real-world verification corpus with ad-hoc CLI probes
+
+- **Decided (2026-11-27):** Maintain a curated, versioned verification corpus manifest in the repository grouped by input category and tool (real webpages, redirects, JS-rendered SPAs, hosted binary documents, YouTube, Bing, multi-language Git repositories, and binary local files), and support passing ad-hoc URLs or local files on the CLI for exploratory agent runs without editing the manifest.
+
+### D39. Three-way verification outcome classification (`PASS` / `FAIL` / `BLOCKED`)
+
+- **Decided (2026-11-27):** Classify every end-to-end verification check into `PASS`, `FAIL` (server bug, contract violation, or broken guard), or `BLOCKED` (explicitly tagged upstream rate-limit, CAPTCHA, anti-bot wall, or third-party outage such as YouTube/Bing bot walls), emitting both a human-readable summary and optional machine-readable JSON for agent inspection.
+
+### D40. Dedicated DD harness E2E matrix mode
+
+- **Decided (2026-11-27):** Expose real-transport, multi-form-factor, and real-internet corpus verification as a dedicated DD harness mode (`bun run harness e2e ...`) driving real MCP SDK clients (`StdioClientTransport`, `StreamableHTTPClientTransport`) across selectable form factors and corpus categories.
+
+### D41. Three-state exit codes for E2E verification (`0` / `1` / `2`)
+
+- **Decided (2026-11-27):** `bun run harness e2e` exits `0` only when every executed check passes (`FAIL === 0 && BLOCKED === 0`), exits `1` when any check fails (`FAIL > 0`), and exits `2` when zero checks fail but one or more external targets are classified as `BLOCKED` (`FAIL === 0 && BLOCKED > 0`), with no opt-in flag required.
+
+### D42. Real binary fixtures in `src/sample-data/`
+
+- **Decided (2026-11-27):** Replace the ASCII text stub files in `src/sample-data/` (`test.docx`, `test.xlsx`, `test.pptx`, `test.jpg`) with minimal, real, valid binary fixtures (alongside `test.pdf`, a real minimal audio fixture `test.wav`, and a Markdown fixture `test.md`), and update existing tests (`src/Markdownify.test.ts`, `src/integrations/live.test.ts`, `scenarios/live/convert-local-file.live.txt`) to assert against the real binary conversions.
+
+### D43. `npm-package` form-factor installation verification
+
+- **Decided (2026-11-27):** The `npm-package` form factor packs the repository with `npm pack`, installs the tarball cleanly into a fresh temporary directory to verify real `preinstall` / `uv sync` and the `mcp-markdownify-server` binary over MCP `StdioClientTransport`, and supports an optional `--reuse-venv` flag (passing `MARKITDOWN_PATH` and skipping `preinstall`) for fast local iteration.
+
+### D44. Profile-aware E2E expectations and transport security checks
+
+- **Decided (2026-11-27):** Each Verification Case declares expected behavior per Python profile (`full` with `markitdown[all]` vs `slim-pdf` with `markitdown[pdf]`, so real binary `.docx`/`.xlsx`/`.pptx`/`.wav` fixtures expect `PASS` on local `full` Form Factors and `isError: true` with the `D22` hint on `slim-pdf` Docker Form Factors). HTTP Form Factors (`local-http`, `docker-http`) additionally verify `Host`/`Origin` 403 guards (`I5`), 404/405 `Allow: POST` (`D33`), and `D9` fail-closed local file blocking when `MD_ALLOWED_PATHS` is unset.
+
+### D45. Filterable E2E harness CLI and guaranteed resource cleanup
+
+- **Decided (2026-11-27):** `bun run harness e2e` supports selecting Form Factors (`--form=...`, or `--all` for all six), corpus categories (`--category=...`), individual cases (`--case=...`), ad-hoc probes (`--url=... --tool=...`, `--file=... --tool=...`), `--json`, `--preview` (showing truncated Markdown output previews and lengths in text output, always included in `--json` and ad-hoc runs), `--no-build`, and `--reuse-venv`, enforces per-case timeouts, and guarantees cleanup of every spawned server process, Docker container, and temporary directory.
+
+### D46. Verification vocabulary (`Form Factor`, `Verification Corpus`, `Verification Case`, `Verification Report`)
+
+- **Decided (2026-11-27):** Add **Form Factor**, **Verification Corpus**, **Verification Case**, and **Verification Report** _(derived)_ to Terminology for end-to-end verification across supported MCP runtimes and real-world input material (D37–D45).
 
 ## Undecided Questions
 

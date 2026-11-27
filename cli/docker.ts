@@ -1,18 +1,11 @@
 import { execFile } from "node:child_process";
-import { access, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { access } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 const execFileAsync = promisify(execFile);
-
-/** Minimal binary ZIP header with .docx extension so MarkItDown invokes DocxConverter instead of PlainTextConverter. */
-const BINARY_DOCX_PROBE_BYTES = Buffer.from([
-	0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00,
-	0x00,
-]);
 
 const SLIM_DOCKER_HINT_SUBSTRING = "rather than the slim Docker pdf profile";
 
@@ -143,10 +136,10 @@ export const runDockerChecks = async (
 			: `isError=${String(blockedRes.isError)} text=${JSON.stringify(blockedText)}`,
 	});
 
-	// 4. [all]-only format surfaces D22 slim-Docker hint (D4, D22, D34)
+	// 4. [all]-only format surfaces D22 slim-Docker hint on real binary test.docx (D4, D22, D34, D42)
 	const slimRes = await client.callTool({
 		name: "docx-to-markdown",
-		arguments: { filepath: "/slim-probe/sample.docx" },
+		arguments: { filepath: "/data/test.docx" },
 	});
 	const slimText = extractText(slimRes);
 	const slimOk =
@@ -184,6 +177,7 @@ export const runDockerHarness = async (
 	const sampleDir = join(projectRoot, "src", "sample-data");
 
 	await access(join(sampleDir, "test.pdf"));
+	await access(join(sampleDir, "test.docx"));
 
 	if (!skipBuild) {
 		console.log(`── docker build -t ${image} .`);
@@ -198,9 +192,6 @@ export const runDockerHarness = async (
 		}
 	}
 
-	const probeDir = await mkdtemp(join(tmpdir(), "markdownify-docker-probe-"));
-	await writeFile(join(probeDir, "sample.docx"), BINARY_DOCX_PROBE_BYTES);
-
 	console.log(`── docker run (${image}) over MCP StdioClientTransport`);
 	const stderrChunks: string[] = [];
 	const transport = new StdioClientTransport({
@@ -211,10 +202,8 @@ export const runDockerHarness = async (
 			"-i",
 			"-v",
 			`${sampleDir}:/data:ro`,
-			"-v",
-			`${probeDir}:/slim-probe:ro`,
 			"-e",
-			"MD_ALLOWED_PATHS=/data:/slim-probe",
+			"MD_ALLOWED_PATHS=/data",
 			image,
 		],
 		stderr: "pipe",
@@ -257,6 +246,5 @@ export const runDockerHarness = async (
 		return allPassed;
 	} finally {
 		await client.close().catch(() => {});
-		await rm(probeDir, { recursive: true, force: true }).catch(() => {});
 	}
 };

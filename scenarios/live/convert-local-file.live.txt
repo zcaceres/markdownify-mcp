@@ -35,11 +35,10 @@ expect ok
 expect exact ok: pptx-to-markdown (path: none)
 expect contains Test PPTX content
 
-# LF-7 (D4, D16): real image without LLM vision config returns an empty Markdown Result rather than failing
+# LF-7 (D4, D16, D42): real binary JPEG converts cleanly (EXIF metadata when exiftool is installed, or empty otherwise)
 > convert image-to-markdown {{REPO_ROOT}}/src/sample-data/test.jpg
 expect ok
 expect exact ok: image-to-markdown (path: none)
-expect exact (empty)
 
 # LF-5 (D17): real directory and missing file inside Allowed Paths fail pre-validation before spawning markitdown
 > convert pdf-to-markdown {{REPO_ROOT}}/src/sample-data
