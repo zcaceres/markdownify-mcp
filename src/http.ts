@@ -1,12 +1,17 @@
 import http from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import {
-	HTTP_UNRESTRICTED_CLI_FLAG,
-	HTTP_UNRESTRICTED_ENV_VAR,
-} from "./local-file-conversion/nouns.js";
-import { resolveFileAccessPolicy } from "./local-file-conversion/verbs.js";
 import { createServer } from "./server.js";
+import { startupNotices } from "./server-config/queries.js";
+import {
+	checkHttpRequest,
+	isHostHeaderAllowed,
+	isLoopbackHost,
+	isOriginHeaderAllowed,
+	parseServerConfiguration,
+} from "./server-config/verbs.js";
 import { expandHome } from "./utils.js";
+
+export { isHostHeaderAllowed, isLoopbackHost, isOriginHeaderAllowed };
 
 export type CliConfig = {
 	transport: "stdio" | "http";
@@ -25,146 +30,18 @@ export type HttpServerOptions = {
 	allowUnrestrictedPaths?: boolean;
 };
 
-function parseCsvList(raw: string | undefined): string[] {
-	if (!raw) return [];
-	return raw
-		.split(",")
-		.map((item) => item.trim())
-		.filter(Boolean);
-}
-
-export function isLoopbackHost(host: string): boolean {
-	const normalized = host
-		.trim()
-		.replace(/^\[(.*)\]$/, "$1")
-		.toLowerCase();
-	return (
-		normalized === "127.0.0.1" ||
-		normalized === "localhost" ||
-		normalized === "::1"
-	);
-}
-
-export function isHostHeaderAllowed(
-	hostHeader: string | undefined,
-	bindHost: string,
-	allowedHosts: string[] = [],
-): boolean {
-	if (!hostHeader?.trim()) return false;
-	const trimmed = hostHeader.trim();
-
-	let parsed: URL;
-	try {
-		parsed = new URL(`http://${trimmed}`);
-	} catch {
-		return false;
-	}
-
-	if (
-		parsed.username ||
-		parsed.password ||
-		parsed.pathname !== "/" ||
-		parsed.search ||
-		parsed.hash
-	) {
-		return false;
-	}
-
-	const normalizedHost = trimmed.toLowerCase();
-	const hostname = parsed.hostname.toLowerCase();
-
-	if (allowedHosts.length > 0) {
-		const allowedSet = new Set(allowedHosts.map((h) => h.toLowerCase()));
-		return allowedSet.has(normalizedHost) || allowedSet.has(hostname);
-	}
-
-	if (isLoopbackHost(bindHost)) {
-		return isLoopbackHost(hostname);
-	}
-
-	return true;
-}
-
-export function isOriginHeaderAllowed(
-	originHeader: string | undefined,
-	bindHost: string,
-	allowedOrigins: string[] = [],
-): boolean {
-	if (originHeader === undefined) return true;
-	const trimmed = originHeader.trim();
-	if (!trimmed) return false;
-
-	let parsed: URL;
-	try {
-		parsed = new URL(trimmed);
-	} catch {
-		return false;
-	}
-
-	if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-		return false;
-	}
-
-	if (allowedOrigins.length > 0) {
-		return allowedOrigins.includes(parsed.origin);
-	}
-
-	if (isLoopbackHost(bindHost)) {
-		return isLoopbackHost(parsed.hostname);
-	}
-
-	return false;
-}
-
 export function parseCliArgs(
 	argv: string[],
 	env: NodeJS.ProcessEnv = process.env,
 ): CliConfig {
-	const transportArg = argv.find((a) => a.startsWith("--transport="));
-	const transport = transportArg
-		? transportArg.slice("--transport=".length)
-		: env.MCP_TRANSPORT || "stdio";
-	if (transport !== "stdio" && transport !== "http") {
-		throw new Error(
-			`Unknown transport "${transport}". Supported values: stdio, http`,
-		);
+	const parsed = parseServerConfiguration(argv, env);
+	if (!parsed.ok) {
+		throw new Error(parsed.error);
 	}
-
-	const portArg = argv.find((a) => a.startsWith("--port="));
-	const rawPort = portArg
-		? portArg.slice("--port=".length)
-		: env.MCP_PORT || "3000";
-	if (!/^\d+$/.test(rawPort)) {
-		throw new Error(
-			`Invalid port "${rawPort}". Must be an integer between 1 and 65535.`,
-		);
-	}
-	const port = Number.parseInt(rawPort, 10);
-	if (port < 1 || port > 65535) {
-		throw new Error(
-			`Invalid port "${rawPort}". Must be an integer between 1 and 65535.`,
-		);
-	}
-
-	const hostArg = argv.find((a) => a.startsWith("--host="));
-	const host = (
-		hostArg ? hostArg.slice("--host=".length) : env.MCP_HOST || "127.0.0.1"
-	).trim();
-	if (!host) {
-		throw new Error("Invalid host: must not be empty.");
-	}
-
-	const allowUnrestrictedPaths =
-		argv.includes(HTTP_UNRESTRICTED_CLI_FLAG) ||
-		env[HTTP_UNRESTRICTED_ENV_VAR]?.trim().toLowerCase() === "true";
-
 	return {
-		transport,
-		port,
-		host,
-		allowedHosts: parseCsvList(env.MCP_ALLOWED_HOSTS),
-		allowedOrigins: parseCsvList(env.MCP_ALLOWED_ORIGINS),
-		allowUnrestrictedPaths,
+		...parsed.value,
+		allowedHosts: [...parsed.value.allowedHosts],
+		allowedOrigins: [...parsed.value.allowedOrigins],
 	};
 }
 
@@ -198,26 +75,26 @@ export function createHttpServer(options: HttpServerOptions): http.Server {
 
 	return http.createServer(async (req, res) => {
 		const pathname = new URL(req.url ?? "/", "http://localhost").pathname;
-		if (pathname !== "/" && pathname !== "/mcp") {
-			sendJsonError(res, 404, -32000, "Not found");
-			return;
-		}
-
-		if (!isHostHeaderAllowed(req.headers.host, host, allowedHosts)) {
-			sendJsonError(res, 403, -32000, "Forbidden: invalid Host header");
-			return;
-		}
-
 		const originHeader = Array.isArray(req.headers.origin)
 			? req.headers.origin[0]
 			: req.headers.origin;
-		if (!isOriginHeaderAllowed(originHeader, host, allowedOrigins)) {
-			sendJsonError(res, 403, -32000, "Forbidden: invalid Origin header");
-			return;
-		}
-
-		if (req.method !== "POST") {
-			sendJsonError(res, 405, -32000, "Method not allowed", { Allow: "POST" });
+		const guard = checkHttpRequest(
+			{
+				method: req.method ?? "",
+				pathname,
+				hostHeader: req.headers.host,
+				originHeader,
+			},
+			{ host, allowedHosts, allowedOrigins },
+		);
+		if (!guard.allowed) {
+			sendJsonError(
+				res,
+				guard.status,
+				-32000,
+				guard.message,
+				guard.allowHeader ? { Allow: guard.allowHeader } : {},
+			);
 			return;
 		}
 
@@ -257,25 +134,20 @@ export function createHttpServer(options: HttpServerOptions): http.Server {
 export async function startHttpServer(
 	options: HttpServerOptions,
 ): Promise<http.Server> {
-	const filePolicy = resolveFileAccessPolicy(process.env, expandHome, {
-		transport: "http",
-		allowUnrestrictedPaths: options.allowUnrestrictedPaths,
-	});
-	if (!filePolicy.ok) {
-		console.error(`Warning: ${filePolicy.error}`);
-	} else if (filePolicy.value.kind === "disabled") {
-		console.error(
-			"Notice: starting HTTP transport with MD_ALLOWED_PATHS unset; local file tools are disabled by default.",
-		);
-	} else if (filePolicy.value.kind === "unrestricted") {
-		console.error(
-			"Warning: starting HTTP transport with unrestricted local file access opted in; file-input tools can read any file accessible to this process.",
-		);
-	}
-	if (!isLoopbackHost(options.host)) {
-		console.error(
-			`Warning: binding unauthenticated HTTP transport to non-loopback host "${options.host}". Place behind an authenticating reverse proxy and set MCP_ALLOWED_HOSTS / MCP_ALLOWED_ORIGINS.`,
-		);
+	const notices = startupNotices(
+		{
+			transport: "http",
+			port: options.port,
+			host: options.host,
+			allowedHosts: options.allowedHosts ?? [],
+			allowedOrigins: options.allowedOrigins ?? [],
+			allowUnrestrictedPaths: options.allowUnrestrictedPaths === true,
+		},
+		process.env,
+		expandHome,
+	);
+	for (const notice of notices) {
+		console.error(notice.message);
 	}
 
 	const httpServer = createHttpServer(options);
