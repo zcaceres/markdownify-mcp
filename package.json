@@ -40,7 +40,7 @@
 	},
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.32.2",
-		"repomix": "^1.18.1",
+		"repomix": "^1.19.0",
 		"zod": "^4.6.7"
 	},
 	"devDependencies": {
