@@ -12,6 +12,7 @@ What each journey's users can do and see is in its acceptance criteria, which ci
 - **Convert Local File:** MCP Client converts a Local File (PDF, image, audio, DOCX, XLSX, PPTX) within Allowed Paths into a Markdown Result ([acceptance criteria](docs/journeys/convert-local-file/acceptance-criteria.md)).
 - **Retrieve Markdown File:** MCP Client retrieves an existing local Markdown File (`.md` or `.markdown`, case-insensitive) within Allowed Paths and receives its resolved path and verbatim UTF-8 text as a Markdown Result ([acceptance criteria](docs/journeys/retrieve-markdown-file/acceptance-criteria.md)).
 - **Convert Git Repository:** MCP Client converts a public remote Git Repository (`http(s)` URL or GitHub `owner/repo` shorthand, with optional branch/tag/commit and Tree-sitter compression) into a Markdown Result via `repomix` ([acceptance criteria](docs/journeys/convert-git-repo/acceptance-criteria.md)).
+- **Serve & Configure Server:** Operator configures and runs Markdownify MCP over `stdio`, stateless Streamable HTTP, or slim Docker, and MCP Client discovers all 11 tools and invokes them under HTTP `Host`/`Origin` guards ([acceptance criteria](docs/journeys/serve-and-configure-server/acceptance-criteria.md)).
 
 ## Sources
 
@@ -264,6 +265,18 @@ for an undecided rule and will change with it.
 ### D31. Uniform `repomix` error and timeout formatting
 
 - **Decided (2026-11-26):** Format `repomix` missing binary (`ENOENT`), timeout (`Conversion timed out after <ms>ms`), and non-zero exit failures (`Conversion failed: <reason>`) as clean structured domain errors (D8) rather than surfacing raw `execFile` command strings.
+
+### D32. Fail fast on unknown CLI flags
+
+- **Decided (2026-11-26):** Startup CLI argument parsing rejects unknown flags or unexpected positional arguments (anything other than `--transport=<stdio|http>`, `--host=<host>`, `--port=<1..65535>`, and `--allow-unrestricted-paths`) with a clear error rather than silently ignoring typos.
+
+### D33. Stateless Streamable HTTP routing and non-loopback `Host`/`Origin` defaults
+
+- **Decided (2026-11-26):** Streamable HTTP serves `POST /mcp` and `POST /` exclusively (returning JSON-RPC HTTP 404 on unknown paths and HTTP 405 with `Allow: POST` on non-POST methods; no unauthenticated `/health` endpoint). When bound to a non-loopback host, any syntactically valid `Host` header is allowed unless `MCP_ALLOWED_HOSTS` is configured, browser `Origin` headers are rejected with HTTP 403 unless listed in `MCP_ALLOWED_ORIGINS` (I5), and startup logs a stderr warning recommending an authenticating reverse proxy.
+
+### D34. Slim Docker container verification via `harness docker`
+
+- **Decided (2026-11-26):** Verify the packaged slim Docker image (`Dockerfile`, D4, D11) via `bun run harness docker` using the MCP SDK `StdioClientTransport` against the built container (checking `pdf-to-markdown /data/test.pdf` succeeds, `MD_ALLOWED_PATHS=/data` blocks `/etc/passwd`, and a format requiring `markitdown[all]` surfaces the D22 slim-Docker hint), with `scripts/docker-smoke-test.sh` delegating to it.
 
 ## Undecided Questions
 

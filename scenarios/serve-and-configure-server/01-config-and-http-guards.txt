@@ -1,0 +1,116 @@
+# Slice 01: Server Configuration and HTTP Request Guards (SC-1, SC-2, SC-4, SC-5, SC-6, SC-7)
+
+# SC-1 (D1, D2, D6, D23): defaults select stdio on 127.0.0.1:3000 and CLI flags override MCP_* env vars
+> serve config
+transport: stdio
+host: 127.0.0.1
+port: 3000
+allowed-hosts: (default)
+allowed-origins: (default)
+allow-unrestricted-paths: false
+
+> config set MCP_TRANSPORT stdio
+config MCP_TRANSPORT = stdio
+
+> config set MCP_PORT 9999
+config MCP_PORT = 9999
+
+> config set MCP_ALLOWED_HOSTS mcp.example.com,localhost:4123
+config MCP_ALLOWED_HOSTS = mcp.example.com,localhost:4123
+
+> config set MCP_ALLOWED_ORIGINS https://app.example.com
+config MCP_ALLOWED_ORIGINS = https://app.example.com
+
+> serve config --transport=http --host=localhost --port=4123 --allow-unrestricted-paths
+transport: http
+host: localhost
+port: 4123
+allowed-hosts: mcp.example.com, localhost:4123
+allowed-origins: https://app.example.com
+allow-unrestricted-paths: true
+
+# SC-2 (D2, D32): unknown CLI flags, positional args, bad transport, bad port, and empty host fail fast
+> serve config --transprot=http
+error: Unknown CLI argument "--transprot=http". Supported flags: --transport=stdio|http, --host=HOST, --port=N, --allow-unrestricted-paths
+
+> serve config --allow-unrestricted
+error: Unknown CLI argument "--allow-unrestricted". Supported flags: --transport=stdio|http, --host=HOST, --port=N, --allow-unrestricted-paths
+
+> serve config extra-arg
+error: Unknown CLI argument "extra-arg". Supported flags: --transport=stdio|http, --host=HOST, --port=N, --allow-unrestricted-paths
+
+> serve config --transport=ws
+error: Unknown transport "ws". Supported values: stdio, http
+
+> serve config --port=0
+error: Invalid port "0". Must be an integer between 1 and 65535.
+
+> serve config --host=
+error: Invalid host: must not be empty.
+
+# SC-4, SC-5, SC-6 (D1, D33, I5): HTTP routing (404/405) and Host/Origin validation (403) on loopback bind
+> reset
+the world is back to its fixtures
+
+> serve check-http POST /mcp host=127.0.0.1:3000
+http: allow
+
+> serve check-http POST / host=localhost:3000 origin=http://localhost:5173
+http: allow
+
+> serve check-http GET /health host=127.0.0.1:3000
+http: 404 Not found
+
+> serve check-http GET /mcp host=127.0.0.1:3000
+http: 405 Method not allowed (Allow: POST)
+
+> serve check-http POST /mcp host=rebind.evil.com:3000
+http: 403 Forbidden: invalid Host header
+
+> serve check-http POST /mcp host=127.0.0.1:3000 origin=https://evil.com
+http: 403 Forbidden: invalid Origin header
+
+# SC-5, SC-6 (D33, I5): non-loopback bind allows valid Host unless MCP_ALLOWED_HOSTS set, and blocks Origins unless listed
+> config set MCP_HOST 0.0.0.0
+config MCP_HOST = 0.0.0.0
+
+> serve check-http POST /mcp host=mcp.example.com
+http: allow
+
+> serve check-http POST /mcp host=mcp.example.com origin=https://app.example.com
+http: 403 Forbidden: invalid Origin header
+
+> config set MCP_ALLOWED_HOSTS mcp.example.com
+config MCP_ALLOWED_HOSTS = mcp.example.com
+
+> config set MCP_ALLOWED_ORIGINS https://app.example.com
+config MCP_ALLOWED_ORIGINS = https://app.example.com
+
+> serve check-http POST /mcp host=other.example.com
+http: 403 Forbidden: invalid Host header
+
+> serve check-http POST /mcp host=mcp.example.com origin=https://app.example.com
+http: allow
+
+# SC-7 (D6, D9, D23, D24, D33): HTTP startup notices reflect file-access policy and non-loopback binding
+> reset
+the world is back to its fixtures
+
+> serve notices --transport=http
+notice: Notice: starting HTTP transport with MD_ALLOWED_PATHS unset; local file tools are disabled by default.
+
+> serve notices --transport=http --allow-unrestricted-paths --host=0.0.0.0
+warning: Warning: starting HTTP transport with unrestricted local file access opted in; file-input tools can read any file accessible to this process.
+warning: Warning: binding unauthenticated HTTP transport to non-loopback host "0.0.0.0". Place behind an authenticating reverse proxy and set MCP_ALLOWED_HOSTS / MCP_ALLOWED_ORIGINS.
+
+> config set MD_ALLOWED_PATHS :
+config MD_ALLOWED_PATHS = :
+
+> serve notices --transport=http
+warning: Warning: MD_ALLOWED_PATHS is set but contains no valid directories. Specify at least one directory or unset MD_ALLOWED_PATHS.
+
+> config set MD_ALLOWED_PATHS /data
+config MD_ALLOWED_PATHS = /data
+
+> serve notices --transport=http
+(none)

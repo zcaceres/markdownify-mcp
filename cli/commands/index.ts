@@ -6,6 +6,7 @@ import { retrieve } from "./markdown-retrieval.ts";
 import { markitdown } from "./markitdown.ts";
 import { network } from "./network.ts";
 import { repomix } from "./repomix.ts";
+import { serve } from "./server-config.ts";
 import { convert } from "./web-conversion.ts";
 
 /**
@@ -21,4 +22,5 @@ export const commands: Readonly<Record<string, Command>> = {
 	network,
 	repomix,
 	retrieve,
+	serve,
 };
