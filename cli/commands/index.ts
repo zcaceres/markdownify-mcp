@@ -2,6 +2,7 @@ import type { Command } from "../command.ts";
 import { clock } from "./clock.ts";
 import { config } from "./config.ts";
 import { filesystem } from "./filesystem.ts";
+import { retrieve } from "./markdown-retrieval.ts";
 import { markitdown } from "./markitdown.ts";
 import { network } from "./network.ts";
 import { convert } from "./web-conversion.ts";
@@ -17,4 +18,5 @@ export const commands: Readonly<Record<string, Command>> = {
 	filesystem,
 	markitdown,
 	network,
+	retrieve,
 };

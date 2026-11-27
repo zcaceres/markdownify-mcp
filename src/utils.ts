@@ -5,8 +5,9 @@ import os from "node:os";
 import path from "node:path";
 import { URL } from "node:url";
 import { isValidRemoteValue } from "repomix";
-import { EMPTY_ALLOWED_PATHS_MESSAGE } from "./local-file-conversion/verbs.js";
+import { isMarkdownExtension } from "./markdown-retrieval/verbs.js";
 import { isPrivateOrReservedIp, normalizeHostname } from "./shared/ip.js";
+import { EMPTY_ALLOWED_PATHS_MESSAGE } from "./shared/local-access.js";
 import {
 	checkConvertedOutput,
 	inferTempExtension,
@@ -208,8 +209,7 @@ export function inferExtensionFromUrl(
 }
 
 export function isMarkdownFile(filePath: string): boolean {
-	const markdownExt = [".md", ".markdown"];
-	return markdownExt.includes(path.extname(filePath));
+	return isMarkdownExtension(filePath);
 }
 
 export function isWithinDirectory(

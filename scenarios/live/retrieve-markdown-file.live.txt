@@ -1,0 +1,47 @@
+# Live verification suite: Retrieve Markdown File against the real host filesystem.
+# Run with: bun run harness live scenarios/live/retrieve-markdown-file.live.txt
+
+# RM-8, RM-4 (D6, D21, I2): Allowed Paths permits real Markdown Files and blocks escapes before existence checks
+> config set MD_ALLOWED_PATHS {{REPO_ROOT}}
+expect ok
+
+> retrieve /etc/nonexistent-dd-probe.md
+expect error outside the allowed directories
+
+> retrieve {{REPO_ROOT}}/../nonexistent-dd-probe.md
+expect error outside the allowed directories
+
+# RM-8, RM-2 (D8, D26): non-Markdown files are refused
+> retrieve {{REPO_ROOT}}/package.json
+expect error Required file is not a Markdown file.
+
+# RM-8, RM-6 (D3, D5, D19, D27): real Markdown Files return resolved path and verbatim UTF-8 contents
+> retrieve {{REPO_ROOT}}/README.md
+expect ok
+expect contains ok: get-markdown-file (path:
+expect contains # Markdownify MCP Server
+
+> retrieve {{REPO_ROOT}}/REQUIREMENTS.md
+expect ok
+expect contains # Markdownify MCP Requirements
+
+# RM-8, RM-5 (D17, D25): missing Markdown File inside Allowed Paths fails cleanly
+> retrieve {{REPO_ROOT}}/definitely-missing-dd.md
+expect error File does not exist:
+
+# RM-8, RM-4 (D8, D24): explicitly set delimiter-only MD_ALLOWED_PATHS fails closed
+> config set MD_ALLOWED_PATHS :
+expect exact config MD_ALLOWED_PATHS = :
+
+> retrieve {{REPO_ROOT}}/README.md
+expect error MD_ALLOWED_PATHS is set but contains no valid directories
+
+# RM-8, RM-3 (D9, D23): HTTP mode fails closed on real Markdown Files when MD_ALLOWED_PATHS is unset
+> config clear MD_ALLOWED_PATHS
+expect exact config cleared MD_ALLOWED_PATHS
+
+> config set MCP_TRANSPORT http
+expect exact config MCP_TRANSPORT = http
+
+> retrieve {{REPO_ROOT}}/README.md
+expect error Local file tools are disabled in HTTP mode

@@ -215,3 +215,75 @@ describe("live local file verification (LF-5, LF-12, D17, I2, I3)", () => {
 		conversionTimeout,
 	);
 });
+
+describe("live markdown retrieval verification (RM-8, D8, D17, D25, D26, D27, I2)", () => {
+	test("retrieves .MD/.markdown verbatim, returns realpath for in-bounds symlinks, and blocks escaping/.md->.txt symlinks and directories", async () => {
+		const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mdfy-live-md-"));
+		const allowedDir = path.join(tmp, "allowed");
+		const outsideDir = path.join(tmp, "outside");
+		const upperMd = path.join(allowedDir, "UPPER.MD");
+		const wsMarkdown = path.join(allowedDir, "blank.Markdown");
+		const dirNamedMd = path.join(allowedDir, "folder.md");
+		const secretTxt = path.join(allowedDir, "secret.txt");
+		const outsideMd = path.join(outsideDir, "secret.md");
+		const inBoundsLink = path.join(allowedDir, "alias.md");
+		const disguisedLink = path.join(allowedDir, "disguised.md");
+		const escapeLink = path.join(allowedDir, "escape.md");
+
+		fs.mkdirSync(allowedDir);
+		fs.mkdirSync(outsideDir);
+		fs.mkdirSync(dirNamedMd);
+		fs.writeFileSync(upperMd, "# Upper\nLine 2");
+		fs.writeFileSync(wsMarkdown, "  \n");
+		fs.writeFileSync(secretTxt, "SECRET=1");
+		fs.writeFileSync(outsideMd, "# Outside");
+		fs.symlinkSync(upperMd, inBoundsLink);
+		fs.symlinkSync(secretTxt, disguisedLink);
+		fs.symlinkSync(outsideMd, escapeLink);
+
+		try {
+			const session = createSession({ connect: createLiveWorld });
+			await session.exec(`config set MD_ALLOWED_PATHS ${allowedDir}`);
+
+			const aliased = await session.exec(`retrieve ${inBoundsLink}`);
+			expect(aliased).toEqual([
+				`ok: get-markdown-file (path: ${fs.realpathSync.native(upperMd)})`,
+				"| # Upper",
+				"| Line 2",
+			]);
+
+			const blank = await session.exec(`retrieve ${wsMarkdown}`);
+			expect(blank).toEqual([
+				`ok: get-markdown-file (path: ${fs.realpathSync.native(wsMarkdown)})`,
+				"|   ",
+				"| ",
+			]);
+
+			const disguised = await session.exec(`retrieve ${disguisedLink}`);
+			expect(disguised).toEqual([
+				"error: Required file is not a Markdown file.",
+			]);
+
+			const escaped = await session.exec(`retrieve ${escapeLink}`);
+			expect(escaped[0]).toContain("outside the allowed directories");
+
+			const dirRes = await session.exec(`retrieve ${dirNamedMd}`);
+			expect(dirRes[0]).toContain("Path is a directory, not a file:");
+		} finally {
+			fs.rmSync(tmp, { recursive: true, force: true });
+		}
+	});
+
+	test("replays scenarios/live/retrieve-markdown-file.live.txt end-to-end", async () => {
+		const suitePath = path.join(
+			projectRoot,
+			"scenarios/live/retrieve-markdown-file.live.txt",
+		);
+		const text = fs.readFileSync(suitePath, "utf8");
+		const ran = await runLive(
+			parseLive(text, { REPO_ROOT: projectRoot }),
+			createSession({ connect: createLiveWorld }),
+		);
+		expect(passedLive(ran)).toBe(true);
+	});
+});

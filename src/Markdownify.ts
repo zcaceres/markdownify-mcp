@@ -12,12 +12,18 @@ import {
 	parseLocalFileLimits,
 	verifyReadableFile,
 } from "./local-file-conversion/verbs.js";
+import { markdownFileResult } from "./markdown-retrieval/queries.js";
+import {
+	isMarkdownExtension,
+	NOT_MARKDOWN_FILE_ERROR,
+	validateMarkdownRetrievalRequest,
+} from "./markdown-retrieval/verbs.js";
 import {
 	assertPathAllowed,
 	expandHome,
 	inferExtensionFromUrl,
-	isMarkdownFile,
 	isUnconvertedHtml,
+	realpathOrAncestor,
 	resolveMarkitdownPath,
 	resolveRepomixPath,
 	shouldPassUrlToMarkitdown,
@@ -382,22 +388,28 @@ export class Markdownify {
 	}: {
 		filePath: string;
 	}): Promise<MarkdownResult> {
-		const resolvedPath = path.resolve(expandHome(filePath));
-		if (!isMarkdownFile(resolvedPath)) {
-			throw new Error("Required file is not a Markdown file.");
+		const validated = validateMarkdownRetrievalRequest(filePath);
+		if (!validated.ok) {
+			throw new Error(validated.error);
+		}
+		const expandedPath = path.resolve(expandHome(validated.value.filePath));
+		assertPathAllowed(expandedPath);
+
+		const realTarget = realpathOrAncestor(expandedPath);
+		if (!isMarkdownExtension(realTarget)) {
+			throw new Error(NOT_MARKDOWN_FILE_ERROR);
 		}
 
-		assertPathAllowed(resolvedPath);
-
-		if (!fs.existsSync(resolvedPath)) {
-			throw new Error("File does not exist");
+		const verified = verifyReadableFile(
+			realTarget,
+			statRealLocalFile(realTarget),
+		);
+		if (!verified.ok) {
+			throw new Error(verified.error);
 		}
 
-		const text = await fs.promises.readFile(resolvedPath, "utf-8");
+		const text = await fs.promises.readFile(realTarget, "utf-8");
 
-		return {
-			path: resolvedPath,
-			text: text,
-		};
+		return markdownFileResult(realTarget, text);
 	}
 }
