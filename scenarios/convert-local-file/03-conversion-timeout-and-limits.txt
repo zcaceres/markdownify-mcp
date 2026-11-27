@@ -1,0 +1,65 @@
+# Slice 03: Conversion Timeout and Limits (LF-10, D7, D13)
+
+# LF-10 (D7, D13): default 60s markitdown timeout aborts slow Local File conversions and advances the clock
+> filesystem put /data/large.pdf
+created file /data/large.pdf
+
+> markitdown stub # Large PDF
+markitdown stubbed
+
+> markitdown slow 61s
+markitdown latency -> 61000ms
+
+> convert pdf-to-markdown /data/large.pdf
+error: Conversion timed out after 60000ms
+
+> clock
+2026-01-05T09:01:00.000Z
+
+# LF-10 (D7, D13): MD_MARKITDOWN_TIMEOUT_MS overrides the default timeout (slow fails, within-budget succeeds)
+> config set MD_MARKITDOWN_TIMEOUT_MS 5000
+config MD_MARKITDOWN_TIMEOUT_MS = 5000
+
+> markitdown slow 6s
+markitdown latency -> 6000ms
+
+> convert pdf-to-markdown /data/large.pdf
+error: Conversion timed out after 5000ms
+
+> markitdown slow 4s
+markitdown latency -> 4000ms
+
+> convert pdf-to-markdown /data/large.pdf
+ok: pdf-to-markdown (path: none)
+| # Large PDF
+
+> clock
+2026-01-05T09:01:09.000Z
+
+# LF-10 (D8, D13): invalid MD_MARKITDOWN_TIMEOUT_MS values are refused cleanly before invoking markitdown
+> reset
+the world is back to its fixtures
+
+> filesystem put /data/report.pdf
+created file /data/report.pdf
+
+> config set MD_MARKITDOWN_TIMEOUT_MS 0
+config MD_MARKITDOWN_TIMEOUT_MS = 0
+
+> convert pdf-to-markdown /data/report.pdf
+error: Invalid MD_MARKITDOWN_TIMEOUT_MS "0": must be a positive integer
+
+> config set MD_MARKITDOWN_TIMEOUT_MS -50
+config MD_MARKITDOWN_TIMEOUT_MS = -50
+
+> convert pdf-to-markdown /data/report.pdf
+error: Invalid MD_MARKITDOWN_TIMEOUT_MS "-50": must be a positive integer
+
+> config set MD_MARKITDOWN_TIMEOUT_MS fast
+config MD_MARKITDOWN_TIMEOUT_MS = fast
+
+> convert pdf-to-markdown /data/report.pdf
+error: Invalid MD_MARKITDOWN_TIMEOUT_MS "fast": must be a positive integer
+
+> markitdown last-input
+last input: (none)

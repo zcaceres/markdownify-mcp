@@ -54,13 +54,14 @@ scenario that runs it. Each has a [spec](specs/) and a scenario in `scenarios/co
    ([spec](specs/01-basic-local-file/spec.md), `scenarios/convert-local-file/01-basic-local-file.txt`)
 2. **02-allowed-paths-and-symlinks.** Enforce `Allowed Paths` (`MD_ALLOWED_PATHS`, `~` expansion, `realpath` symlink containment, `..` traversal & prefix-sibling rejection, and D24 empty-value fail-closed rejection) before existence checks, plus HTTP fail-closed `disabled` access mode with `--allow-unrestricted-paths` / `MCP_ALLOW_UNRESTRICTED_PATHS=true` opt-out (D9, D23). Covers LF-3, LF-4.
    ([spec](specs/02-allowed-paths-and-symlinks/spec.md), `scenarios/convert-local-file/02-allowed-paths-and-symlinks.txt`)
+3. **03-conversion-timeout-and-limits.** Enforce `MD_MARKITDOWN_TIMEOUT_MS` (60s default) on local file conversions and reject invalid `MD_*` limit values cleanly (D7, D13). Covers LF-10.
+   ([spec](specs/03-conversion-timeout-and-limits/spec.md), `scenarios/convert-local-file/03-conversion-timeout-and-limits.txt`)
 
 ### Next
 
 In the order we expect to build them; reorder freely. Each says where it came from: criteria, a finding (a
 `/dd-verify` note) or a decision.
 
-- **03-conversion-timeout-and-limits.** Enforce `MD_MARKITDOWN_TIMEOUT_MS` (60s default) on local file conversions and reject invalid `MD_*` limit values cleanly. From LF-10.
 - **04-live-local-file-verification.** Extend `src/integrations/filesystem/live.ts` with real `realpath`/`stat`/readability checks (fixing `EACCES` misclassification and rejecting non-regular files where `!stats.isFile()`), fix `cli/main.ts` piped-stdin `ERR_USE_AFTER_CLOSE` in live REPL mode, and add `scenarios/live/convert-local-file.live.txt` exercising real `src/sample-data/*` files plus live `Allowed Paths` and symlink escape refusal. From LF-12, [notes/2026-11-26-convert-local-file-verify.md](../../../notes/2026-11-26-convert-local-file-verify.md).
 
 ## Deferred

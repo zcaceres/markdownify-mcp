@@ -9,6 +9,7 @@ import { statRealLocalFile } from "./integrations/filesystem/live.js";
 import {
 	formatMarkitdownError,
 	isAbsoluteOrHomePath,
+	parseLocalFileLimits,
 	verifyReadableFile,
 } from "./local-file-conversion/verbs.js";
 import {
@@ -224,14 +225,17 @@ export class Markdownify {
 	}): Promise<MarkdownResult> {
 		let temporaryFile: TemporaryFile | null = null;
 		try {
-			const limitsResult = parseWebLimits(process.env);
-			if (!limitsResult.ok) {
-				throw new Error(limitsResult.error);
-			}
-			const limits = limitsResult.value;
 			let inputPath: string;
+			let markitdownTimeoutMs: number;
 
 			if (url) {
+				const limitsResult = parseWebLimits(process.env);
+				if (!limitsResult.ok) {
+					throw new Error(limitsResult.error);
+				}
+				const limits = limitsResult.value;
+				markitdownTimeoutMs = limits.markitdownTimeoutMs;
+
 				const { response, finalUrl } = await Markdownify.safeFetch(
 					url,
 					limits.maxRedirects,
@@ -262,6 +266,12 @@ export class Markdownify {
 					inputPath = temporaryFile.path;
 				}
 			} else if (filePath) {
+				const limitsResult = parseLocalFileLimits(process.env);
+				if (!limitsResult.ok) {
+					throw new Error(limitsResult.error);
+				}
+				markitdownTimeoutMs = limitsResult.value.markitdownTimeoutMs;
+
 				const trimmed = filePath.trim();
 				if (!trimmed) {
 					throw new Error("File path is required for this tool");
@@ -288,7 +298,7 @@ export class Markdownify {
 			const text = await Markdownify._markitdown(
 				inputPath,
 				projectRoot,
-				limits.markitdownTimeoutMs,
+				markitdownTimeoutMs,
 				{ checkUnconvertedHtml: Boolean(url) },
 			);
 

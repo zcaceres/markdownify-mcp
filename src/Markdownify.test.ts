@@ -766,3 +766,42 @@ test("Markdownify.toMarkdown preserves <!DOCTYPE html> output on local files (D2
 		Markdownify["_markitdown"] = originalMarkitdown;
 	}
 });
+
+test("Markdownify.toMarkdown enforces MD_MARKITDOWN_TIMEOUT_MS on local files without requiring web fetch limits (LF-10, D13)", async () => {
+	const savedMarkitdown = process.env.MD_MARKITDOWN_TIMEOUT_MS;
+	const savedFetch = process.env.MD_FETCH_TIMEOUT_MS;
+	const originalMarkitdown = Markdownify["_markitdown"];
+	let receivedTimeout: number | undefined;
+	Markdownify["_markitdown"] = mock(
+		async (_filePath: string, _projectRoot: string, timeoutMs?: number) => {
+			receivedTimeout = timeoutMs;
+			return "# Timed";
+		},
+	) as any;
+
+	try {
+		process.env.MD_MARKITDOWN_TIMEOUT_MS = "0";
+		await expect(
+			Markdownify.toMarkdown({
+				filePath: path.join(sampleDataDir, "test.pdf"),
+			}),
+		).rejects.toThrow(
+			'Invalid MD_MARKITDOWN_TIMEOUT_MS "0": must be a positive integer',
+		);
+
+		process.env.MD_MARKITDOWN_TIMEOUT_MS = "5000";
+		process.env.MD_FETCH_TIMEOUT_MS = "not-a-number";
+		const res = await Markdownify.toMarkdown({
+			filePath: path.join(sampleDataDir, "test.pdf"),
+		});
+		expect(receivedTimeout).toBe(5_000);
+		expect(res).toEqual({ text: "# Timed" });
+	} finally {
+		Markdownify["_markitdown"] = originalMarkitdown;
+		if (savedMarkitdown === undefined)
+			delete process.env.MD_MARKITDOWN_TIMEOUT_MS;
+		else process.env.MD_MARKITDOWN_TIMEOUT_MS = savedMarkitdown;
+		if (savedFetch === undefined) delete process.env.MD_FETCH_TIMEOUT_MS;
+		else process.env.MD_FETCH_TIMEOUT_MS = savedFetch;
+	}
+});
