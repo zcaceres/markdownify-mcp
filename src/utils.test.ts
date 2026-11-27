@@ -434,6 +434,15 @@ describe("validateRepoUrl", () => {
 		}
 	});
 
+	test("rejects embedded credentials in repository URLs (D29)", () => {
+		expect(() =>
+			validateRepoUrl("https://token@github.com/owner/repo"),
+		).toThrow("embedded credentials are not allowed");
+		expect(() =>
+			validateRepoUrl("https://user:pass@github.com/owner/repo"),
+		).toThrow("embedded credentials are not allowed");
+	});
+
 	test("rejects private IP and localhost repository URLs", () => {
 		for (const repo of [
 			"http://127.0.0.1/owner/repo",

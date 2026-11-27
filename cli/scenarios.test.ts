@@ -64,6 +64,8 @@ describe("a scenario", () => {
 		const out = await session.exec(
 			"convert webpage-to-markdown https://example.com extra-arg",
 		);
-		expect(out).toEqual(["error: usage: convert <tool> [url|filepath]"]);
+		expect(out).toEqual([
+			"error: usage: convert <tool> [url|filepath] [--branch=<ref>] [--compress]",
+		]);
 	});
 });

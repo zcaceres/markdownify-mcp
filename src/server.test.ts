@@ -108,6 +108,47 @@ describe("MCP server boundary (WU-1, D8)", () => {
 		});
 	});
 
+	test("routes git-repo-to-markdown through validateGitRepoRequest and stays enabled in HTTP mode (GR-1..GR-3, GR-8, D9, D29)", async () => {
+		const savedAllowed = process.env.MD_ALLOWED_PATHS;
+		const savedOptOut = process.env.MCP_ALLOW_UNRESTRICTED_PATHS;
+		delete process.env.MD_ALLOWED_PATHS;
+		delete process.env.MCP_ALLOW_UNRESTRICTED_PATHS;
+		try {
+			await withClient(
+				async (client) => {
+					const creds = await client.callTool({
+						name: "git-repo-to-markdown",
+						arguments: { url: "https://token@github.com/owner/repo" },
+					});
+					expect(creds.isError).toBe(true);
+					expect(firstText(creds)).toBe(
+						"Error: Repository URLs with embedded credentials are not allowed.",
+					);
+
+					const badBranch = await client.callTool({
+						name: "git-repo-to-markdown",
+						arguments: {
+							url: "octocat/Hello-World",
+							branch: "--upload-pack=id",
+						},
+					});
+					expect(badBranch.isError).toBe(true);
+					expect(firstText(badBranch)).toContain("Invalid branch name");
+					expect(firstText(badBranch)).not.toContain(
+						"Local file tools are disabled",
+					);
+				},
+				{ transport: "http" },
+			);
+		} finally {
+			if (savedAllowed === undefined) delete process.env.MD_ALLOWED_PATHS;
+			else process.env.MD_ALLOWED_PATHS = savedAllowed;
+			if (savedOptOut === undefined)
+				delete process.env.MCP_ALLOW_UNRESTRICTED_PATHS;
+			else process.env.MCP_ALLOW_UNRESTRICTED_PATHS = savedOptOut;
+		}
+	});
+
 	test("enforces HTTP fail-closed policy, D23 opt-out, and D24 empty MD_ALLOWED_PATHS across local file tools including get-markdown-file (LF-3, D9, D23, D24)", async () => {
 		const savedAllowed = process.env.MD_ALLOWED_PATHS;
 		const savedOptOut = process.env.MCP_ALLOW_UNRESTRICTED_PATHS;

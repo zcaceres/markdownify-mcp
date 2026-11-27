@@ -1,3 +1,9 @@
+import { GIT_REPO_TOOL } from "../../src/git-repo-conversion/nouns.ts";
+import {
+	convertGitRepo,
+	parseGitRepoLimits,
+	validateGitRepoRequest,
+} from "../../src/git-repo-conversion/verbs.ts";
 import { LOCAL_FILE_TOOLS } from "../../src/local-file-conversion/nouns.ts";
 import {
 	convertLocalFile,
@@ -25,13 +31,45 @@ const formatOutput = (tool: string, text: string): readonly string[] => {
 
 export const convert: Command = {
 	kind: "domain",
-	usage: "convert <tool> [url|filepath]",
-	summary: "convert a Web URL or Local File into a Markdown Result",
+	usage: "convert <tool> [url|filepath] [--branch=<ref>] [--compress]",
+	summary:
+		"convert a Web URL, Local File, or Git Repository into a Markdown Result",
 	run: async (args, world) => {
+		const [tool = "", target, ...rest] = args;
+
+		if (tool === GIT_REPO_TOOL) {
+			let branch: string | undefined;
+			let compress = false;
+			for (const flag of rest) {
+				if (flag.startsWith("--branch=")) {
+					branch = flag.slice("--branch=".length);
+				} else if (flag === "--compress") {
+					compress = true;
+				} else {
+					return err(`usage: ${convert.usage}`);
+				}
+			}
+			const validated = validateGitRepoRequest(target, branch, compress);
+			if (!validated.ok) return err(validated.error);
+
+			const limitsResult = parseGitRepoLimits(world.env);
+			if (!limitsResult.ok) return err(limitsResult.error);
+
+			const result = await convertGitRepo(
+				validated.value,
+				{
+					resolveHost: world.network.resolveHost,
+					runRepomix: world.repomix.run,
+				},
+				{ repomixTimeoutMs: limitsResult.value.repomixTimeoutMs },
+			);
+			if (!result.ok) return err(result.error);
+			return ok(formatOutput(GIT_REPO_TOOL, result.value.text));
+		}
+
 		if (args.length > 2) {
 			return err(`usage: ${convert.usage}`);
 		}
-		const [tool = "", target] = args;
 
 		if ((LOCAL_FILE_TOOLS as readonly string[]).includes(tool)) {
 			const validated = validateLocalFileRequest(tool, target);

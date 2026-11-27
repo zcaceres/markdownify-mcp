@@ -1,0 +1,95 @@
+# Slice 02: Git Repository SSRF DNS Validation and Timeouts (GR-4, GR-7)
+
+# GR-4 (D8, I1): private IPs, localhost, DNS resolving to private IPs, and DNS failures are blocked before invoking repomix
+> convert git-repo-to-markdown http://127.0.0.1/owner/repo
+error: Fetching http://127.0.0.1/owner/repo is potentially dangerous, aborting.
+
+> convert git-repo-to-markdown http://localhost/owner/repo
+error: Fetching http://localhost/owner/repo is potentially dangerous, aborting.
+
+> network dns internal-git.example 10.0.0.5
+dns internal-git.example -> 10.0.0.5
+
+> convert git-repo-to-markdown https://internal-git.example/owner/repo
+error: Fetching https://internal-git.example/owner/repo is potentially dangerous, aborting.
+
+> network dns-fail missing-git.example
+dns set to fail for missing-git.example
+
+> convert git-repo-to-markdown https://missing-git.example/owner/repo
+error: Could not resolve host "missing-git.example" for https://missing-git.example/owner/repo.
+
+> repomix last-args
+last args: (none)
+
+# GR-4 (I1): public DNS passes and invokes repomix
+> network dns public-git.example 93.184.216.34
+dns public-git.example -> 93.184.216.34
+
+> repomix stub # Public Repo
+repomix stubbed
+
+> convert git-repo-to-markdown https://public-git.example/owner/repo
+ok: git-repo-to-markdown (path: none)
+| # Public Repo
+
+# GR-7 (D7, D8, D28, D31): default 120s repomix timeout aborts slow conversions and advances the clock
+> reset
+the world is back to its fixtures
+
+> repomix stub # Large Repo
+repomix stubbed
+
+> repomix slow 121s
+repomix latency -> 121000ms
+
+> convert git-repo-to-markdown octocat/Hello-World
+error: Conversion timed out after 120000ms
+
+> clock
+2026-01-05T09:02:00.000Z
+
+# GR-7 (D7, D28): MD_REPOMIX_TIMEOUT_MS overrides the default timeout (slow fails, within-budget succeeds)
+> config set MD_REPOMIX_TIMEOUT_MS 5000
+config MD_REPOMIX_TIMEOUT_MS = 5000
+
+> repomix slow 6s
+repomix latency -> 6000ms
+
+> convert git-repo-to-markdown octocat/Hello-World
+error: Conversion timed out after 5000ms
+
+> repomix slow 4s
+repomix latency -> 4000ms
+
+> convert git-repo-to-markdown octocat/Hello-World
+ok: git-repo-to-markdown (path: none)
+| # Large Repo
+
+> clock
+2026-01-05T09:02:09.000Z
+
+# GR-7 (D8, D28): invalid MD_REPOMIX_TIMEOUT_MS values are refused cleanly before invoking repomix
+> reset
+the world is back to its fixtures
+
+> config set MD_REPOMIX_TIMEOUT_MS 0
+config MD_REPOMIX_TIMEOUT_MS = 0
+
+> convert git-repo-to-markdown octocat/Hello-World
+error: Invalid MD_REPOMIX_TIMEOUT_MS "0": must be a positive integer
+
+> config set MD_REPOMIX_TIMEOUT_MS -10
+config MD_REPOMIX_TIMEOUT_MS = -10
+
+> convert git-repo-to-markdown octocat/Hello-World
+error: Invalid MD_REPOMIX_TIMEOUT_MS "-10": must be a positive integer
+
+> config set MD_REPOMIX_TIMEOUT_MS slow
+config MD_REPOMIX_TIMEOUT_MS = slow
+
+> convert git-repo-to-markdown octocat/Hello-World
+error: Invalid MD_REPOMIX_TIMEOUT_MS "slow": must be a positive integer
+
+> repomix last-args
+last args: (none)

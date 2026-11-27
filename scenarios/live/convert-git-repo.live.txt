@@ -1,0 +1,36 @@
+# Live verification suite: Convert Git Repository against real DNS and the real repomix CLI.
+# Run with: bun run harness live scenarios/live/convert-git-repo.live.txt
+
+# GR-9, GR-2, GR-4 (D8, D29, I1): live SSRF and embedded-credentials guards block before invoking repomix
+> convert git-repo-to-markdown http://127.0.0.1/owner/repo
+expect error potentially dangerous
+
+> convert git-repo-to-markdown https://token@github.com/owner/repo
+expect error embedded credentials are not allowed
+
+> repomix last-args
+expect exact last args: (none)
+
+# GR-9, GR-5 (D3, D5, D11, I3): live GitHub shorthand and explicit branch + compress convert via real repomix CLI
+> convert git-repo-to-markdown octocat/Hello-World
+expect ok
+expect exact ok: git-repo-to-markdown (path: none)
+expect contains Hello World!
+
+> convert git-repo-to-markdown https://github.com/octocat/Hello-World --branch=master --compress
+expect ok
+expect exact ok: git-repo-to-markdown (path: none)
+expect contains README
+
+> repomix last-args
+expect contains --remote-branch master --compress
+
+# GR-9, GR-7 (D7, D28, D31): tightening MD_REPOMIX_TIMEOUT_MS aborts real repomix subprocess
+> config set MD_REPOMIX_TIMEOUT_MS 1
+expect exact config MD_REPOMIX_TIMEOUT_MS = 1
+
+> convert git-repo-to-markdown octocat/Hello-World
+expect error Conversion timed out after 1ms
+
+> config clear MD_REPOMIX_TIMEOUT_MS
+expect exact config cleared MD_REPOMIX_TIMEOUT_MS
