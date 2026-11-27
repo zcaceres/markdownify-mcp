@@ -86,12 +86,11 @@ To integrate this server with a desktop app, add the following to your app's ser
 
 All paths default to sensible values; override only when the defaults don't fit your install layout.
 
-| Variable           | Default                                                         | Purpose                                                                                                                                                                                                                          |
-| ------------------ | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MARKITDOWN_PATH`  | `<project>/.venv/bin/markitdown`, then `markitdown` on `PATH`   | Absolute path to the `markitdown` executable. Set this when you've installed markitdown system-wide (e.g. `pipx install "markitdown[pdf]"`) instead of using the bundled venv.                                                   |
-| `REPOMIX_PATH`     | `<project>/node_modules/.bin/repomix`, then `repomix` on `PATH` | Absolute path to the `repomix` executable used by `git-repo-to-markdown`.                                                                                                                                                        |
-| `MD_ALLOWED_PATHS` | unset (unrestricted)                                            | Path-delimiter-separated list (`:` on POSIX, `;` on Windows) of directories the server is allowed to read. When set, all file-input tools (`pdf-to-markdown`, `get-markdown-file`, etc.) reject paths outside these directories. |
-| `MD_SHARE_DIR`     | unset                                                           | Deprecated alias for `MD_ALLOWED_PATHS` (single directory). Still honored for backward compatibility.                                                                                                                            |
+| Variable           | Default                                                              | Purpose                                                                                                                                                                                                                                                                                                               |
+| ------------------ | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MARKITDOWN_PATH`  | `<project>/.venv/bin/markitdown`, then `markitdown` on `PATH`        | Absolute path to the `markitdown` executable. Set this when you've installed markitdown system-wide (e.g. `pipx install "markitdown[pdf]"`) instead of using the bundled venv.                                                                                                                                        |
+| `REPOMIX_PATH`     | `<project>/node_modules/.bin/repomix`, then `repomix` on `PATH`      | Absolute path to the `repomix` executable used by `git-repo-to-markdown`.                                                                                                                                                                                                                                             |
+| `MD_ALLOWED_PATHS` | unset (unrestricted in `stdio`; local file tools disabled in `http`) | Path-delimiter-separated list (`:` on POSIX, `;` on Windows) of directories the server is allowed to read. When set, all file-input tools (`pdf-to-markdown`, `get-markdown-file`, etc.) reject paths outside these directories. If explicitly set to an empty or delimiter-only value, local file tools fail closed. |
 
 ## Usage with HTTP (Streamable HTTP transport)
 
@@ -107,15 +106,16 @@ Or via environment variables:
 MCP_TRANSPORT=http MCP_PORT=3000 MD_ALLOWED_PATHS=/path/to/docs bun dist/index.js
 ```
 
-| Flag / Env                                  | Default                                 | Purpose                                                                    |
-| ------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------- |
-| `--transport=stdio\|http` / `MCP_TRANSPORT` | `stdio`                                 | Transport mode.                                                            |
-| `--host=HOST` / `MCP_HOST`                  | `127.0.0.1`                             | Bind address for HTTP mode. Defaults to loopback only.                     |
-| `--port=N` / `MCP_PORT`                     | `3000`                                  | Port for HTTP mode (ignored in `stdio` mode).                              |
-| `MCP_ALLOWED_HOSTS`                         | loopback hosts when bound to loopback   | Comma-separated list of allowed `Host` headers (DNS-rebinding protection). |
-| `MCP_ALLOWED_ORIGINS`                       | loopback origins when bound to loopback | Comma-separated list of allowed browser `Origin` headers.                  |
+| Flag / Env                                                    | Default                                 | Purpose                                                                                                                                                              |
+| ------------------------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--transport=stdio\|http` / `MCP_TRANSPORT`                   | `stdio`                                 | Transport mode.                                                                                                                                                      |
+| `--host=HOST` / `MCP_HOST`                                    | `127.0.0.1`                             | Bind address for HTTP mode. Defaults to loopback only.                                                                                                               |
+| `--port=N` / `MCP_PORT`                                       | `3000`                                  | Port for HTTP mode (ignored in `stdio` mode).                                                                                                                        |
+| `MCP_ALLOWED_HOSTS`                                           | loopback hosts when bound to loopback   | Comma-separated list of allowed `Host` headers (DNS-rebinding protection).                                                                                           |
+| `MCP_ALLOWED_ORIGINS`                                         | loopback origins when bound to loopback | Comma-separated list of allowed browser `Origin` headers.                                                                                                            |
+| `--allow-unrestricted-paths` / `MCP_ALLOW_UNRESTRICTED_PATHS` | `false`                                 | Opt out of HTTP fail-closed local file tool blocking when `MD_ALLOWED_PATHS` is unset. Set `MCP_ALLOW_UNRESTRICTED_PATHS=true` or pass `--allow-unrestricted-paths`. |
 
-> **Security note:** The HTTP transport has no built-in authentication. Always set `MD_ALLOWED_PATHS` when running over HTTP, keep `--host=127.0.0.1` for local use, or place it behind an authenticating reverse proxy with `MCP_ALLOWED_HOSTS` / `MCP_ALLOWED_ORIGINS` configured.
+> **Security note:** The HTTP transport has no built-in authentication. When `MD_ALLOWED_PATHS` is unset in HTTP mode, local file-input tools fail closed unless you explicitly opt out with `--allow-unrestricted-paths` or `MCP_ALLOW_UNRESTRICTED_PATHS=true`. Keep `--host=127.0.0.1` for local use, or place the server behind an authenticating reverse proxy with `MCP_ALLOWED_HOSTS` / `MCP_ALLOWED_ORIGINS` configured.
 
 ## Usage with Docker
 
