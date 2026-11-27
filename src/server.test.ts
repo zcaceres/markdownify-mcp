@@ -27,6 +27,34 @@ describe("MCP server boundary (WU-1, D8)", () => {
 		return content[0]?.text ?? "";
 	}
 
+	test("exposes all 11 stable tools on tools/list and returns concise isError: true for unknown tools (SC-3, D3, D8)", async () => {
+		await withClient(async (client) => {
+			const listed = await client.listTools();
+			expect(listed.tools.map((tool) => tool.name).sort()).toEqual([
+				"audio-to-markdown",
+				"bing-search-to-markdown",
+				"docx-to-markdown",
+				"get-markdown-file",
+				"git-repo-to-markdown",
+				"image-to-markdown",
+				"pdf-to-markdown",
+				"pptx-to-markdown",
+				"webpage-to-markdown",
+				"xlsx-to-markdown",
+				"youtube-to-markdown",
+			]);
+
+			const unknown = await client.callTool({
+				name: "does-not-exist",
+				arguments: {},
+			});
+			expect(unknown.isError).toBe(true);
+			const text = firstText(unknown);
+			expect(text).toBe("Error: Tool not found");
+			expect(text).not.toContain("\n");
+		});
+	});
+
 	test("returns concise single-line isError: true when tool arguments fail schema validation (D8)", async () => {
 		await withClient(async (client) => {
 			const res = await client.callTool({

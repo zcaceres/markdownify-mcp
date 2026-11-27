@@ -1,6 +1,7 @@
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
+import { runDockerHarness } from "./docker.ts";
 import { parseLive, passedLive, reportLive, runLive } from "./live.ts";
 import { parse, passed, render, report, run } from "./scenario.ts";
 import { createSession } from "./session.ts";
@@ -97,6 +98,14 @@ if (mode === "run") {
 	for (const out of output) console.log(out);
 	const hadError = (output[0] ?? "").startsWith("error: ");
 	process.exit(hadError ? 1 : 0);
+} else if (mode === "docker") {
+	try {
+		const ok = await runDockerHarness(projectRoot, rest);
+		process.exit(ok ? 0 : 1);
+	} catch (error) {
+		console.error(error instanceof Error ? error.message : String(error));
+		process.exit(1);
+	}
 } else {
 	const isLive = mode === "--live";
 	console.log(

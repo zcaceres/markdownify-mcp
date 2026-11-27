@@ -33,4 +33,4 @@ bun run harness docker
 bash scripts/docker-smoke-test.sh
 ```
 
-Expect `tools/list` to return all 11 stable tools (`D3`), `pdf-to-markdown` on `/data/test.pdf` to succeed (`Test PDF content`), `/etc/passwd` to be refused by `MD_ALLOWED_PATHS=/data` (`I2`), and `docx-to-markdown` on `/data/test.docx` to fail with the `D22` slim-Docker `markitdown[all]` hint. [SC-9]
+Expect `tools/list` to return all 11 stable tools (`D3`), `pdf-to-markdown` on `/data/test.pdf` to succeed (`Test PDF content`), `/etc/passwd` to be refused by `MD_ALLOWED_PATHS` (`I2`), and `docx-to-markdown` on the binary `.docx` probe (`/slim-probe/sample.docx`) to fail with the `D22` slim-Docker `markitdown[all]` hint. [SC-9]
