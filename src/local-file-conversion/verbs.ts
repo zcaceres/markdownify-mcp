@@ -167,6 +167,8 @@ export const verifyReadableFile = (
 			return err(`File does not exist: ${resolvedPath}`);
 		case "directory":
 			return err(`Path is a directory, not a file: ${resolvedPath}`);
+		case "not-a-file":
+			return err(`Path is not a regular file: ${resolvedPath}`);
 		case "unreadable":
 			return err(`File is not readable: ${resolvedPath}`);
 		default: {

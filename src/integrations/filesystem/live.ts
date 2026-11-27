@@ -26,15 +26,34 @@ export type LiveFilesystem = {
 	readonly statFile: StatFile;
 };
 
+const getErrorCode = (error: unknown): string | undefined => {
+	if (
+		typeof error === "object" &&
+		error !== null &&
+		"code" in error &&
+		typeof error.code === "string"
+	) {
+		return error.code;
+	}
+	return undefined;
+};
+
 export const statRealLocalFile = (resolvedPath: string): FileStat => {
 	let stats: fs.Stats;
 	try {
 		stats = fs.statSync(resolvedPath);
-	} catch {
+	} catch (error: unknown) {
+		const code = getErrorCode(error);
+		if (code === "EACCES" || code === "EPERM") {
+			return { kind: "unreadable" };
+		}
 		return { kind: "missing" };
 	}
 	if (stats.isDirectory()) {
 		return { kind: "directory" };
+	}
+	if (!stats.isFile()) {
+		return { kind: "not-a-file" };
 	}
 	try {
 		fs.accessSync(resolvedPath, fs.constants.R_OK);

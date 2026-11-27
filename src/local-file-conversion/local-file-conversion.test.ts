@@ -81,6 +81,9 @@ describe("verifyReadableFile (LF-5, D17)", () => {
 		expect(verifyReadableFile("/data/dir", { kind: "directory" })).toEqual(
 			err("Path is a directory, not a file: /data/dir"),
 		);
+		expect(verifyReadableFile("/dev/null", { kind: "not-a-file" })).toEqual(
+			err("Path is not a regular file: /dev/null"),
+		);
 		expect(
 			verifyReadableFile("/data/locked.pdf", { kind: "unreadable" }),
 		).toEqual(err("File is not readable: /data/locked.pdf"));

@@ -1,0 +1,76 @@
+# Live verification suite: Convert Local File against the real host filesystem and markitdown CLI.
+# Run with: bun run harness live scenarios/live/convert-local-file.live.txt
+
+# LF-12, LF-4 (D6, D21, I2): Allowed Paths permits real sample-data files and blocks out-of-bounds & traversal before existence checks
+> config set MD_ALLOWED_PATHS {{REPO_ROOT}}/src/sample-data
+expect ok
+
+> convert pdf-to-markdown /etc/nonexistent-dd-probe.pdf
+expect error outside the allowed directories
+
+> convert pdf-to-markdown {{REPO_ROOT}}/package.json
+expect error outside the allowed directories
+
+> convert pdf-to-markdown {{REPO_ROOT}}/src/sample-data/../index.ts
+expect error outside the allowed directories
+
+# LF-12, LF-6, LF-11 (D3, D4, D5, D11, I3): real PDF, DOCX, XLSX, PPTX, and image files convert via real markitdown CLI
+> convert pdf-to-markdown {{REPO_ROOT}}/src/sample-data/test.pdf
+expect ok
+expect exact ok: pdf-to-markdown (path: none)
+expect contains Test PDF content
+
+> convert docx-to-markdown {{REPO_ROOT}}/src/sample-data/test.docx
+expect ok
+expect exact ok: docx-to-markdown (path: none)
+expect contains Test DOCX content
+
+> convert xlsx-to-markdown {{REPO_ROOT}}/src/sample-data/test.xlsx
+expect ok
+expect exact ok: xlsx-to-markdown (path: none)
+expect contains Test XLSX content
+
+> convert pptx-to-markdown {{REPO_ROOT}}/src/sample-data/test.pptx
+expect ok
+expect exact ok: pptx-to-markdown (path: none)
+expect contains Test PPTX content
+
+# LF-7 (D4, D16): real image without LLM vision config returns an empty Markdown Result rather than failing
+> convert image-to-markdown {{REPO_ROOT}}/src/sample-data/test.jpg
+expect ok
+expect exact ok: image-to-markdown (path: none)
+expect exact (empty)
+
+# LF-5 (D17): real directory and missing file inside Allowed Paths fail pre-validation before spawning markitdown
+> convert pdf-to-markdown {{REPO_ROOT}}/src/sample-data
+expect error Path is a directory, not a file:
+
+> convert pdf-to-markdown {{REPO_ROOT}}/src/sample-data/does-not-exist.pdf
+expect error File does not exist:
+
+# LF-10 (D7, D13): tightening MD_MARKITDOWN_TIMEOUT_MS aborts real markitdown subprocess
+> config set MD_MARKITDOWN_TIMEOUT_MS 1
+expect exact config MD_MARKITDOWN_TIMEOUT_MS = 1
+
+> convert pdf-to-markdown {{REPO_ROOT}}/src/sample-data/test.pdf
+expect error Conversion timed out after 1ms
+
+> config clear MD_MARKITDOWN_TIMEOUT_MS
+expect exact config cleared MD_MARKITDOWN_TIMEOUT_MS
+
+# LF-4 (D24): explicitly set delimiter-only MD_ALLOWED_PATHS fails closed
+> config set MD_ALLOWED_PATHS :
+expect exact config MD_ALLOWED_PATHS = :
+
+> convert pdf-to-markdown {{REPO_ROOT}}/src/sample-data/test.pdf
+expect error MD_ALLOWED_PATHS is set but contains no valid directories
+
+# LF-3 (D9, D23): HTTP mode fails closed on real local files when MD_ALLOWED_PATHS is unset
+> config clear MD_ALLOWED_PATHS
+expect exact config cleared MD_ALLOWED_PATHS
+
+> config set MCP_TRANSPORT http
+expect exact config MCP_TRANSPORT = http
+
+> convert pdf-to-markdown {{REPO_ROOT}}/src/sample-data/test.pdf
+expect error Local file tools are disabled in HTTP mode

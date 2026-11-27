@@ -48,6 +48,7 @@ export type LocalFileConversionRequest = {
 export type FileStat =
 	| { readonly kind: "missing" }
 	| { readonly kind: "directory" }
+	| { readonly kind: "not-a-file" }
 	| { readonly kind: "unreadable" }
 	| { readonly kind: "file" };
 

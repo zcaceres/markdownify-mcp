@@ -27,9 +27,9 @@ MCP tool error (`isError: true`).
 Where this journey lives in the code. Each noun is a type in the context's `nouns.ts`. Each verb is a function in its
 `verbs.ts`, and each derived noun a function in its `queries.ts`.
 
-| Context                      | Nouns                                                                                                            | Verbs                                                                                                                                                               | Queries          | Harness commands                       |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------------------------------------- |
-| `src/local-file-conversion/` | `LocalFileTool`, `LocalFilePath`, `LocalFileConversionRequest`, `FileAccessPolicy`, `FileStat`, `MarkdownResult` | `validateLocalFileRequest`, `resolveFileAccessPolicy`, `checkFileAccess`, `verifyReadableFile`, `parseLocalFileLimits`, `formatMarkitdownError`, `convertLocalFile` | `markdownResult` | `convert <local-file-tool> [filepath]` |
+| Context                      | Nouns                                                                                                                                         | Verbs                                                                                                                                                               | Queries          | Harness commands                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------------------------------------- |
+| `src/local-file-conversion/` | `LocalFileTool`, `LocalFilePath`, `LocalFileConversionRequest`, `FileAccessPolicy`, `LocalFileConversionLimits`, `FileStat`, `MarkdownResult` | `validateLocalFileRequest`, `resolveFileAccessPolicy`, `checkFileAccess`, `verifyReadableFile`, `parseLocalFileLimits`, `formatMarkitdownError`, `convertLocalFile` | `markdownResult` | `convert <local-file-tool> [filepath]` |
 
 ## External systems
 
@@ -56,16 +56,16 @@ scenario that runs it. Each has a [spec](specs/) and a scenario in `scenarios/co
    ([spec](specs/02-allowed-paths-and-symlinks/spec.md), `scenarios/convert-local-file/02-allowed-paths-and-symlinks.txt`)
 3. **03-conversion-timeout-and-limits.** Enforce `MD_MARKITDOWN_TIMEOUT_MS` (60s default) on local file conversions and reject invalid `MD_*` limit values cleanly (D7, D13). Covers LF-10.
    ([spec](specs/03-conversion-timeout-and-limits/spec.md), `scenarios/convert-local-file/03-conversion-timeout-and-limits.txt`)
+4. **04-live-local-file-verification.** Harden `statRealLocalFile` (`EACCES`/`EPERM` → `unreadable`, `!stats.isFile()` → `not-a-file`), guard `cli/main.ts` piped-stdin REPL close, add `{{REPO_ROOT}}` expansion to `cli/live.ts`, and verify `src/sample-data/*`, live `Allowed Paths`, and real symlink escapes in `scenarios/live/convert-local-file.live.txt` and `src/integrations/live.test.ts`. Covers LF-12.
+   ([spec](specs/04-live-local-file-verification/spec.md), `scenarios/live/convert-local-file.live.txt`)
 
 ### Next
 
-In the order we expect to build them; reorder freely. Each says where it came from: criteria, a finding (a
-`/dd-verify` note) or a decision.
-
-- **04-live-local-file-verification.** Extend `src/integrations/filesystem/live.ts` with real `realpath`/`stat`/readability checks (fixing `EACCES` misclassification and rejecting non-regular files where `!stats.isFile()`), fix `cli/main.ts` piped-stdin `ERR_USE_AFTER_CLOSE` in live REPL mode, and add `scenarios/live/convert-local-file.live.txt` exercising real `src/sample-data/*` files plus live `Allowed Paths` and symlink escape refusal. From LF-12, [notes/2026-11-26-convert-local-file-verify.md](../../../notes/2026-11-26-convert-local-file-verify.md).
+_(All planned slices for Convert Local File are complete; 12/12 acceptance criteria hold.)_
 
 ## Deferred
 
 - Batch or recursive directory conversion (converting multiple files in a single tool call).
 - Built-in LLM vision or OCR integration for image descriptions (out of scope per D4).
 - Streaming or chunked partial Markdown responses for large documents.
+- Folding slim Docker container verification (replacing `scripts/docker-smoke-test.sh` with a harness container check over MCP stdio) — deferred to the **Serve & Configure Server** journey.

@@ -1,11 +1,12 @@
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { parseLive, passedLive, reportLive, runLive } from "./live.ts";
 import { parse, passed, render, report, run } from "./scenario.ts";
 import { createSession } from "./session.ts";
 import { createLiveWorld, createWorld } from "./world.ts";
 
+const projectRoot = resolve(import.meta.dir, "..");
 const [mode, ...rest] = process.argv.slice(2);
 
 /** A file, or every matching file under a folder. */
@@ -66,7 +67,7 @@ if (mode === "run") {
 	const failed: string[] = [];
 	for (const file of files) {
 		const ran = await runLive(
-			parseLive(await readFile(file, "utf8")),
+			parseLive(await readFile(file, "utf8"), { REPO_ROOT: projectRoot }),
 			createSession({ connect: createLiveWorld }),
 		);
 		console.log(`── ${file} (live)`);
@@ -111,11 +112,15 @@ if (mode === "run") {
 		output: process.stdout,
 		prompt: isLive ? "live> " : "> ",
 	});
+	let closed = false;
+	rl.on("close", () => {
+		closed = true;
+	});
 	rl.prompt();
 	for await (const line of rl) {
 		if (line.trim() === "exit") break;
 		for (const out of await session.exec(line)) console.log(out);
-		rl.prompt();
+		if (!closed) rl.prompt();
 	}
-	rl.close();
+	if (!closed) rl.close();
 }
