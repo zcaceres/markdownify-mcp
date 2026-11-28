@@ -111,8 +111,8 @@ const scanForbiddenSchemaKeys = (
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null && !Array.isArray(value);
 
-/** Audit a Tool catalog against cross-provider Anthropic, Gemini, and OpenAI contracts (D47, D48, D52). */
-export const auditToolCatalog = (
+/** Compute a derived Tool Contract Audit for a Toolset against cross-provider contracts (D47, D48, D49, D52, D55). */
+export const toolContractAudit = (
 	tools: readonly Tool[],
 	expectedOpenWorldByName: Readonly<Record<string, boolean>>,
 ): ToolContractAudit => {

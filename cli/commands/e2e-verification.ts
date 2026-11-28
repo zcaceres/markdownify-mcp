@@ -15,7 +15,7 @@ import {
 import { err, ok } from "../../src/shared/types.ts";
 import type { Command } from "../command.ts";
 
-const SAMPLE_CASES: Readonly<Record<string, VerificationCase>> = {
+const VERIFICATION_CASES: Readonly<Record<string, VerificationCase>> = {
 	"docx-binary": {
 		id: "docx-binary",
 		category: "local-binary",
@@ -119,7 +119,7 @@ export const e2e: Command = {
 					`Unknown Form Factor "${formRaw}". Supported values: ${FORM_FACTORS.join(", ")}`,
 				);
 			}
-			const verificationCase = SAMPLE_CASES[caseId];
+			const verificationCase = VERIFICATION_CASES[caseId];
 			if (!verificationCase) {
 				return err(`Unknown Verification Case "${caseId}"`);
 			}

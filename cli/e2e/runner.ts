@@ -20,8 +20,8 @@ import {
 } from "../../src/e2e-verification/verbs.ts";
 import type { Toolset } from "../../src/mcp-contract/nouns.ts";
 import {
-	auditToolCatalog,
 	expectedOpenWorldByToolset,
+	toolContractAudit,
 } from "../../src/mcp-contract/queries.ts";
 import { toolsForToolset } from "../../src/tools.ts";
 import { type ActiveFormFactor, provisionFormFactor } from "./drivers.ts";
@@ -207,7 +207,7 @@ const checkToolsAndContracts = async (
 			},
 		];
 
-		const audit = auditToolCatalog(
+		const audit = toolContractAudit(
 			listed.tools,
 			expectedOpenWorldByToolset(toolset),
 		);

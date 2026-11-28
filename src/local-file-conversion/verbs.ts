@@ -2,7 +2,7 @@ import path from "node:path";
 import {
 	checkFileAccess,
 	isAbsoluteOrHomePath,
-	verifyReadableFile,
+	validateReadableFile,
 } from "../shared/local-access.js";
 import { err, ok, type Result } from "../shared/types.js";
 import {
@@ -24,7 +24,7 @@ export {
 	HTTP_LOCAL_FILES_DISABLED_MESSAGE,
 	isAbsoluteOrHomePath,
 	resolveFileAccessPolicy,
-	verifyReadableFile,
+	validateReadableFile,
 } from "../shared/local-access.js";
 
 const SLIM_DOCKER_HINT =
@@ -117,7 +117,7 @@ export const convertLocalFile = async (
 
 	const targetPath = access.value;
 	const stat = await ports.statFile(targetPath);
-	const verified = verifyReadableFile(targetPath, stat);
+	const verified = validateReadableFile(targetPath, stat);
 	if (!verified.ok) {
 		return verified;
 	}

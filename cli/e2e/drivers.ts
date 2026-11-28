@@ -4,7 +4,7 @@ import { access, mkdtemp, readdir, rm } from "node:fs/promises";
 import http from "node:http";
 import net from "node:net";
 import { tmpdir } from "node:os";
-import { basename, delimiter, dirname, join, resolve } from "node:path";
+import { basename, delimiter, dirname, join } from "node:path";
 import { promisify } from "node:util";
 import {
 	Client,
@@ -16,7 +16,11 @@ import type {
 	FormFactor,
 } from "../../src/e2e-verification/nouns.ts";
 import type { Toolset } from "../../src/mcp-contract/nouns.ts";
-import { expandHome, resolveMarkitdownPath } from "../../src/utils.ts";
+import {
+	expandHome,
+	realpathOrAncestor,
+	resolveMarkitdownPath,
+} from "../../src/utils.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -40,7 +44,7 @@ export type ActiveFormFactor = {
 	readonly close: () => Promise<void>;
 };
 
-const resolveAdHocFile = (
+export const resolveAdHocFile = (
 	adHocFilePath?: string,
 ):
 	| {
@@ -50,7 +54,7 @@ const resolveAdHocFile = (
 	  }
 	| undefined => {
 	if (!adHocFilePath) return undefined;
-	const resolvedPath = resolve(expandHome(adHocFilePath));
+	const resolvedPath = realpathOrAncestor(expandHome(adHocFilePath));
 	return {
 		resolvedPath,
 		dir: dirname(resolvedPath),

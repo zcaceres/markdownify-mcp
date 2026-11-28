@@ -2,13 +2,13 @@ import { describe, expect, test } from "bun:test";
 import type { Tool } from "@modelcontextprotocol/server";
 import * as tools from "../tools.js";
 import {
-	auditToolCatalog,
 	CLASSIC_OPEN_WORLD_BY_TOOL,
 	COMPACT_OPEN_WORLD_BY_TOOL,
 	formatStructuredToolResult,
 	serverCacheHints,
 	serverInstructions,
 	serverMetadata,
+	toolContractAudit,
 } from "./queries.js";
 import { validateToolArguments } from "./verbs.js";
 
@@ -39,9 +39,9 @@ describe("mcp-contract metadata, instructions, and cacheHints (MC-1, MC-2, D48)"
 	});
 });
 
-describe("auditToolCatalog cross-provider contract checks (MC-3, MC-4, D47, D48, D52)", () => {
-	test("all 11 exported classic tools pass auditToolCatalog with 0 issues", () => {
-		const report = auditToolCatalog(
+describe("toolContractAudit cross-provider contract checks (MC-3, MC-4, D47, D48, D52)", () => {
+	test("all 11 exported classic tools pass toolContractAudit with 0 issues", () => {
+		const report = toolContractAudit(
 			tools.CLASSIC_TOOLS,
 			CLASSIC_OPEN_WORLD_BY_TOOL,
 		);
@@ -50,8 +50,8 @@ describe("auditToolCatalog cross-provider contract checks (MC-3, MC-4, D47, D48,
 		expect(report.ok).toBe(true);
 	});
 
-	test("all 4 exported compact tools pass auditToolCatalog with 0 issues and compact instructions name only compact tools (MC-7, D51)", () => {
-		const report = auditToolCatalog(
+	test("all 4 exported compact tools pass toolContractAudit with 0 issues and compact instructions name only compact tools (MC-7, D51)", () => {
+		const report = toolContractAudit(
 			tools.COMPACT_TOOLS,
 			COMPACT_OPEN_WORLD_BY_TOOL,
 		);
@@ -90,7 +90,7 @@ describe("auditToolCatalog cross-provider contract checks (MC-3, MC-4, D47, D48,
 			},
 		};
 
-		const report = auditToolCatalog([badTool], { "bad-tool": false });
+		const report = toolContractAudit([badTool], { "bad-tool": false });
 		expect(report.ok).toBe(false);
 		const messages = report.issues.map((i) => i.message);
 		expect(messages.some((m) => m.includes("title"))).toBe(true);

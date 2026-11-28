@@ -5,7 +5,7 @@ export const config: Command = {
 	kind: "world",
 	usage: "config set <VAR> <value> | config clear <VAR>",
 	summary:
-		"override Server Configuration environment variables for this session",
+		"override Server Configuration and conversion limit environment variables for this session",
 	run: async ([sub, name, value, ...extra], world) => {
 		switch (sub) {
 			case "set": {

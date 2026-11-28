@@ -18,7 +18,7 @@ import {
 	formatMarkitdownError,
 	isAbsoluteOrHomePath,
 	parseLocalFileLimits,
-	verifyReadableFile,
+	validateReadableFile,
 } from "./local-file-conversion/verbs.js";
 import { markdownResult as retrievalMarkdownResult } from "./markdown-retrieval/queries.js";
 import {
@@ -318,7 +318,7 @@ export class Markdownify {
 				}
 				const expanded = path.resolve(expandHome(trimmed));
 				assertPathAllowed(expanded);
-				const verified = verifyReadableFile(
+				const verified = validateReadableFile(
 					expanded,
 					statRealLocalFile(expanded),
 				);
@@ -430,7 +430,7 @@ export class Markdownify {
 			throw new Error(NOT_MARKDOWN_FILE_ERROR);
 		}
 
-		const verified = verifyReadableFile(
+		const verified = validateReadableFile(
 			realTarget,
 			statRealLocalFile(realTarget),
 		);
