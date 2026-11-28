@@ -11,6 +11,7 @@ import { formatVerificationReport, verificationReport } from "./queries.js";
 import {
 	classifyCaseOutcome,
 	describeFormFactor,
+	mapToolToToolset,
 	parseE2eOptions,
 	parseVerificationCorpus,
 	selectVerificationCases,
@@ -52,12 +53,13 @@ describe("describeFormFactor (VF-1, D37, D44)", () => {
 });
 
 describe("parseE2eOptions (VF-1, D37, D43, D45)", () => {
-	test("defaults to node-stdio and parses --all, filters, and ad-hoc probes", () => {
+	test("defaults to node-stdio and parses --all, filters, toolset, and ad-hoc probes", () => {
 		expect(parseE2eOptions([])).toEqual(
 			ok({
 				formFactors: ["node-stdio"],
 				categories: [],
 				caseIds: [],
+				toolset: "classic",
 				json: false,
 				preview: false,
 				noBuild: false,
@@ -69,6 +71,7 @@ describe("parseE2eOptions (VF-1, D37, D43, D45)", () => {
 			parseE2eOptions([
 				"--all",
 				"--category=static-web,git-repo",
+				"--toolset=COMPACT",
 				"--json",
 				"--preview",
 				"--no-build",
@@ -86,6 +89,7 @@ describe("parseE2eOptions (VF-1, D37, D43, D45)", () => {
 				],
 				categories: ["static-web", "git-repo"],
 				caseIds: [],
+				toolset: "compact",
 				json: true,
 				preview: true,
 				noBuild: true,
@@ -106,6 +110,7 @@ describe("parseE2eOptions (VF-1, D37, D43, D45)", () => {
 				formFactors: ["local-http", "docker-http"],
 				categories: [],
 				caseIds: [],
+				toolset: "classic",
 				adHoc: {
 					tool: "git-repo-to-markdown",
 					url: "octocat/Hello-World",
@@ -117,6 +122,40 @@ describe("parseE2eOptions (VF-1, D37, D43, D45)", () => {
 				noBuild: false,
 				reuseVenv: false,
 			}),
+		);
+
+		expect(
+			parseE2eOptions([
+				"--toolset=compact",
+				"--tool=convert-web-url",
+				"--url=https://example.com",
+			]),
+		).toMatchObject({
+			ok: true,
+			value: {
+				toolset: "compact",
+				adHoc: { tool: "convert-web-url", url: "https://example.com" },
+			},
+		});
+
+		expect(parseE2eOptions(["--toolset=bogus"])).toEqual(
+			err('Unknown toolset "bogus". Supported values: classic, compact'),
+		);
+
+		expect(mapToolToToolset("pdf-to-markdown", "compact")).toBe(
+			"convert-local-file",
+		);
+		expect(mapToolToToolset("youtube-to-markdown", "compact")).toBe(
+			"convert-web-url",
+		);
+		expect(mapToolToToolset("git-repo-to-markdown", "compact")).toBe(
+			"convert-git-repo",
+		);
+		expect(mapToolToToolset("get-markdown-file", "compact")).toBe(
+			"get-markdown-file",
+		);
+		expect(mapToolToToolset("pdf-to-markdown", "classic")).toBe(
+			"pdf-to-markdown",
 		);
 	});
 

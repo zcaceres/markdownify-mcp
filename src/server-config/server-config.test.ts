@@ -59,9 +59,46 @@ describe("parseServerConfiguration (SC-1, SC-2, MC-7, D1, D2, D23, D32, D51)", (
 			ok: true,
 			value: { toolset: "compact" },
 		});
+
+		// D53: enum env vars and CLI flags are trimmed & lowercased; blank env vars fall back to defaults
+		expect(
+			parseServerConfiguration([], {
+				MCP_TRANSPORT: "  HTTP  ",
+				MCP_TOOLSET: " COMPACT ",
+			}),
+		).toMatchObject({
+			ok: true,
+			value: { transport: "http", toolset: "compact" },
+		});
+
+		expect(
+			parseServerConfiguration(["--transport= STDIO ", "--toolset= Classic "], {
+				MCP_TRANSPORT: "http",
+				MCP_TOOLSET: "compact",
+			}),
+		).toMatchObject({
+			ok: true,
+			value: { transport: "stdio", toolset: "classic" },
+		});
+
+		expect(
+			parseServerConfiguration([], {
+				MCP_TRANSPORT: "   ",
+				MCP_TOOLSET: "",
+			}),
+		).toMatchObject({
+			ok: true,
+			value: { transport: "stdio", toolset: "classic" },
+		});
 	});
 
-	test("rejects unknown CLI flags, positional args, and invalid values (D32, D51)", () => {
+	test("rejects unknown CLI flags, positional args, and invalid values (D32, D51, D53)", () => {
+		expect(parseServerConfiguration(["--transport="], {})).toEqual(
+			err('Unknown transport "". Supported values: stdio, http'),
+		);
+		expect(parseServerConfiguration(["--toolset="], {})).toEqual(
+			err('Unknown toolset "". Supported values: classic, compact'),
+		);
 		expect(parseServerConfiguration(["--transprot=http"], {})).toEqual(
 			err(
 				'Unknown CLI argument "--transprot=http". Supported flags: --transport=stdio|http, --host=HOST, --port=N, --allow-unrestricted-paths, --toolset=classic|compact',

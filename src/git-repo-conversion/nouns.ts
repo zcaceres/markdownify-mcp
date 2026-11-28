@@ -2,6 +2,11 @@ import type { Brand } from "../shared/types.js";
 
 export const GIT_REPO_TOOL = "git-repo-to-markdown" as const;
 
+export const GIT_REPO_TOOLS = [
+	"git-repo-to-markdown",
+	"convert-git-repo",
+] as const;
+
 export const DEFAULT_REPOMIX_TIMEOUT_MS = 120_000;
 
 export type GitRepoIdentifier = Brand<string, "GitRepoIdentifier">;

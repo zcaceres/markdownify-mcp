@@ -7,7 +7,8 @@ Adds Operator-selectable **Toolset** (`classic` 11-tool default or opt-in `compa
 
 - **Journey:** [Discover & Align MCP](../../acceptance-criteria.md) ([plan](../../plan.md))
 - **Criteria covered:** `MC-7`, `MC-8`
-- **Decisions & invariants cited:** `D2`, `D3`, `D8`, `D9`, `D32`, `D37`, `D44`, `D47`, `D48`, `D49`, `D51`, `D52`
+- **Decisions & invariants cited:** `D2`, `D3`, `D8`, `D9`, `D32`, `D37`, `D44`, `D47`, `D48`, `D49`, `D51`, `D52`, `D53`
+- **Done when:** `bun run lint`, `bun run build`, `bun test`, `bun run harness run scenarios/discover-and-align-mcp/03-compact-toolset.txt`, and `bun run harness e2e --all --category=static-web,hosted-binary,local-binary` all pass.
 
 ## Scope
 

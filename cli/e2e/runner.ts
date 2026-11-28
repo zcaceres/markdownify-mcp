@@ -1,12 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import {
-	type AdHocProbe,
-	type CaseExecutionOutput,
-	type CaseOutcome,
-	type FormFactor,
-	STABLE_MCP_TOOLS,
-	type VerificationCase,
+import type {
+	AdHocProbe,
+	CaseExecutionOutput,
+	CaseOutcome,
+	FormFactor,
+	VerificationCase,
 } from "../../src/e2e-verification/nouns.ts";
 import {
 	formatVerificationReport,
@@ -14,14 +13,17 @@ import {
 } from "../../src/e2e-verification/queries.ts";
 import {
 	classifyCaseOutcome,
+	mapToolToToolset,
 	parseE2eOptions,
 	parseVerificationCorpus,
 	selectVerificationCases,
 } from "../../src/e2e-verification/verbs.ts";
+import type { Toolset } from "../../src/mcp-contract/nouns.ts";
 import {
 	auditToolCatalog,
-	CLASSIC_OPEN_WORLD_BY_TOOL,
+	expectedOpenWorldByToolset,
 } from "../../src/mcp-contract/queries.ts";
+import { toolsForToolset } from "../../src/tools.ts";
 import { type ActiveFormFactor, provisionFormFactor } from "./drivers.ts";
 
 const DEFAULT_CASE_TIMEOUT_MS = 45_000;
@@ -67,15 +69,17 @@ const adHocToCase = (probe: AdHocProbe): VerificationCase => {
 const executeCaseWithTimeout = async (
 	active: ActiveFormFactor,
 	testCase: VerificationCase,
+	toolset: Toolset,
 ): Promise<CaseExecutionOutput> => {
 	const timeoutMs = testCase.timeoutMs ?? DEFAULT_CASE_TIMEOUT_MS;
 	const started = Date.now();
 	const expandedArgs = expandCaseArgs(testCase.args, active.sampleDirPath);
+	const invokedTool = mapToolToToolset(testCase.tool, toolset);
 
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	try {
 		const callPromise = active.client.callTool({
-			name: testCase.tool,
+			name: invokedTool,
 			arguments: expandedArgs,
 		});
 		const timeoutPromise = new Promise<"TIMEOUT">((resolve) => {
@@ -166,12 +170,16 @@ const executeCaseWithTimeout = async (
 
 const checkToolsAndContracts = async (
 	active: ActiveFormFactor,
+	toolset: Toolset,
 ): Promise<CaseOutcome[]> => {
 	const started = Date.now();
+	const expected = toolsForToolset(toolset)
+		.map((t) => t.name)
+		.sort();
+	const caseId = toolset === "compact" ? "tools-list-4" : "tools-list-11";
 	try {
 		const listed = await active.client.listTools();
 		const actual = listed.tools.map((t) => t.name).sort();
-		const expected = [...STABLE_MCP_TOOLS].sort();
 		const listOk =
 			actual.length === expected.length &&
 			actual.every((name, idx) => name === expected[idx]);
@@ -179,18 +187,23 @@ const checkToolsAndContracts = async (
 		const outcomes: CaseOutcome[] = [
 			{
 				formFactor: active.formFactor,
-				caseId: "tools-list-11",
+				caseId,
 				category: "static-web",
 				tool: "tools/list",
 				status: listOk ? "PASS" : "FAIL",
 				durationMs: Date.now() - started,
 				detail: listOk
-					? "exposes all 11 stable MCP tools (D3)"
+					? toolset === "compact"
+						? "exposes all 4 compact MCP tools (D51)"
+						: "exposes all 11 stable MCP tools (D3)"
 					: `expected ${expected.join(", ")}, got ${actual.join(", ")}`,
 			},
 		];
 
-		const audit = auditToolCatalog(listed.tools, CLASSIC_OPEN_WORLD_BY_TOOL);
+		const audit = auditToolCatalog(
+			listed.tools,
+			expectedOpenWorldByToolset(toolset),
+		);
 		const serverInfo = active.client.getServerVersion();
 		const instructions = active.client.getInstructions() ?? "";
 		const metaIssues: string[] = [];
@@ -281,6 +294,7 @@ export const runE2eHarness = async (
 				projectRoot,
 				sampleDir,
 				dockerImage,
+				toolset: options.toolset,
 				noBuild: options.noBuild,
 				reuseVenv: options.reuseVenv,
 				builtDockerImages,
@@ -299,8 +313,8 @@ export const runE2eHarness = async (
 		}
 
 		try {
-			// Always verify all 11 tools and cross-provider MCP contracts on tools/list (D3, VF-4, MC-8)
-			outcomes.push(...(await checkToolsAndContracts(active)));
+			// Always verify expected toolset and cross-provider MCP contracts on tools/list (D3, D51, VF-4, MC-8)
+			outcomes.push(...(await checkToolsAndContracts(active, options.toolset)));
 
 			// Run HTTP transport/security guards on HTTP Form Factors (VF-4, D9, D33, I5)
 			if (!options.adHoc && active.runHttpGuardChecks) {
@@ -308,8 +322,16 @@ export const runE2eHarness = async (
 			}
 
 			for (const testCase of cases) {
-				const execOut = await executeCaseWithTimeout(active, testCase);
-				const outcome = classifyCaseOutcome(formFactor, testCase, execOut);
+				const execOut = await executeCaseWithTimeout(
+					active,
+					testCase,
+					options.toolset,
+				);
+				const mappedCase =
+					options.toolset === "compact"
+						? { ...testCase, tool: mapToolToToolset(testCase.tool, "compact") }
+						: testCase;
+				const outcome = classifyCaseOutcome(formFactor, mappedCase, execOut);
 				outcomes.push(
 					options.adHoc ? { ...outcome, category: "ad-hoc" } : outcome,
 				);

@@ -7,6 +7,7 @@ descriptions, and Gemini-safe wire `inputSchema` with per-tool Zod `.strict()` r
 - **Journey:** [Discover & Align MCP](../../acceptance-criteria.md) ([plan](../../plan.md))
 - **Criteria covered:** `MC-1`, `MC-2`, `MC-3`, `MC-4`, `MC-5`
 - **Decisions & invariants cited:** `D3`, `D8`, `D47`, `D48`, `D52`
+- **Done when:** `bun run lint`, `bun run build`, `bun test ./src/mcp-contract/mcp-contract.test.ts ./src/server.test.ts`, and `bun run harness run scenarios/discover-and-align-mcp/01-metadata-and-strict-schemas.txt` all pass.
 
 ## Scope
 

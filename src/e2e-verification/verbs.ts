@@ -1,9 +1,13 @@
 import { z } from "zod";
+import type { Toolset } from "../mcp-contract/nouns.js";
 import { err, ok, type Result } from "../shared/types.js";
 import {
 	type AdHocProbe,
 	type CaseExecutionOutput,
 	type CaseOutcome,
+	COMPACT_MCP_TOOLS,
+	type CompactMcpTool,
+	type E2eMcpTool,
 	type E2eOptions,
 	FORM_FACTORS,
 	type FormFactor,
@@ -17,7 +21,7 @@ import {
 } from "./nouns.js";
 
 const SUPPORTED_E2E_FLAGS =
-	"--form=, --all, --category=, --case=, --tool=, --url=, --file=, --branch=, --compress, --json, --preview, --no-build, --reuse-venv";
+	"--form=, --all, --category=, --case=, --toolset=, --tool=, --url=, --file=, --branch=, --compress, --json, --preview, --no-build, --reuse-venv";
 
 const MAX_OUTPUT_PREVIEW_CHARS = 300;
 
@@ -29,6 +33,40 @@ const isVerificationCategory = (value: string): value is VerificationCategory =>
 
 const isStableMcpTool = (value: string): value is StableMcpTool =>
 	(STABLE_MCP_TOOLS as readonly string[]).includes(value);
+
+const isCompactMcpTool = (value: string): value is CompactMcpTool =>
+	(COMPACT_MCP_TOOLS as readonly string[]).includes(value);
+
+export const mapToolToToolset = (
+	tool: E2eMcpTool,
+	toolset: Toolset,
+): E2eMcpTool => {
+	if (toolset === "classic") return tool;
+	switch (tool) {
+		case "youtube-to-markdown":
+		case "bing-search-to-markdown":
+		case "webpage-to-markdown":
+		case "convert-web-url":
+			return "convert-web-url";
+		case "pdf-to-markdown":
+		case "image-to-markdown":
+		case "audio-to-markdown":
+		case "docx-to-markdown":
+		case "xlsx-to-markdown":
+		case "pptx-to-markdown":
+		case "convert-local-file":
+			return "convert-local-file";
+		case "git-repo-to-markdown":
+		case "convert-git-repo":
+			return "convert-git-repo";
+		case "get-markdown-file":
+			return "get-markdown-file";
+		default: {
+			const exhaustive: never = tool;
+			return exhaustive;
+		}
+	}
+};
 
 export const describeFormFactor = (
 	formFactor: FormFactor,
@@ -64,6 +102,7 @@ export const parseE2eOptions = (
 	const formFactors: FormFactor[] = [];
 	const categories: VerificationCategory[] = [];
 	const caseIds: string[] = [];
+	let toolset: Toolset = "classic";
 	let toolRaw: string | undefined;
 	let urlRaw: string | undefined;
 	let fileRaw: string | undefined;
@@ -121,6 +160,14 @@ export const parseE2eOptions = (
 			for (const item of items) {
 				if (!caseIds.includes(item)) caseIds.push(item);
 			}
+		} else if (arg.startsWith("--toolset=")) {
+			const value = arg.slice("--toolset=".length).trim().toLowerCase();
+			if (value !== "classic" && value !== "compact") {
+				return err(
+					`Unknown toolset "${value}". Supported values: classic, compact`,
+				);
+			}
+			toolset = value;
 		} else if (arg.startsWith("--tool=")) {
 			const value = arg.slice("--tool=".length).trim();
 			if (!value) {
@@ -161,14 +208,18 @@ export const parseE2eOptions = (
 		if (!toolRaw) {
 			return err("Ad-hoc probe requires --tool=<name>");
 		}
-		if (!isStableMcpTool(toolRaw)) {
+		const validTool =
+			toolset === "compact"
+				? isCompactMcpTool(toolRaw)
+				: isStableMcpTool(toolRaw);
+		if (!validTool) {
 			return err(`Unknown tool "${toolRaw}"`);
 		}
 		if (urlRaw === undefined && fileRaw === undefined) {
 			return err("Ad-hoc probe requires --url=<url> or --file=<path>");
 		}
 		adHoc = {
-			tool: toolRaw,
+			tool: toolRaw as E2eMcpTool,
 			...(urlRaw !== undefined ? { url: urlRaw } : {}),
 			...(fileRaw !== undefined ? { filePath: fileRaw } : {}),
 			...(branchRaw !== undefined ? { branch: branchRaw } : {}),
@@ -186,6 +237,7 @@ export const parseE2eOptions = (
 		formFactors: resolvedForms,
 		categories,
 		caseIds,
+		toolset,
 		...(adHoc !== undefined ? { adHoc } : {}),
 		json,
 		preview,

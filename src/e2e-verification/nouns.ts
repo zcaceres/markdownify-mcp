@@ -1,3 +1,5 @@
+import type { Toolset } from "../mcp-contract/nouns.js";
+
 export const FORM_FACTORS = [
 	"node-stdio",
 	"bun-stdio",
@@ -44,6 +46,17 @@ export const STABLE_MCP_TOOLS = [
 
 export type StableMcpTool = (typeof STABLE_MCP_TOOLS)[number];
 
+export const COMPACT_MCP_TOOLS = [
+	"convert-web-url",
+	"convert-local-file",
+	"convert-git-repo",
+	"get-markdown-file",
+] as const;
+
+export type CompactMcpTool = (typeof COMPACT_MCP_TOOLS)[number];
+
+export type E2eMcpTool = StableMcpTool | CompactMcpTool;
+
 export type CaseExpectation =
 	| {
 			readonly kind: "ok";
@@ -60,7 +73,7 @@ export type CaseExpectation =
 export type VerificationCase = {
 	readonly id: string;
 	readonly category: VerificationCategory;
-	readonly tool: StableMcpTool;
+	readonly tool: E2eMcpTool;
 	readonly args: Readonly<Record<string, string | boolean>>;
 	readonly timeoutMs?: number;
 	readonly expectByProfile: {
@@ -76,7 +89,7 @@ export type VerificationCorpus = {
 };
 
 export type AdHocProbe = {
-	readonly tool: StableMcpTool;
+	readonly tool: E2eMcpTool;
 	readonly url?: string;
 	readonly filePath?: string;
 	readonly branch?: string;
@@ -87,6 +100,7 @@ export type E2eOptions = {
 	readonly formFactors: readonly FormFactor[];
 	readonly categories: readonly VerificationCategory[];
 	readonly caseIds: readonly string[];
+	readonly toolset: Toolset;
 	readonly adHoc?: AdHocProbe;
 	readonly json: boolean;
 	readonly preview: boolean;

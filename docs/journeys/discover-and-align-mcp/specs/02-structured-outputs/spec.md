@@ -7,6 +7,7 @@ backwards-compatible `content` text blocks on successful `tools/call` responses 
 - **Journey:** [Discover & Align MCP](../../acceptance-criteria.md) ([plan](../../plan.md))
 - **Criteria covered:** `MC-6`
 - **Decisions & invariants cited:** `D8`, `D49`, `D50`
+- **Done when:** `bun run lint`, `bun run build`, `bun test ./src/mcp-contract/mcp-contract.test.ts ./src/server.test.ts`, and `bun run harness run scenarios/discover-and-align-mcp/02-structured-outputs.txt` all pass.
 
 ## Scope
 

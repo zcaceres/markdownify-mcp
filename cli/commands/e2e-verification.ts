@@ -85,7 +85,7 @@ export const e2e: Command = {
 				`categories: ${opts.categories.length > 0 ? opts.categories.join(", ") : "(all)"}`,
 				`cases: ${opts.caseIds.length > 0 ? opts.caseIds.join(", ") : "(all)"}`,
 				`ad-hoc: ${adHocLine}`,
-				`flags: json=${opts.json} preview=${opts.preview} no-build=${opts.noBuild} reuse-venv=${opts.reuseVenv}`,
+				`flags: toolset=${opts.toolset} json=${opts.json} preview=${opts.preview} no-build=${opts.noBuild} reuse-venv=${opts.reuseVenv}`,
 			]);
 		}
 

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
+import { createMcpHandler } from "@modelcontextprotocol/server";
 import {
 	auditToolCatalog,
 	CLASSIC_OPEN_WORLD_BY_TOOL,
@@ -112,6 +113,47 @@ describe("MCP server boundary (WU-1, D8)", () => {
 			expect(audit.issues).toEqual([]);
 			expect(audit.ok).toBe(true);
 		});
+	});
+
+	test("advertises 1-hour public cacheHints on 2026-07-28 server/discover and tools/list wire responses (MC-2, D48)", async () => {
+		const handler = createMcpHandler(() => createServer());
+		const envelopeMeta = {
+			"io.modelcontextprotocol/protocolVersion": "2026-07-28",
+			"io.modelcontextprotocol/clientInfo": {
+				name: "wire-probe",
+				version: "0.0.1",
+			},
+			"io.modelcontextprotocol/clientCapabilities": {},
+		};
+		try {
+			for (const method of ["server/discover", "tools/list"]) {
+				const res = await handler.fetch(
+					new Request("http://127.0.0.1/mcp", {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+							Accept: "application/json, text/event-stream",
+							"MCP-Protocol-Version": "2026-07-28",
+							"Mcp-Method": method,
+						},
+						body: JSON.stringify({
+							jsonrpc: "2.0",
+							id: 1,
+							method,
+							params: { _meta: envelopeMeta },
+						}),
+					}),
+				);
+				expect(res.status).toBe(200);
+				const json = (await res.json()) as {
+					result?: { ttlMs?: number; cacheScope?: string };
+				};
+				expect(json.result?.ttlMs).toBe(3_600_000);
+				expect(json.result?.cacheScope).toBe("public");
+			}
+		} finally {
+			await handler.close();
+		}
 	});
 
 	test("returns typed structuredContent alongside content text on get-markdown-file and omits structuredContent on errors (MC-6, D8, D49, D50)", async () => {

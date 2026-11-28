@@ -15,6 +15,7 @@ import type {
 	CaseOutcome,
 	FormFactor,
 } from "../../src/e2e-verification/nouns.ts";
+import type { Toolset } from "../../src/mcp-contract/nouns.ts";
 import { resolveMarkitdownPath } from "../../src/utils.ts";
 
 const execFileAsync = promisify(execFile);
@@ -23,6 +24,7 @@ export type ProvisionContext = {
 	readonly projectRoot: string;
 	readonly sampleDir: string;
 	readonly dockerImage: string;
+	readonly toolset: Toolset;
 	readonly noBuild: boolean;
 	readonly reuseVenv: boolean;
 	readonly builtDockerImages: Set<string>;
@@ -303,7 +305,7 @@ export const provisionFormFactor = async (
 		return connectStdioFormFactor(
 			formFactor,
 			bin,
-			[distEntry],
+			[distEntry, `--toolset=${ctx.toolset}`],
 			envRecord({ MD_ALLOWED_PATHS: ctx.sampleDir }),
 			ctx.sampleDir,
 		);
@@ -315,7 +317,13 @@ export const provisionFormFactor = async (
 		const stderrChunks: string[] = [];
 		const child = spawn(
 			"bun",
-			[distEntry, "--transport=http", "--host=127.0.0.1", `--port=${port}`],
+			[
+				distEntry,
+				"--transport=http",
+				"--host=127.0.0.1",
+				`--port=${port}`,
+				`--toolset=${ctx.toolset}`,
+			],
 			{
 				env: envRecord({ MD_ALLOWED_PATHS: ctx.sampleDir }),
 				stdio: ["ignore", "ignore", "pipe"],
@@ -366,6 +374,7 @@ export const provisionFormFactor = async (
 							"--transport=http",
 							"--host=127.0.0.1",
 							`--port=${d9Port}`,
+							`--toolset=${ctx.toolset}`,
 						],
 						{ env: d9Env, stdio: ["ignore", "ignore", "pipe"] },
 					);
@@ -384,7 +393,10 @@ export const provisionFormFactor = async (
 							),
 						);
 						const res = await d9Client.callTool({
-							name: "pdf-to-markdown",
+							name:
+								ctx.toolset === "compact"
+									? "convert-local-file"
+									: "pdf-to-markdown",
 							arguments: { filepath: join(ctx.sampleDir, "test.pdf") },
 						});
 						const text = JSON.stringify(res.content ?? []);
@@ -422,6 +434,8 @@ export const provisionFormFactor = async (
 				`${ctx.sampleDir}:/data:ro`,
 				"-e",
 				"MD_ALLOWED_PATHS=/data",
+				"-e",
+				`MCP_TOOLSET=${ctx.toolset}`,
 				ctx.dockerImage,
 			],
 			envRecord({}),
@@ -453,6 +467,7 @@ export const provisionFormFactor = async (
 				"--transport=http",
 				"--host=0.0.0.0",
 				"--port=3000",
+				`--toolset=${ctx.toolset}`,
 			],
 			{ stdio: ["ignore", "ignore", "pipe"] },
 		);
@@ -513,6 +528,7 @@ export const provisionFormFactor = async (
 							"--transport=http",
 							"--host=0.0.0.0",
 							"--port=3000",
+							`--toolset=${ctx.toolset}`,
 						],
 						{ stdio: ["ignore", "ignore", "pipe"] },
 					);
@@ -531,7 +547,10 @@ export const provisionFormFactor = async (
 							),
 						);
 						const res = await d9Client.callTool({
-							name: "pdf-to-markdown",
+							name:
+								ctx.toolset === "compact"
+									? "convert-local-file"
+									: "pdf-to-markdown",
 							arguments: { filepath: "/data/test.pdf" },
 						});
 						const text = JSON.stringify(res.content ?? []);
@@ -591,6 +610,7 @@ export const provisionFormFactor = async (
 
 		const extraEnv: Record<string, string | undefined> = {
 			MD_ALLOWED_PATHS: ctx.sampleDir,
+			MCP_TOOLSET: ctx.toolset,
 			...(ctx.reuseVenv
 				? { MARKITDOWN_PATH: resolveMarkitdownPath(ctx.projectRoot) }
 				: {}),

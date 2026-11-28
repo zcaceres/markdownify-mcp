@@ -34,6 +34,37 @@ toolset: classic
 > serve config --toolset=minimal
 error: Unknown toolset "minimal". Supported values: classic, compact
 
+# MC-7 (D53): enum values (transport, toolset) are trimmed and lowercased, while explicit empty CLI flags fail fast
+> config set MCP_TOOLSET COMPACT
+config MCP_TOOLSET = COMPACT
+
+> config set MCP_TRANSPORT HTTP
+config MCP_TRANSPORT = HTTP
+
+> serve config
+transport: http
+host: 127.0.0.1
+port: 3000
+allowed-hosts: (default)
+allowed-origins: (default)
+allow-unrestricted-paths: false
+toolset: compact
+
+> serve config --transport=STDIO --toolset=Classic
+transport: stdio
+host: 127.0.0.1
+port: 3000
+allowed-hosts: (default)
+allowed-origins: (default)
+allow-unrestricted-paths: false
+toolset: classic
+
+> serve config --toolset=
+error: Unknown toolset "". Supported values: classic, compact
+
+> serve config --transport=
+error: Unknown transport "". Supported values: stdio, http
+
 # MC-7 (D47, D48, D49, D51, D52): compact Toolset exposes 4 capability tools that pass full cross-provider contract audit
 > mcp audit compact
 ok: audited 4 tools (0 issues)

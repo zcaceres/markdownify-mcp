@@ -38,9 +38,10 @@ bun run harness run scenarios/discover-and-align-mcp
 
    ```bash
    bun run harness e2e --all --category=static-web,hosted-binary,local-binary
+   bun run harness e2e --all --toolset=compact --category=static-web,hosted-binary,local-binary
    ```
 
-   Confirm all 6 Form Factors pass the cross-provider contract checks alongside conversion and HTTP guard checks.
+   Confirm all 6 Form Factors pass the cross-provider contract checks in both `classic` (11 tools) and `compact` (4 tools) Toolsets alongside conversion and HTTP guard checks.
 
 3. **Optional real host spot-checks (manual):**
    - **Claude Desktop / Claude Code:** register stdio server (default `classic` and `--toolset=compact`), inspect tool titles, descriptions, and read-only approval behavior.
