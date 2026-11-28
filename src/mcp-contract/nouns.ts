@@ -32,3 +32,13 @@ export type ValidatedToolArguments = {
 	readonly branch?: string;
 	readonly compress?: boolean;
 };
+
+export type StructuredMarkdownPayload =
+	| { readonly markdown: string }
+	| { readonly path: string; readonly markdown: string };
+
+export type StructuredToolResult = {
+	readonly content: Array<{ readonly type: "text"; readonly text: string }>;
+	readonly structuredContent: StructuredMarkdownPayload;
+	readonly isError: false;
+};

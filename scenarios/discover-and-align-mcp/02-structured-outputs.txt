@@ -1,0 +1,17 @@
+# Slice 02: Structured Outputs (MC-6, D8, D49, D50)
+
+# MC-6 (D49): every tool passes audit including outputSchema validation
+> mcp audit
+ok: audited 11 tools (0 issues)
+
+# MC-6 (D49, D50): conversion result returns content text + structuredContent { markdown } without truncation
+> mcp format-result #_Hello_World
+content-blocks: 1
+structured: {"markdown":"#_Hello_World"}
+isError: false
+
+# MC-6 (D49, D50): get-markdown-file result returns Output file + text blocks and structuredContent { path, markdown }
+> mcp format-result #_Notes path=/data/notes.md
+content-blocks: 2
+structured: {"path":"/data/notes.md","markdown":"#_Notes"}
+isError: false

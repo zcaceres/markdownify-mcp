@@ -210,6 +210,60 @@ export const auditToolCatalog = (
 				}
 			}
 		}
+
+		// Structured outputSchema contract (D49, D52)
+		const outputSchema = tool.outputSchema;
+		if (!isPlainObject(outputSchema)) {
+			issues.push({
+				tool: name,
+				message: "missing outputSchema object (D49)",
+			});
+		} else {
+			scanForbiddenSchemaKeys(outputSchema, "outputSchema", name, issues);
+			if (outputSchema.type !== "object") {
+				issues.push({
+					tool: name,
+					message: 'outputSchema.type must be "object" (D49)',
+				});
+			}
+			const outProps = isPlainObject(outputSchema.properties)
+				? outputSchema.properties
+				: undefined;
+			const outReq = Array.isArray(outputSchema.required)
+				? outputSchema.required
+				: [];
+			const markdownProp = outProps?.markdown;
+			if (!isPlainObject(markdownProp) || markdownProp.type !== "string") {
+				issues.push({
+					tool: name,
+					message:
+						'outputSchema.properties.markdown must declare type "string" (D49)',
+				});
+			}
+			if (!outReq.includes("markdown")) {
+				issues.push({
+					tool: name,
+					message: 'outputSchema.required must include "markdown" (D49)',
+				});
+			}
+			if (name === "get-markdown-file") {
+				const pathProp = outProps?.path;
+				if (!isPlainObject(pathProp) || pathProp.type !== "string") {
+					issues.push({
+						tool: name,
+						message:
+							'outputSchema.properties.path must declare type "string" for get-markdown-file (D49)',
+					});
+				}
+				if (!outReq.includes("path")) {
+					issues.push({
+						tool: name,
+						message:
+							'outputSchema.required must include "path" for get-markdown-file (D49)',
+					});
+				}
+			}
+		}
 	}
 
 	return {

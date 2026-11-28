@@ -8,7 +8,7 @@ import {
 	serverInstructions,
 	serverMetadata,
 } from "./queries.js";
-import { validateToolArguments } from "./verbs.js";
+import { formatStructuredToolResult, validateToolArguments } from "./verbs.js";
 
 describe("mcp-contract metadata, instructions, and cacheHints (MC-1, MC-2, D48)", () => {
 	test("serverMetadata returns enriched Implementation fields", () => {
@@ -40,7 +40,7 @@ describe("mcp-contract metadata, instructions, and cacheHints (MC-1, MC-2, D48)"
 describe("auditToolCatalog cross-provider contract checks (MC-3, MC-4, D47, D48, D52)", () => {
 	test("all 11 exported classic tools pass auditToolCatalog with 0 issues", () => {
 		const report = auditToolCatalog(
-			Object.values(tools),
+			tools.CLASSIC_TOOLS,
 			CLASSIC_OPEN_WORLD_BY_TOOL,
 		);
 		expect(report.toolCount).toBe(11);
@@ -82,6 +82,36 @@ describe("auditToolCatalog cross-provider contract checks (MC-3, MC-4, D47, D48,
 		expect(messages.some((m) => m.includes("additionalProperties"))).toBe(true);
 		expect(messages.some((m) => m.includes("$schema"))).toBe(true);
 		expect(messages.some((m) => m.includes("bad-param"))).toBe(true);
+		expect(messages.some((m) => m.includes("outputSchema"))).toBe(true);
+	});
+});
+
+describe("formatStructuredToolResult (MC-6, D49, D50)", () => {
+	test("formats conversion results with text content and { markdown } structuredContent without truncation", () => {
+		const largeMarkdown = `# Large\n${"a".repeat(150_000)}`;
+		const formatted = formatStructuredToolResult({ text: largeMarkdown });
+		expect(formatted.isError).toBe(false);
+		expect(formatted.content).toEqual([{ type: "text", text: largeMarkdown }]);
+		expect(formatted.structuredContent).toEqual({ markdown: largeMarkdown });
+		expect(formatted.structuredContent.markdown.length).toBe(
+			largeMarkdown.length,
+		);
+	});
+
+	test("formats get-markdown-file results with Output file block plus { path, markdown } structuredContent", () => {
+		const formatted = formatStructuredToolResult({
+			path: "/data/notes.md",
+			text: "# Notes\n",
+		});
+		expect(formatted.isError).toBe(false);
+		expect(formatted.content).toEqual([
+			{ type: "text", text: "Output file: /data/notes.md" },
+			{ type: "text", text: "# Notes\n" },
+		]);
+		expect(formatted.structuredContent).toEqual({
+			path: "/data/notes.md",
+			markdown: "# Notes\n",
+		});
 	});
 });
 

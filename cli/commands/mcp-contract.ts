@@ -5,16 +5,20 @@ import {
 	serverInstructions,
 	serverMetadata,
 } from "../../src/mcp-contract/queries.ts";
-import { validateToolArguments } from "../../src/mcp-contract/verbs.ts";
+import {
+	formatStructuredToolResult,
+	validateToolArguments,
+} from "../../src/mcp-contract/verbs.ts";
 import { err, ok } from "../../src/shared/types.ts";
-import * as tools from "../../src/tools.ts";
+import { CLASSIC_TOOLS } from "../../src/tools.ts";
 import type { Command } from "../command.ts";
 
 export const mcp: Command = {
 	kind: "domain",
-	usage: "mcp info | mcp audit | mcp validate-args <tool> <json>",
+	usage:
+		"mcp info | mcp audit | mcp validate-args <tool> <json> | mcp format-result <text> [path=<p>]",
 	summary:
-		"inspect MCP server metadata/instructions/cacheHints, audit tool contracts, and validate strict per-tool arguments",
+		"inspect MCP server metadata/instructions/cacheHints, audit tool contracts, validate strict per-tool arguments, and format structured tool results",
 	run: async ([sub, ...rest]) => {
 		if (sub === "info") {
 			const meta = serverMetadata();
@@ -32,7 +36,7 @@ export const mcp: Command = {
 
 		if (sub === "audit") {
 			const report = auditToolCatalog(
-				Object.values(tools),
+				CLASSIC_TOOLS,
 				CLASSIC_OPEN_WORLD_BY_TOOL,
 			);
 			if (!report.ok) {
@@ -60,6 +64,26 @@ export const mcp: Command = {
 			const validated = validateToolArguments(toolName, parsedJson);
 			if (!validated.ok) return err(validated.error);
 			return ok([`ok: ${toolName} ${JSON.stringify(validated.value)}`]);
+		}
+
+		if (sub === "format-result") {
+			const [text, pathArg, ...extra] = rest;
+			if (text === undefined || extra.length > 0) {
+				return err(`usage: ${mcp.usage}`);
+			}
+			let path: string | undefined;
+			if (pathArg !== undefined) {
+				if (!pathArg.startsWith("path=")) {
+					return err(`usage: ${mcp.usage}`);
+				}
+				path = pathArg.slice("path=".length);
+			}
+			const formatted = formatStructuredToolResult({ text, path });
+			return ok([
+				`content-blocks: ${formatted.content.length}`,
+				`structured: ${JSON.stringify(formatted.structuredContent)}`,
+				`isError: ${formatted.isError}`,
+			]);
 		}
 
 		return err(`usage: ${mcp.usage}`);

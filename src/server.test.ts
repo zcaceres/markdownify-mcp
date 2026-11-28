@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { realpathSync } from "node:fs";
+import { resolve } from "node:path";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import {
 	auditToolCatalog,
@@ -108,6 +110,32 @@ describe("MCP server boundary (WU-1, D8)", () => {
 			const audit = auditToolCatalog(listed.tools, CLASSIC_OPEN_WORLD_BY_TOOL);
 			expect(audit.issues).toEqual([]);
 			expect(audit.ok).toBe(true);
+		});
+	});
+
+	test("returns typed structuredContent alongside content text on get-markdown-file and omits structuredContent on errors (MC-6, D8, D49, D50)", async () => {
+		const sampleMd = resolve(import.meta.dir, "sample-data", "test.md");
+		const expectedRealPath = realpathSync(sampleMd);
+		await withClient(async (client) => {
+			const res = await client.callTool({
+				name: "get-markdown-file",
+				arguments: { filepath: sampleMd },
+			});
+			expect(res.isError).toBe(false);
+			const content = res.content as Array<{ type: string; text?: string }>;
+			expect(content[0]?.text).toBe(`Output file: ${expectedRealPath}`);
+			expect(content[1]?.text).toContain("# Test Markdown Sample");
+			expect(res.structuredContent).toEqual({
+				path: expectedRealPath,
+				markdown: content[1]?.text,
+			});
+
+			const errRes = await client.callTool({
+				name: "get-markdown-file",
+				arguments: { filepath: "/data/not-markdown.txt" },
+			});
+			expect(errRes.isError).toBe(true);
+			expect(errRes.structuredContent).toBeUndefined();
 		});
 	});
 
