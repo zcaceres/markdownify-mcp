@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import http from "node:http";
+import type { Tool } from "@modelcontextprotocol/server";
 import {
 	createHttpServer,
 	isHostHeaderAllowed,
@@ -7,6 +8,10 @@ import {
 	isOriginHeaderAllowed,
 	parseCliArgs,
 } from "./http";
+import {
+	auditToolCatalog,
+	COMPACT_OPEN_WORLD_BY_TOOL,
+} from "./mcp-contract/queries";
 
 describe("parseCliArgs", () => {
 	test("defaults to stdio transport on 127.0.0.1:3000", () => {
@@ -17,6 +22,7 @@ describe("parseCliArgs", () => {
 			allowedHosts: [],
 			allowedOrigins: [],
 			allowUnrestrictedPaths: false,
+			toolset: "classic",
 		});
 	});
 
@@ -28,6 +34,7 @@ describe("parseCliArgs", () => {
 					"--port=4123",
 					"--host=localhost",
 					"--allow-unrestricted-paths",
+					"--toolset=compact",
 				],
 				{
 					MCP_TRANSPORT: "stdio",
@@ -35,6 +42,7 @@ describe("parseCliArgs", () => {
 					MCP_HOST: "0.0.0.0",
 					MCP_ALLOWED_HOSTS: "mcp.example.com, localhost:4123",
 					MCP_ALLOWED_ORIGINS: "https://app.example.com",
+					MCP_TOOLSET: "classic",
 				},
 			),
 		).toEqual({
@@ -44,6 +52,7 @@ describe("parseCliArgs", () => {
 			allowedHosts: ["mcp.example.com", "localhost:4123"],
 			allowedOrigins: ["https://app.example.com"],
 			allowUnrestrictedPaths: true,
+			toolset: "compact",
 		});
 	});
 
@@ -144,6 +153,7 @@ describe("Streamable HTTP server", () => {
 			allowedHosts?: string[];
 			allowedOrigins?: string[];
 			allowUnrestrictedPaths?: boolean;
+			toolset?: "classic" | "compact";
 		} = {},
 	): Promise<number> {
 		const activeServer = createHttpServer({
@@ -377,6 +387,40 @@ describe("Streamable HTTP server", () => {
 			const unknownResult = await callOverHttp(port, "no-such-tool", {});
 			expect(unknownResult.isError).toBe(true);
 			expect(unknownResult.content?.[0]?.text).toBe("Error: Tool not found");
+
+			await closeServer();
+
+			// Compact Toolset over live HTTP exposes only the 4 capability tools passing full audit (MC-7, D51)
+			const compactPort = await listen({ toolset: "compact" });
+			const compactListRes = await rawRequest(compactPort, {
+				path: "/mcp",
+				headers: {
+					"Content-Type": "application/json",
+					Accept: "application/json, text/event-stream",
+				},
+				body: JSON.stringify({
+					jsonrpc: "2.0",
+					id: 3,
+					method: "tools/list",
+					params: {},
+				}),
+			});
+			expect(compactListRes.status).toBe(200);
+			const compactParsed = parseMcpJsonRpc(compactListRes.body);
+			const compactTools =
+				(compactParsed.result as { tools?: Tool[] }).tools ?? [];
+			expect(compactTools.map((t) => t.name).sort()).toEqual([
+				"convert-git-repo",
+				"convert-local-file",
+				"convert-web-url",
+				"get-markdown-file",
+			]);
+			const compactAudit = auditToolCatalog(
+				compactTools,
+				COMPACT_OPEN_WORLD_BY_TOOL,
+			);
+			expect(compactAudit.issues).toEqual([]);
+			expect(compactAudit.ok).toBe(true);
 
 			await closeServer();
 

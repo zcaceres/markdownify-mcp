@@ -4,6 +4,7 @@ export const WEB_URL_TOOLS = [
 	"webpage-to-markdown",
 	"youtube-to-markdown",
 	"bing-search-to-markdown",
+	"convert-web-url",
 ] as const;
 
 export type WebUrlTool = (typeof WEB_URL_TOOLS)[number];

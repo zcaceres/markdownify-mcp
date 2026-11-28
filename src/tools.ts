@@ -1,4 +1,5 @@
 import type { Tool } from "@modelcontextprotocol/server";
+import type { Toolset } from "./mcp-contract/nouns.js";
 
 export const CONVERSION_OUTPUT_SCHEMA: NonNullable<Tool["outputSchema"]> = {
 	type: "object",
@@ -322,6 +323,94 @@ export const GetMarkdownFileTool: Tool = {
 	},
 };
 
+export const ConvertWebUrlTool: Tool = {
+	name: "convert-web-url",
+	title: "Convert Web URL to Markdown",
+	description:
+		"Fetch a public http(s) webpage, YouTube video, Bing search results page, or hosted document (PDF, DOCX, XLSX, PPTX, image, audio, JSON, CSV) and convert it into Markdown. Use convert-git-repo for Git repositories and convert-local-file or get-markdown-file for local filesystem paths instead. Private/loopback hosts are blocked, non-2xx responses fail, and JavaScript-rendered SPAs that return raw unconverted HTML fail with an error.",
+	inputSchema: {
+		type: "object",
+		properties: {
+			url: {
+				type: "string",
+				description:
+					"Public http(s) URL of the webpage, YouTube video, Bing search page, or hosted document to convert",
+			},
+		},
+		required: ["url"],
+	},
+	outputSchema: CONVERSION_OUTPUT_SCHEMA,
+	annotations: {
+		title: "Convert Web URL to Markdown",
+		readOnlyHint: true,
+		destructiveHint: false,
+		idempotentHint: true,
+		openWorldHint: true,
+	},
+};
+
+export const ConvertLocalFileTool: Tool = {
+	name: "convert-local-file",
+	title: "Convert Local File to Markdown",
+	description:
+		"Convert a local non-Markdown file on disk (PDF, DOCX, XLSX, PPTX, image, or audio) into Markdown text. Use get-markdown-file to read existing local .md/.markdown files verbatim, and use convert-web-url for remote http(s) URLs. Requires an absolute or ~/ path within MD_ALLOWED_PATHS when configured, fails closed in HTTP mode unless MD_ALLOWED_PATHS is set, and non-PDF formats require the full local markitdown[all] profile (unsupported in the slim Docker pdf image).",
+	inputSchema: {
+		type: "object",
+		properties: {
+			filepath: {
+				type: "string",
+				description:
+					"Absolute path or ~/ home-relative path to the local file (PDF, DOCX, XLSX, PPTX, image, or audio) to convert",
+			},
+		},
+		required: ["filepath"],
+	},
+	outputSchema: CONVERSION_OUTPUT_SCHEMA,
+	annotations: {
+		title: "Convert Local File to Markdown",
+		readOnlyHint: true,
+		destructiveHint: false,
+		idempotentHint: true,
+		openWorldHint: false,
+	},
+};
+
+export const ConvertGitRepoTool: Tool = {
+	name: "convert-git-repo",
+	title: "Convert Git Repo to Markdown",
+	description:
+		"Clone and pack a public remote Git repository into a single Markdown document containing its directory tree and source files. Use this for public http(s) Git repository URLs or GitHub owner/repo shorthand instead of convert-web-url. Embedded URL credentials, SSH/file schemes, and private/loopback hosts are rejected; set compress=true to reduce output size (~70%) via Tree-sitter.",
+	inputSchema: {
+		type: "object",
+		properties: {
+			url: {
+				type: "string",
+				description:
+					"Public http(s) Git repository URL without embedded credentials, or GitHub shorthand (e.g. https://github.com/owner/repo or owner/repo)",
+			},
+			branch: {
+				type: "string",
+				description:
+					"Optional branch name, tag, or commit SHA to pack (defaults to the repository default branch)",
+			},
+			compress: {
+				type: "boolean",
+				description:
+					"Optional Tree-sitter compression flag to reduce output size by ~70% (default: false)",
+			},
+		},
+		required: ["url"],
+	},
+	outputSchema: CONVERSION_OUTPUT_SCHEMA,
+	annotations: {
+		title: "Convert Git Repo to Markdown",
+		readOnlyHint: true,
+		destructiveHint: false,
+		idempotentHint: true,
+		openWorldHint: true,
+	},
+};
+
 export const CLASSIC_TOOLS: readonly Tool[] = [
 	YouTubeToMarkdownTool,
 	PDFToMarkdownTool,
@@ -335,3 +424,13 @@ export const CLASSIC_TOOLS: readonly Tool[] = [
 	GitRepoToMarkdownTool,
 	GetMarkdownFileTool,
 ];
+
+export const COMPACT_TOOLS: readonly Tool[] = [
+	ConvertWebUrlTool,
+	ConvertLocalFileTool,
+	ConvertGitRepoTool,
+	GetMarkdownFileTool,
+];
+
+export const toolsForToolset = (toolset: Toolset): readonly Tool[] =>
+	toolset === "compact" ? COMPACT_TOOLS : CLASSIC_TOOLS;

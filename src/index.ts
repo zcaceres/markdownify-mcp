@@ -15,11 +15,12 @@ async function main() {
 			allowedHosts: config.allowedHosts,
 			allowedOrigins: config.allowedOrigins,
 			allowUnrestrictedPaths: config.allowUnrestrictedPaths,
+			toolset: config.toolset,
 		});
 		return;
 	}
 
-	serveStdio(() => createServer(), {
+	serveStdio(() => createServer({ toolset: config.toolset }), {
 		onerror: (error) => {
 			console.error("[stdio error]", error);
 		},

@@ -56,12 +56,14 @@ Each slice is one capability, wired through every part of the system with a scen
    ([spec](specs/01-metadata-and-strict-schemas/spec.md), `scenarios/discover-and-align-mcp/01-metadata-and-strict-schemas.txt`)
 2. **02-structured-outputs** — Added Gemini-safe JSON Schema `outputSchema` to every tool (`{ markdown }` for conversions, `{ path, markdown }` for `get-markdown-file`), wired `formatStructuredToolResult` in `src/server.ts` to return matching `structuredContent` alongside backwards-compatible `content` text blocks without truncation (D50) while omitting `structuredContent` on `isError: true`, extended `auditToolCatalog`, and verified with unit/boundary tests and `scenarios/discover-and-align-mcp/02-structured-outputs.txt`. Covers **MC-6** (D49, D50).
    ([spec](specs/02-structured-outputs/spec.md), `scenarios/discover-and-align-mcp/02-structured-outputs.txt`)
+3. **03-compact-toolset** — Added `Toolset` (`classic` | `compact`) to `ServerConfiguration` (`--toolset=<classic|compact>`, `MCP_TOOLSET`, D32 fail-fast), implemented the 4 capability tools (`convert-web-url`, `convert-local-file`, `convert-git-repo`, `get-markdown-file`) with tailored `instructions` and strict Toolset enforcement in `tools/call` (D51), updated [README.md](../../../README.md), and added cross-provider contract checks (`mcp-contract-audit` + `structuredContent` checks) to the 6-Form-Factor E2E runner (`cli/e2e/runner.ts`). Covers **MC-7, MC-8** (D32, D51, D47–D52).
+   ([spec](specs/03-compact-toolset/spec.md), `scenarios/discover-and-align-mcp/03-compact-toolset.txt`)
 
 ### Next
 
 In the order we expect to build them; reorder freely.
 
-1. **03-compact-toolset** — Add `Toolset` (`classic` | `compact`) to `ServerConfiguration` (`--toolset=<classic|compact>`, `MCP_TOOLSET`, D32 fail-fast on invalid values), implement the 4 capability tools (`convert-web-url`, `convert-local-file`, `convert-git-repo`, `get-markdown-file`) with tailored `instructions` and strict Toolset enforcement in `tools/call` (D51), update [README.md](../../../README.md), and add cross-provider contract checks (`D47`–`D52`) to the 6-Form-Factor E2E runner (`cli/e2e/runner.ts`). Covers **MC-7, MC-8** (D32, D51, D47–D52).
+_(None — all planned slices for Discover & Align MCP are complete.)_
 
 ## Deferred
 

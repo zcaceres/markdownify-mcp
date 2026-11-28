@@ -9,8 +9,8 @@ import {
 	parseServerConfiguration,
 } from "./verbs.js";
 
-describe("parseServerConfiguration (SC-1, SC-2, D1, D2, D23, D32)", () => {
-	test("defaults to stdio on 127.0.0.1:3000 and allows CLI flags to override env vars", () => {
+describe("parseServerConfiguration (SC-1, SC-2, MC-7, D1, D2, D23, D32, D51)", () => {
+	test("defaults to stdio on 127.0.0.1:3000 with classic toolset and allows CLI flags to override env vars", () => {
 		expect(parseServerConfiguration([], {})).toEqual(
 			ok({
 				transport: "stdio",
@@ -19,6 +19,7 @@ describe("parseServerConfiguration (SC-1, SC-2, D1, D2, D23, D32)", () => {
 				allowedHosts: [],
 				allowedOrigins: [],
 				allowUnrestrictedPaths: false,
+				toolset: "classic",
 			}),
 		);
 
@@ -29,6 +30,7 @@ describe("parseServerConfiguration (SC-1, SC-2, D1, D2, D23, D32)", () => {
 					"--port=4123",
 					"--host=localhost",
 					"--allow-unrestricted-paths",
+					"--toolset=compact",
 				],
 				{
 					MCP_TRANSPORT: "stdio",
@@ -36,6 +38,7 @@ describe("parseServerConfiguration (SC-1, SC-2, D1, D2, D23, D32)", () => {
 					MCP_HOST: "0.0.0.0",
 					MCP_ALLOWED_HOSTS: "mcp.example.com, localhost:4123",
 					MCP_ALLOWED_ORIGINS: "https://app.example.com",
+					MCP_TOOLSET: "classic",
 				},
 			),
 		).toEqual(
@@ -46,28 +49,42 @@ describe("parseServerConfiguration (SC-1, SC-2, D1, D2, D23, D32)", () => {
 				allowedHosts: ["mcp.example.com", "localhost:4123"],
 				allowedOrigins: ["https://app.example.com"],
 				allowUnrestrictedPaths: true,
+				toolset: "compact",
 			}),
 		);
+
+		expect(
+			parseServerConfiguration([], { MCP_TOOLSET: "compact" }),
+		).toMatchObject({
+			ok: true,
+			value: { toolset: "compact" },
+		});
 	});
 
-	test("rejects unknown CLI flags, positional args, and invalid values (D32)", () => {
+	test("rejects unknown CLI flags, positional args, and invalid values (D32, D51)", () => {
 		expect(parseServerConfiguration(["--transprot=http"], {})).toEqual(
 			err(
-				'Unknown CLI argument "--transprot=http". Supported flags: --transport=stdio|http, --host=HOST, --port=N, --allow-unrestricted-paths',
+				'Unknown CLI argument "--transprot=http". Supported flags: --transport=stdio|http, --host=HOST, --port=N, --allow-unrestricted-paths, --toolset=classic|compact',
 			),
 		);
 		expect(parseServerConfiguration(["--allow-unrestricted"], {})).toEqual(
 			err(
-				'Unknown CLI argument "--allow-unrestricted". Supported flags: --transport=stdio|http, --host=HOST, --port=N, --allow-unrestricted-paths',
+				'Unknown CLI argument "--allow-unrestricted". Supported flags: --transport=stdio|http, --host=HOST, --port=N, --allow-unrestricted-paths, --toolset=classic|compact',
 			),
 		);
 		expect(parseServerConfiguration(["extra-arg"], {})).toEqual(
 			err(
-				'Unknown CLI argument "extra-arg". Supported flags: --transport=stdio|http, --host=HOST, --port=N, --allow-unrestricted-paths',
+				'Unknown CLI argument "extra-arg". Supported flags: --transport=stdio|http, --host=HOST, --port=N, --allow-unrestricted-paths, --toolset=classic|compact',
 			),
 		);
 		expect(parseServerConfiguration(["--transport=ws"], {})).toEqual(
 			err('Unknown transport "ws". Supported values: stdio, http'),
+		);
+		expect(parseServerConfiguration(["--toolset=minimal"], {})).toEqual(
+			err('Unknown toolset "minimal". Supported values: classic, compact'),
+		);
+		expect(parseServerConfiguration([], { MCP_TOOLSET: "invalid" })).toEqual(
+			err('Unknown toolset "invalid". Supported values: classic, compact'),
 		);
 		expect(parseServerConfiguration(["--port=0"], {})).toEqual(
 			err('Invalid port "0". Must be an integer between 1 and 65535.'),
@@ -157,6 +174,7 @@ describe("startupDiagnostics (SC-7, D9, D23, D24, D33, D35, D36)", () => {
 			allowedHosts: [],
 			allowedOrigins: [],
 			allowUnrestrictedPaths: false,
+			toolset: "classic" as const,
 		};
 
 		expect(startupDiagnostics(base, {}, mockExpand)).toEqual([

@@ -106,14 +106,15 @@ Or via environment variables:
 MCP_TRANSPORT=http MCP_PORT=3000 MD_ALLOWED_PATHS=/path/to/docs bun dist/index.js
 ```
 
-| Flag / Env                                                    | Default                                 | Purpose                                                                                                                                                              |
-| ------------------------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--transport=stdio\|http` / `MCP_TRANSPORT`                   | `stdio`                                 | Transport mode.                                                                                                                                                      |
-| `--host=HOST` / `MCP_HOST`                                    | `127.0.0.1`                             | Bind address for HTTP mode. Defaults to loopback only.                                                                                                               |
-| `--port=N` / `MCP_PORT`                                       | `3000`                                  | Port for HTTP mode (ignored in `stdio` mode).                                                                                                                        |
-| `MCP_ALLOWED_HOSTS`                                           | loopback hosts when bound to loopback   | Comma-separated list of allowed `Host` headers (DNS-rebinding protection).                                                                                           |
-| `MCP_ALLOWED_ORIGINS`                                         | loopback origins when bound to loopback | Comma-separated list of allowed browser `Origin` headers.                                                                                                            |
-| `--allow-unrestricted-paths` / `MCP_ALLOW_UNRESTRICTED_PATHS` | `false`                                 | Opt out of HTTP fail-closed local file tool blocking when `MD_ALLOWED_PATHS` is unset. Set `MCP_ALLOW_UNRESTRICTED_PATHS=true` or pass `--allow-unrestricted-paths`. |
+| Flag / Env                                                    | Default                                 | Purpose                                                                                                                                                                                                                           |
+| ------------------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--transport=stdio\|http` / `MCP_TRANSPORT`                   | `stdio`                                 | Transport mode.                                                                                                                                                                                                                   |
+| `--host=HOST` / `MCP_HOST`                                    | `127.0.0.1`                             | Bind address for HTTP mode. Defaults to loopback only.                                                                                                                                                                            |
+| `--port=N` / `MCP_PORT`                                       | `3000`                                  | Port for HTTP mode (ignored in `stdio` mode).                                                                                                                                                                                     |
+| `MCP_ALLOWED_HOSTS`                                           | loopback hosts when bound to loopback   | Comma-separated list of allowed `Host` headers (DNS-rebinding protection).                                                                                                                                                        |
+| `MCP_ALLOWED_ORIGINS`                                         | loopback origins when bound to loopback | Comma-separated list of allowed browser `Origin` headers.                                                                                                                                                                         |
+| `--allow-unrestricted-paths` / `MCP_ALLOW_UNRESTRICTED_PATHS` | `false`                                 | Opt out of HTTP fail-closed local file tool blocking when `MD_ALLOWED_PATHS` is unset. Set `MCP_ALLOW_UNRESTRICTED_PATHS=true` or pass `--allow-unrestricted-paths`.                                                              |
+| `--toolset=classic\|compact` / `MCP_TOOLSET`                  | `classic`                               | Active MCP tool catalog: `classic` exposes all 11 stable tools; `compact` exposes 4 capability-aligned tools (`convert-web-url`, `convert-local-file`, `convert-git-repo`, `get-markdown-file`) to reduce tool-definition tokens. |
 
 > **Security note:** The HTTP transport has no built-in authentication. When `MD_ALLOWED_PATHS` is unset in HTTP mode, local file-input tools fail closed unless you explicitly opt out with `--allow-unrestricted-paths` or `MCP_ALLOW_UNRESTRICTED_PATHS=true`. Keep `--host=127.0.0.1` for local use, or place the server behind an authenticating reverse proxy with `MCP_ALLOWED_HOSTS` / `MCP_ALLOWED_ORIGINS` configured.
 
@@ -150,6 +151,15 @@ Notes for the Docker MCP catalog (`mcp/markdownify`):
 - `get-markdown-file`: Retrieve an existing Markdown file. File extension must end with: *.md, *.markdown.
 
   OPTIONAL: set `MD_ALLOWED_PATHS` to restrict every file-input tool to a list of directories, e.g. `MD_ALLOWED_PATHS=/data/in:/data/out bun start`.
+
+### Compact Toolset (`--toolset=compact` / `MCP_TOOLSET=compact`)
+
+For lower token overhead across Anthropic, Gemini, and OpenAI hosts, pass `--toolset=compact` (or `MCP_TOOLSET=compact`) to expose 4 capability-aligned tools instead of the 11 classic tools:
+
+- `convert-web-url`: Convert any public `http(s)` webpage, YouTube video, Bing search page, or hosted document to Markdown
+- `convert-local-file`: Convert any local non-Markdown file (PDF, DOCX, XLSX, PPTX, image, audio) to Markdown
+- `convert-git-repo`: Convert a public remote Git repository (URL or GitHub `owner/repo` shorthand) into a single Markdown document
+- `get-markdown-file`: Retrieve an existing local `.md` or `.markdown` file verbatim with its resolved path
 
 ## Contributing
 

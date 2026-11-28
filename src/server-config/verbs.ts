@@ -11,7 +11,7 @@ import type {
 } from "./nouns.js";
 
 const SUPPORTED_FLAGS =
-	"--transport=stdio|http, --host=HOST, --port=N, --allow-unrestricted-paths";
+	"--transport=stdio|http, --host=HOST, --port=N, --allow-unrestricted-paths, --toolset=classic|compact";
 
 const parseCsvList = (raw: string | undefined): string[] => {
 	if (!raw) return [];
@@ -112,6 +112,7 @@ export const parseServerConfiguration = (
 	let transportArg: string | undefined;
 	let portArg: string | undefined;
 	let hostArg: string | undefined;
+	let toolsetArg: string | undefined;
 	let allowUnrestrictedFlag = false;
 
 	for (const arg of argv) {
@@ -121,6 +122,8 @@ export const parseServerConfiguration = (
 			portArg = arg.slice("--port=".length);
 		} else if (arg.startsWith("--host=")) {
 			hostArg = arg.slice("--host=".length);
+		} else if (arg.startsWith("--toolset=")) {
+			toolsetArg = arg.slice("--toolset=".length);
 		} else if (arg === HTTP_UNRESTRICTED_CLI_FLAG) {
 			allowUnrestrictedFlag = true;
 		} else {
@@ -135,6 +138,14 @@ export const parseServerConfiguration = (
 	if (transport !== "stdio" && transport !== "http") {
 		return err(
 			`Unknown transport "${transport}". Supported values: stdio, http`,
+		);
+	}
+
+	const toolset =
+		toolsetArg !== undefined ? toolsetArg : env.MCP_TOOLSET || "classic";
+	if (toolset !== "classic" && toolset !== "compact") {
+		return err(
+			`Unknown toolset "${toolset}". Supported values: classic, compact`,
 		);
 	}
 
@@ -169,6 +180,7 @@ export const parseServerConfiguration = (
 		allowedHosts: parseCsvList(env.MCP_ALLOWED_HOSTS),
 		allowedOrigins: parseCsvList(env.MCP_ALLOWED_ORIGINS),
 		allowUnrestrictedPaths,
+		toolset,
 	});
 };
 

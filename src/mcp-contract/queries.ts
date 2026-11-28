@@ -4,6 +4,7 @@ import type {
 	ServerMetadata,
 	ToolContractAudit,
 	ToolContractIssue,
+	Toolset,
 } from "./nouns.js";
 
 const GEMINI_TOOL_NAME_RE = /^[a-zA-Z_][a-zA-Z0-9_.:-]*$/;
@@ -31,6 +32,20 @@ export const CLASSIC_OPEN_WORLD_BY_TOOL: Readonly<Record<string, boolean>> = {
 	"get-markdown-file": false,
 };
 
+export const COMPACT_OPEN_WORLD_BY_TOOL: Readonly<Record<string, boolean>> = {
+	"convert-web-url": true,
+	"convert-git-repo": true,
+	"convert-local-file": false,
+	"get-markdown-file": false,
+};
+
+export const expectedOpenWorldByToolset = (
+	toolset: Toolset,
+): Readonly<Record<string, boolean>> =>
+	toolset === "compact"
+		? COMPACT_OPEN_WORLD_BY_TOOL
+		: CLASSIC_OPEN_WORLD_BY_TOOL;
+
 export const serverMetadata = (): ServerMetadata => ({
 	name: "mcp-markdownify-server",
 	title: "Markdownify MCP",
@@ -40,12 +55,20 @@ export const serverMetadata = (): ServerMetadata => ({
 	websiteUrl: "https://github.com/zcaceres/markdownify-mcp",
 });
 
-export const serverInstructions = (): string =>
-	[
+export const serverInstructions = (toolset: Toolset = "classic"): string => {
+	if (toolset === "compact") {
+		return [
+			"Markdownify MCP (compact toolset) converts web URLs, remote Git repositories, and local files into Markdown on demand without modifying files or state.",
+			"Tool selection: use convert-web-url for public http(s) webpages, YouTube videos, Bing search pages, and hosted documents; use convert-git-repo for public Git repositories or GitHub owner/repo shorthand; use convert-local-file for local non-Markdown files (PDF, DOCX, XLSX, PPTX, image, audio); and use get-markdown-file to read existing local .md/.markdown files verbatim.",
+			"Constraints: convert-local-file and get-markdown-file require absolute or ~/ paths and fail closed in HTTP mode unless MD_ALLOWED_PATHS (or the unrestricted opt-out) is configured; all remote URLs must be public http(s) addresses (private/loopback hosts are blocked); JS-rendered SPAs fail if raw HTML is returned; local images return metadata only without external vision models; slim Docker images only include PDF support.",
+		].join("\n");
+	}
+	return [
 		"Markdownify MCP converts web URLs, remote Git repositories, and local files into Markdown on demand without modifying files or state.",
 		"Tool selection: use webpage-to-markdown for general http(s) webpages and hosted documents (PDF, DOCX, XLSX, PPTX, images, audio); use youtube-to-markdown for YouTube videos, bing-search-to-markdown for Bing search result pages, git-repo-to-markdown for public Git repositories (or GitHub owner/repo shorthand), the format-specific local file tools for local non-Markdown files, and get-markdown-file to read existing local .md/.markdown files verbatim.",
 		"Constraints: local file tools and get-markdown-file require absolute or ~/ paths and fail closed in HTTP mode unless MD_ALLOWED_PATHS (or the unrestricted opt-out) is configured; all remote URLs must be public http(s) addresses (private/loopback hosts are blocked); JS-rendered SPAs fail if raw HTML is returned; image-to-markdown returns metadata only without external vision models; slim Docker images only include PDF support.",
 	].join("\n");
+};
 
 export const serverCacheHints = (): ServerCacheHints => ({
 	"tools/list": { ttlMs: 3_600_000, cacheScope: "public" },
