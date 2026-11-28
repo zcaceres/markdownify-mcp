@@ -14,12 +14,13 @@ The designs and existing code behind this journey, from its design session (2026
 ## Shape
 
 An **Operator** configures **Server Configuration** via CLI flags (`--transport=`, `--host=`, `--port=`,
-`--allow-unrestricted-paths`) and `MCP_*` environment variables (CLI wins; unknown flags and invalid values fail fast,
-**D2, D23, D32**). In `stdio` mode the server binds `StdioServerTransport`; in `http` mode it binds stateless
-Streamable HTTP on `127.0.0.1:3000` (default), emits accurate Startup Diagnostics (**D9, D23, D24, D33, D35, D36**), routes
+`--allow-unrestricted-paths`, `--toolset=`) and `MCP_*` environment variables (CLI wins; enum values are trimmed and
+lowercased per **D53**; unknown flags and invalid values fail fast, **D2, D23, D32, D51**). In `stdio` mode the server
+serves MCP via `serveStdio`; in `http` mode it binds stateless Streamable HTTP (`createMcpHandler` + `toNodeHandler`)
+on `127.0.0.1:3000` (default), emits accurate Startup Diagnostics (**D9, D23, D24, D33, D35, D36**), routes
 `POST /mcp` and `POST /` exclusively (**D33**), enforces `Host` and `Origin` header validation (**I5, D33**), and
-serves all 11 MCP tools statelessly (**D1, D3, D8, D9**). The Operator verifies the packaged slim Docker image via
-`bun run harness docker` over MCP `StdioClientTransport` (**D4, D11, D22, D34**).
+serves the active **Toolset** statelessly (**D1, D3, D8, D9, D51**). The Operator verifies the packaged slim Docker
+image via `bun run harness docker` over MCP `StdioClientTransport` (**D4, D11, D22, D34**).
 
 ## Contexts, verbs and queries
 

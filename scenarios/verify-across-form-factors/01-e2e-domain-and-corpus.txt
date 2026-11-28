@@ -6,25 +6,25 @@ form-factors: node-stdio
 categories: (all)
 cases: (all)
 ad-hoc: (none)
-flags: json=false preview=false no-build=false reuse-venv=false
+flags: toolset=classic json=false preview=false no-build=false reuse-venv=false
 
-> e2e parse --all --category=static-web,git-repo --json --preview --no-build --reuse-venv
+> e2e parse --all --category=static-web,git-repo --toolset=compact --json --preview --no-build --reuse-venv
 form-factors: node-stdio, bun-stdio, local-http, docker-stdio, docker-http, npm-package
 categories: static-web, git-repo
 cases: (all)
 ad-hoc: (none)
-flags: json=true preview=true no-build=true reuse-venv=true
+flags: toolset=compact json=true preview=true no-build=true reuse-venv=true
 
 > e2e parse --form=local-http,docker-http --tool=webpage-to-markdown --url=https://example.com
 form-factors: local-http, docker-http
 categories: (all)
 cases: (all)
 ad-hoc: webpage-to-markdown url=https://example.com
-flags: json=false preview=false no-build=false reuse-venv=false
+flags: toolset=classic json=false preview=false no-build=false reuse-venv=false
 
 # VF-1 (D45): unknown flags, unknown Form Factors/categories, conflicting --url + --file, and missing --tool fail fast
 > e2e parse --bogus
-error: Unknown e2e argument "--bogus". Supported flags: --form=, --all, --category=, --case=, --tool=, --url=, --file=, --branch=, --compress, --json, --preview, --no-build, --reuse-venv
+error: Unknown e2e argument "--bogus". Supported flags: --form=, --all, --category=, --case=, --toolset=, --tool=, --url=, --file=, --branch=, --compress, --json, --preview, --no-build, --reuse-venv
 
 > e2e parse --form=wasm-stdio
 error: Unknown Form Factor "wasm-stdio". Supported values: node-stdio, bun-stdio, local-http, docker-stdio, docker-http, npm-package

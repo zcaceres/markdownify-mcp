@@ -68,4 +68,16 @@ describe("a scenario", () => {
 			"error: usage: convert <tool> [url|filepath] [--branch=<ref>] [--compress]",
 		]);
 	});
+
+	test("convert command accepts compact tool names including convert-git-repo (D51)", async () => {
+		const session = createSession();
+		await session.exec("repomix stub # Compact Repo");
+		const out = await session.exec(
+			"convert convert-git-repo octocat/Hello-World --compress",
+		);
+		expect(out).toEqual([
+			"ok: convert-git-repo (path: none)",
+			"| # Compact Repo",
+		]);
+	});
 });

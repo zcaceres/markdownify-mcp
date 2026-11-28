@@ -361,6 +361,10 @@ for an undecided rule and will change with it.
 
 - **Decided (2026-11-27):** Keep wire JSON Schema `inputSchema` definitions flat and free of Gemini-incompatible keywords (`additionalProperties`, `$schema`, `$ref`, `$defs`) for 100% Anthropic/Gemini/OpenAI compatibility, while enforcing strict per-tool unknown-key rejection at runtime via Zod `.strict()` schemas returning concise single-line `isError: true` errors (D8).
 
+### D53. Normalize enum Server Configuration values (`transport`, `toolset`)
+
+- **Decided (2026-11-27):** Trim surrounding whitespace and lowercase enum Server Configuration values (`MCP_TRANSPORT`, `MCP_TOOLSET`, `--transport=`, `--toolset=`), matching `MCP_ALLOW_UNRESTRICTED_PATHS` normalization (D23). Empty or whitespace-only `MCP_TRANSPORT` / `MCP_TOOLSET` environment variables fall back to their defaults (`stdio`, `classic`), while explicit empty CLI flags (`--transport=`, `--toolset=`) fail fast with a clear configuration error (D32, D51).
+
 ## Undecided Questions
 
 | #   | Question                                                                                                                    | Meanwhile                                             |

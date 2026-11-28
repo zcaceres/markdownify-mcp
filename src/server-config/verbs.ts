@@ -134,7 +134,9 @@ export const parseServerConfiguration = (
 	}
 
 	const transport =
-		transportArg !== undefined ? transportArg : env.MCP_TRANSPORT || "stdio";
+		transportArg !== undefined
+			? transportArg.trim().toLowerCase()
+			: env.MCP_TRANSPORT?.trim().toLowerCase() || "stdio";
 	if (transport !== "stdio" && transport !== "http") {
 		return err(
 			`Unknown transport "${transport}". Supported values: stdio, http`,
@@ -142,7 +144,9 @@ export const parseServerConfiguration = (
 	}
 
 	const toolset =
-		toolsetArg !== undefined ? toolsetArg : env.MCP_TOOLSET || "classic";
+		toolsetArg !== undefined
+			? toolsetArg.trim().toLowerCase()
+			: env.MCP_TOOLSET?.trim().toLowerCase() || "classic";
 	if (toolset !== "classic" && toolset !== "compact") {
 		return err(
 			`Unknown toolset "${toolset}". Supported values: classic, compact`,

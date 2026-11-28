@@ -27,11 +27,11 @@ Scenario: Default configuration selects stdio on 127.0.0.1:3000 and CLI flags ov
   When the server parses Server Configuration
   Then transport is "stdio", host is "127.0.0.1", port is 3000, and allowUnrestrictedPaths is false (D1, D2, D23)
 
-@SC-1 @D2 @D6 @D23
+@SC-1 @D2 @D6 @D23 @D51 @D53
 Scenario: CLI flags take precedence over MCP_* environment variables
-  Given MCP_TRANSPORT, MCP_HOST, MCP_PORT, MCP_ALLOWED_HOSTS, MCP_ALLOWED_ORIGINS, and CLI flags --transport=, --host=, --port=, --allow-unrestricted-paths
+  Given MCP_TRANSPORT, MCP_HOST, MCP_PORT, MCP_ALLOWED_HOSTS, MCP_ALLOWED_ORIGINS, MCP_TOOLSET, and CLI flags --transport=, --host=, --port=, --allow-unrestricted-paths, --toolset=
   When the server parses Server Configuration
-  Then CLI flag values override env vars and comma-separated host/origin lists are trimmed (D2, D23)
+  Then CLI flag values override env vars, enum values (transport, toolset) are trimmed and lowercased with blank env fallback, and comma-separated host/origin lists are trimmed (D2, D23, D51, D53)
 
 @SC-2 @D2 @D32
 Scenario: Invalid transport, port, empty host, or unknown CLI flags fail fast at startup

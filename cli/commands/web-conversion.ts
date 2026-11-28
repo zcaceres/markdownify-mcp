@@ -1,4 +1,4 @@
-import { GIT_REPO_TOOL } from "../../src/git-repo-conversion/nouns.ts";
+import { GIT_REPO_TOOLS } from "../../src/git-repo-conversion/nouns.ts";
 import {
 	convertGitRepo,
 	parseGitRepoLimits,
@@ -37,7 +37,7 @@ export const convert: Command = {
 	run: async (args, world) => {
 		const [tool = "", target, ...rest] = args;
 
-		if (tool === GIT_REPO_TOOL) {
+		if ((GIT_REPO_TOOLS as readonly string[]).includes(tool)) {
 			let branch: string | undefined;
 			let compress = false;
 			for (const flag of rest) {
@@ -64,7 +64,7 @@ export const convert: Command = {
 				{ repomixTimeoutMs: limitsResult.value.repomixTimeoutMs },
 			);
 			if (!result.ok) return err(result.error);
-			return ok(formatOutput(GIT_REPO_TOOL, result.value.text));
+			return ok(formatOutput(tool, result.value.text));
 		}
 
 		if (args.length > 2) {

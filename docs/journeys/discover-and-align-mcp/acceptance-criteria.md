@@ -76,10 +76,10 @@ Scenario: Error responses omit structuredContent and preserve the single-line D8
 ## 4. Select Toolset & verify across Form Factors
 
 ```gherkin
-@MC-7 @D2 @D3 @D8 @D32 @D51
+@MC-7 @D2 @D3 @D8 @D32 @D51 @D53
 Scenario: Operator configures classic (default) or compact Toolset via CLI flag or MCP_TOOLSET
   Given Server Configuration parses --toolset=<classic|compact> and MCP_TOOLSET
-  When no toolset is provided, classic (11 tools) is selected; when compact is provided, only the 4 capability tools (convert-web-url, convert-local-file, convert-git-repo, get-markdown-file) are exposed; invalid toolset values fail fast at startup (D2, D3, D32, D51)
+  When no toolset is provided (or MCP_TOOLSET is blank), classic (11 tools) is selected; when compact is provided (case- and whitespace-normalized), only the 4 capability tools (convert-web-url, convert-local-file, convert-git-repo, get-markdown-file) are exposed; invalid or empty CLI toolset values fail fast at startup (D2, D3, D32, D51, D53)
 
 @MC-7 @D8 @D9 @D47 @D49 @D51
 Scenario: Compact Toolset strictly enforces exposed tool names, annotations, HTTP D9 gating, and structured outputs
