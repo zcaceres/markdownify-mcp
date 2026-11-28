@@ -52,11 +52,11 @@ jobs:
       - name: Replay deterministic mock scenarios
         run: bun run harness run scenarios
 
-      - name: Local E2E (classic toolset, offline local-binary)
+      - name: Local E2E (compact default toolset, offline local-binary)
         run: bun run harness e2e --form=node-stdio,bun-stdio,local-http --category=local-binary
 
-      - name: Local E2E (compact toolset, offline local-binary)
-        run: bun run harness e2e --form=node-stdio,local-http --toolset=compact --category=local-binary
+      - name: Local E2E (classic opt-in toolset, offline local-binary)
+        run: bun run harness e2e --form=node-stdio,local-http --toolset=classic --category=local-binary
 
   docker:
     name: Docker Slim Image & Container E2E
@@ -72,11 +72,11 @@ jobs:
       - name: Build slim Docker image & run smoke harness
         run: bun run harness docker
 
-      - name: Container E2E (classic toolset, offline local-binary)
+      - name: Container E2E (compact default toolset, offline local-binary)
         run: bun run harness e2e --form=docker-stdio,docker-http --no-build --category=local-binary
 
-      - name: Container E2E (compact toolset, offline local-binary)
-        run: bun run harness e2e --form=docker-stdio,docker-http --no-build --toolset=compact --category=local-binary
+      - name: Container E2E (classic opt-in toolset, offline local-binary)
+        run: bun run harness e2e --form=docker-stdio,docker-http --no-build --toolset=classic --category=local-binary
 
   npm-package:
     name: Packed npm Tarball E2E

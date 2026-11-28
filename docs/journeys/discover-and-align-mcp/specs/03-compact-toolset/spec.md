@@ -1,7 +1,7 @@
 # Slice 03: Compact Toolset & 6-Form-Factor E2E Contract Verification
 
-Adds Operator-selectable **Toolset** (`classic` 11-tool default or opt-in `compact` 4-tool mode via
-`--toolset=<classic|compact>` / `MCP_TOOLSET`), strict Toolset enforcement in `tools/call`, tailored compact server
+Adds Operator-selectable **Toolset** (`compact` 4-tool default or opt-in `classic` 11-tool mode via
+`--toolset=<compact|classic>` / `MCP_TOOLSET`), strict Toolset enforcement in `tools/call`, tailored compact server
 `instructions`, updated `README.md` docs, and live cross-provider MCP contract checks (`D47`–`D52`) in the
 6-Form-Factor E2E harness.
 
@@ -14,7 +14,7 @@ Adds Operator-selectable **Toolset** (`classic` 11-tool default or opt-in `compa
 
 ### In scope
 
-- Adding `toolset: Toolset` (`"classic" | "compact"`, default `"classic"`) to `ServerConfiguration` (`src/server-config/nouns.ts`, `src/server-config/verbs.ts`), parsing `--toolset=<classic|compact>` and `MCP_TOOLSET` (CLI overrides env var; invalid values fail fast per `D32`, `D51`).
+- Adding `toolset: Toolset` (`"compact" | "classic"`, default `"compact"`) to `ServerConfiguration` (`src/server-config/nouns.ts`, `src/server-config/verbs.ts`), parsing `--toolset=<compact|classic>` and `MCP_TOOLSET` (CLI overrides env var; invalid values fail fast per `D32`, `D51`).
 - Defining the 4 capability tools in `src/tools.ts` (`COMPACT_TOOLS`, `toolsForToolset`):
   - `convert-web-url` (`url`, `openWorldHint: true`, `CONVERSION_OUTPUT_SCHEMA`)
   - `convert-local-file` (`filepath`, `openWorldHint: false`, `CONVERSION_OUTPUT_SCHEMA`)
@@ -27,7 +27,7 @@ Adds Operator-selectable **Toolset** (`classic` 11-tool default or opt-in `compa
 
 ### Out of scope
 
-- Replacing `classic` as the default toolset (`D3`, `D51`).
+- Removing the opt-in `classic` 11-tool surface (`D3`, `D51`).
 
 ## Vocabulary
 
@@ -37,7 +37,7 @@ Uses Terminology from `REQUIREMENTS.md`: **Operator**, **MCP Client**, **Server 
 
 | Function                                            | Rule                                                                                                                                                                                                   | Exact error message                                             |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
-| `parseServerConfiguration(argv, env)`               | Parses `--toolset=<classic\|compact>` and `MCP_TOOLSET` (CLI overrides env var, default `classic`). Rejects unknown values (`D32`, `D51`).                                                             | `Unknown toolset "<value>". Supported values: classic, compact` |
+| `parseServerConfiguration(argv, env)`               | Parses `--toolset=<compact\|classic>` and `MCP_TOOLSET` (CLI overrides env var, default `compact`). Rejects unknown values (`D32`, `D51`).                                                             | `Unknown toolset "<value>". Supported values: classic, compact` |
 | `validateToolArguments(toolName, rawArgs, toolset)` | Looks up `toolName` only within the active `toolset`'s strict Zod schema map (`classic` or `compact`). Rejects unexposed tool names (`D51`), non-objects, unknown keys, and wrong types (`D8`, `D52`). | `Tool not found` for tools outside the active `Toolset`         |
 
 ## Queries

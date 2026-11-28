@@ -50,7 +50,7 @@ export const parseE2eOptions = (
 	const formFactors: FormFactor[] = [];
 	const categories: VerificationCategory[] = [];
 	const caseIds: string[] = [];
-	let toolset: Toolset = "classic";
+	let toolset: Toolset = "compact";
 	let toolRaw: string | undefined;
 	let urlRaw: string | undefined;
 	let fileRaw: string | undefined;

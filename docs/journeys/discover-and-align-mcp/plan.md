@@ -15,8 +15,8 @@ The external standards and existing code behind this journey, from its design se
 
 An **MCP Client** initializes or discovers Markdownify MCP and receives enriched `Implementation` metadata (`title`,
 `description`, `websiteUrl`), concise server-level `instructions`, and static `public` `cacheHints` on `tools/list` and
-`server/discover` (**D48**). Calling `tools/list` returns the active **Toolset** (`classic` 11-tool default per **D3**,
-or opt-in `compact` 4-tool mode via `--toolset=compact` / `MCP_TOOLSET=compact` per **D51**), where every tool declares
+`server/discover` (**D48**). Calling `tools/list` returns the active **Toolset** (`compact` 4-tool default, or opt-in
+`classic` 11-tool mode via `--toolset=classic` / `MCP_TOOLSET=classic` per **D3, D51**), where every tool declares
 top-level `title`, all four explicit `ToolAnnotations` booleans (`readOnlyHint`, `destructiveHint`, `idempotentHint`,
 `openWorldHint`, **D47**), 2–4 sentence descriptions (**D48**), a flat Gemini-safe `inputSchema` free of
 `additionalProperties`/`$schema`/`$ref`/`$defs` (**D52**), and a JSON Schema `outputSchema` (**D49**). Calling

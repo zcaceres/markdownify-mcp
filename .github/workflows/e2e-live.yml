@@ -9,11 +9,11 @@ on:
       toolset:
         description: "MCP Toolset to verify"
         required: false
-        default: "classic"
+        default: "compact"
         type: choice
         options:
-          - classic
           - compact
+          - classic
       categories:
         description: "Optional comma-separated corpus categories (empty = all)"
         required: false
@@ -55,7 +55,7 @@ jobs:
       - name: Run 6-Form-Factor E2E Verification Corpus
         id: e2e
         env:
-          INPUT_TOOLSET: ${{ inputs.toolset || 'classic' }}
+          INPUT_TOOLSET: ${{ inputs.toolset || 'compact' }}
           INPUT_CATEGORIES: ${{ inputs.categories || '' }}
         run: |
           args=(--all "--toolset=${INPUT_TOOLSET}" --json)
@@ -92,6 +92,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-live-report-${{ inputs.toolset || 'classic' }}
+          name: e2e-live-report-${{ inputs.toolset || 'compact' }}
           path: e2e-live-report.json
           retention-days: 14

@@ -6,18 +6,11 @@ import {
 	runDockerChecks,
 } from "./docker.ts";
 
-const ALL_11_TOOLS = [
-	"audio-to-markdown",
-	"bing-search-to-markdown",
-	"docx-to-markdown",
+const DEFAULT_COMPACT_TOOLS = [
+	"convert-git-repo",
+	"convert-local-file",
+	"convert-web-url",
 	"get-markdown-file",
-	"git-repo-to-markdown",
-	"image-to-markdown",
-	"pdf-to-markdown",
-	"pptx-to-markdown",
-	"webpage-to-markdown",
-	"xlsx-to-markdown",
-	"youtube-to-markdown",
 ].map((name) => ({ name }));
 
 describe("parseDockerArgs", () => {
@@ -50,18 +43,21 @@ describe("parseDockerArgs", () => {
 	});
 });
 
-describe("runDockerChecks (SC-9, D4, D11, D22, D34, I2)", () => {
-	test("passes when container exposes all 11 tools, converts PDF, blocks /etc/passwd, and returns D22 hint", async () => {
+describe("runDockerChecks (SC-9, D4, D11, D22, D34, D51, I2)", () => {
+	test("passes when container exposes default 4 compact tools, converts PDF, blocks /etc/passwd, and returns D22 hint", async () => {
 		const client: DockerMcpClient = {
-			listTools: async () => ({ tools: ALL_11_TOOLS }),
+			listTools: async () => ({ tools: DEFAULT_COMPACT_TOOLS }),
 			callTool: async ({ name, arguments: args }) => {
-				if (name === "pdf-to-markdown" && args?.filepath === "/data/test.pdf") {
+				if (
+					name === "convert-local-file" &&
+					args?.filepath === "/data/test.pdf"
+				) {
 					return {
 						isError: false,
 						content: [{ type: "text", text: "Test PDF content" }],
 					};
 				}
-				if (name === "pdf-to-markdown" && args?.filepath === "/etc/passwd") {
+				if (name === "convert-local-file" && args?.filepath === "/etc/passwd") {
 					return {
 						isError: true,
 						content: [
@@ -73,7 +69,7 @@ describe("runDockerChecks (SC-9, D4, D11, D22, D34, I2)", () => {
 					};
 				}
 				if (
-					name === "docx-to-markdown" &&
+					name === "convert-local-file" &&
 					args?.filepath === "/data/test.docx"
 				) {
 					return {
@@ -98,9 +94,9 @@ describe("runDockerChecks (SC-9, D4, D11, D22, D34, I2)", () => {
 
 	test("reports failures cleanly when container violates Allowed Paths or omits D22 hint", async () => {
 		const client: DockerMcpClient = {
-			listTools: async () => ({ tools: [{ name: "pdf-to-markdown" }] }),
-			callTool: async ({ name }) => {
-				if (name === "docx-to-markdown") {
+			listTools: async () => ({ tools: [{ name: "convert-local-file" }] }),
+			callTool: async ({ arguments: args }) => {
+				if (args?.filepath === "/data/test.docx") {
 					return {
 						isError: true,
 						content: [

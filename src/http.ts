@@ -75,7 +75,7 @@ export function createHttpServer(options: HttpServerOptions): http.Server {
 		allowedHosts = [],
 		allowedOrigins = [],
 		allowUnrestrictedPaths,
-		toolset = "classic",
+		toolset = "compact",
 	} = options;
 
 	const mcpHandler = createMcpHandler(

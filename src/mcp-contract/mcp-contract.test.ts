@@ -17,18 +17,22 @@ describe("mcp-contract metadata, instructions, and cacheHints (MC-1, MC-2, D48)"
 		const meta = serverMetadata();
 		expect(meta.name).toBe("mcp-markdownify-server");
 		expect(meta.title).toBe("Markdownify MCP");
-		expect(meta.version).toBe("1.2.0");
+		expect(meta.version).toBe("2.0.0");
 		expect(meta.description.length).toBeGreaterThan(20);
 		expect(meta.websiteUrl).toBe("https://github.com/zcaceres/markdownify-mcp");
 	});
 
 	test("serverInstructions provides concise routing, path, HTTP, and capability guidance", () => {
 		const instructions = serverInstructions();
-		expect(instructions).toContain("webpage-to-markdown");
-		expect(instructions).toContain("git-repo-to-markdown");
+		expect(instructions).toContain("convert-web-url");
+		expect(instructions).toContain("convert-git-repo");
 		expect(instructions).toContain("get-markdown-file");
 		expect(instructions).toContain("MD_ALLOWED_PATHS");
-		expect(instructions).toContain("image-to-markdown");
+
+		const classicInstructions = serverInstructions("classic");
+		expect(classicInstructions).toContain("webpage-to-markdown");
+		expect(classicInstructions).toContain("git-repo-to-markdown");
+		expect(classicInstructions).toContain("image-to-markdown");
 	});
 
 	test("serverCacheHints advertises 1-hour public caching for tools/list and server/discover", () => {
@@ -137,19 +141,19 @@ describe("formatStructuredToolResult (MC-6, D49, D50)", () => {
 describe("validateToolArguments per-tool strict validation (MC-5, D8, D52)", () => {
 	test("accepts valid arguments for web, local file, git repo, and markdown tools", () => {
 		expect(
-			validateToolArguments("webpage-to-markdown", {
+			validateToolArguments("convert-web-url", {
 				url: "https://example.com",
 			}),
 		).toEqual({ ok: true, value: { url: "https://example.com" } });
 
 		expect(
-			validateToolArguments("pdf-to-markdown", {
+			validateToolArguments("convert-local-file", {
 				filepath: "/data/report.pdf",
 			}),
 		).toEqual({ ok: true, value: { filepath: "/data/report.pdf" } });
 
 		expect(
-			validateToolArguments("git-repo-to-markdown", {
+			validateToolArguments("convert-git-repo", {
 				url: "octocat/Hello-World",
 				branch: "main",
 				compress: true,
@@ -159,22 +163,30 @@ describe("validateToolArguments per-tool strict validation (MC-5, D8, D52)", () 
 			value: { url: "octocat/Hello-World", branch: "main", compress: true },
 		});
 
-		expect(validateToolArguments("pdf-to-markdown", undefined)).toEqual({
+		expect(validateToolArguments("convert-local-file", undefined)).toEqual({
 			ok: true,
 			value: {},
 		});
+
+		expect(
+			validateToolArguments(
+				"webpage-to-markdown",
+				{ url: "https://example.com" },
+				"classic",
+			),
+		).toEqual({ ok: true, value: { url: "https://example.com" } });
 	});
 
 	test("rejects unknown keys, cross-tool keys, wrong types, non-objects, and unknown tools", () => {
 		expect(
-			validateToolArguments("pdf-to-markdown", { file_path: "/a.pdf" }),
+			validateToolArguments("convert-local-file", { file_path: "/a.pdf" }),
 		).toEqual({
 			ok: false,
 			error: 'Invalid arguments: Unrecognized key: "file_path"',
 		});
 
 		expect(
-			validateToolArguments("pdf-to-markdown", {
+			validateToolArguments("convert-local-file", {
 				url: "https://example.com",
 			}),
 		).toEqual({
@@ -183,7 +195,7 @@ describe("validateToolArguments per-tool strict validation (MC-5, D8, D52)", () 
 		});
 
 		expect(
-			validateToolArguments("webpage-to-markdown", {
+			validateToolArguments("convert-web-url", {
 				url: "https://example.com",
 				branch: "main",
 			}),
@@ -192,7 +204,7 @@ describe("validateToolArguments per-tool strict validation (MC-5, D8, D52)", () 
 			error: 'Invalid arguments: Unrecognized key: "branch"',
 		});
 
-		const wrongType = validateToolArguments("git-repo-to-markdown", {
+		const wrongType = validateToolArguments("convert-git-repo", {
 			url: "octocat/Hello-World",
 			compress: "yes",
 		});
@@ -202,7 +214,9 @@ describe("validateToolArguments per-tool strict validation (MC-5, D8, D52)", () 
 			expect(wrongType.error).not.toContain("\n");
 		}
 
-		expect(validateToolArguments("pdf-to-markdown", "not-an-object")).toEqual({
+		expect(
+			validateToolArguments("convert-local-file", "not-an-object"),
+		).toEqual({
 			ok: false,
 			error: "Invalid arguments: expected an object",
 		});

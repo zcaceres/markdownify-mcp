@@ -146,7 +146,7 @@ export const parseServerConfiguration = (
 	const toolset =
 		toolsetArg !== undefined
 			? toolsetArg.trim().toLowerCase()
-			: env.MCP_TOOLSET?.trim().toLowerCase() || "classic";
+			: env.MCP_TOOLSET?.trim().toLowerCase() || "compact";
 	if (toolset !== "classic" && toolset !== "compact") {
 		return err(
 			`Unknown toolset "${toolset}". Supported values: classic, compact`,

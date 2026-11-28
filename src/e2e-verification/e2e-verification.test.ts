@@ -56,13 +56,13 @@ describe("describeFormFactor (VF-1, D37, D44)", () => {
 });
 
 describe("parseE2eOptions (VF-1, D37, D43, D45)", () => {
-	test("defaults to node-stdio and parses --all, filters, toolset, and ad-hoc probes", () => {
+	test("defaults to node-stdio + compact toolset and parses --all, filters, toolset, and ad-hoc probes", () => {
 		expect(parseE2eOptions([])).toEqual(
 			ok({
 				formFactors: ["node-stdio"],
 				categories: [],
 				caseIds: [],
-				toolset: "classic",
+				toolset: "compact",
 				json: false,
 				preview: false,
 				noBuild: false,
@@ -74,7 +74,7 @@ describe("parseE2eOptions (VF-1, D37, D43, D45)", () => {
 			parseE2eOptions([
 				"--all",
 				"--category=static-web,git-repo",
-				"--toolset=COMPACT",
+				"--toolset=CLASSIC",
 				"--json",
 				"--preview",
 				"--no-build",
@@ -92,7 +92,7 @@ describe("parseE2eOptions (VF-1, D37, D43, D45)", () => {
 				],
 				categories: ["static-web", "git-repo"],
 				caseIds: [],
-				toolset: "compact",
+				toolset: "classic",
 				json: true,
 				preview: true,
 				noBuild: true,
@@ -103,7 +103,7 @@ describe("parseE2eOptions (VF-1, D37, D43, D45)", () => {
 		expect(
 			parseE2eOptions([
 				"--form=local-http,docker-http",
-				"--tool=git-repo-to-markdown",
+				"--tool=convert-git-repo",
 				"--url=octocat/Hello-World",
 				"--branch=master",
 				"--compress",
@@ -113,9 +113,9 @@ describe("parseE2eOptions (VF-1, D37, D43, D45)", () => {
 				formFactors: ["local-http", "docker-http"],
 				categories: [],
 				caseIds: [],
-				toolset: "classic",
+				toolset: "compact",
 				adHoc: {
-					tool: "git-repo-to-markdown",
+					tool: "convert-git-repo",
 					url: "octocat/Hello-World",
 					branch: "master",
 					compress: true,
@@ -129,15 +129,15 @@ describe("parseE2eOptions (VF-1, D37, D43, D45)", () => {
 
 		expect(
 			parseE2eOptions([
-				"--toolset=compact",
-				"--tool=convert-web-url",
+				"--toolset=classic",
+				"--tool=webpage-to-markdown",
 				"--url=https://example.com",
 			]),
 		).toMatchObject({
 			ok: true,
 			value: {
-				toolset: "compact",
-				adHoc: { tool: "convert-web-url", url: "https://example.com" },
+				toolset: "classic",
+				adHoc: { tool: "webpage-to-markdown", url: "https://example.com" },
 			},
 		});
 

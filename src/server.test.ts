@@ -34,21 +34,14 @@ describe("MCP server boundary (WU-1, D8)", () => {
 		return content[0]?.text ?? "";
 	}
 
-	test("exposes all 11 stable tools on tools/list and returns concise isError: true for unknown tools (SC-3, D3, D8)", async () => {
+	test("exposes 4 compact tools by default (and all 11 classic tools when opted in) and returns concise isError: true for unknown tools (SC-3, D3, D8, D51)", async () => {
 		await withClient(async (client) => {
 			const listed = await client.listTools();
 			expect(listed.tools.map((tool) => tool.name).sort()).toEqual([
-				"audio-to-markdown",
-				"bing-search-to-markdown",
-				"docx-to-markdown",
+				"convert-git-repo",
+				"convert-local-file",
+				"convert-web-url",
 				"get-markdown-file",
-				"git-repo-to-markdown",
-				"image-to-markdown",
-				"pdf-to-markdown",
-				"pptx-to-markdown",
-				"webpage-to-markdown",
-				"xlsx-to-markdown",
-				"youtube-to-markdown",
 			]);
 
 			const unknown = await client.callTool({
@@ -60,12 +53,32 @@ describe("MCP server boundary (WU-1, D8)", () => {
 			expect(text).toBe("Error: Tool not found");
 			expect(text).not.toContain("\n");
 		});
+
+		await withClient(
+			async (client) => {
+				const listed = await client.listTools();
+				expect(listed.tools.map((tool) => tool.name).sort()).toEqual([
+					"audio-to-markdown",
+					"bing-search-to-markdown",
+					"docx-to-markdown",
+					"get-markdown-file",
+					"git-repo-to-markdown",
+					"image-to-markdown",
+					"pdf-to-markdown",
+					"pptx-to-markdown",
+					"webpage-to-markdown",
+					"xlsx-to-markdown",
+					"youtube-to-markdown",
+				]);
+			},
+			{ toolset: "classic" },
+		);
 	});
 
 	test("returns concise single-line isError: true when tool arguments fail schema validation or include unknown keys (MC-5, D8, D52)", async () => {
 		await withClient(async (client) => {
 			const res = await client.callTool({
-				name: "webpage-to-markdown",
+				name: "convert-web-url",
 				arguments: { url: 12345 as unknown as string },
 			});
 			expect(res.isError).toBe(true);
@@ -74,7 +87,7 @@ describe("MCP server boundary (WU-1, D8)", () => {
 			expect(text).not.toContain("\n");
 
 			const typo = await client.callTool({
-				name: "pdf-to-markdown",
+				name: "convert-local-file",
 				arguments: { file_path: "/data/report.pdf" },
 			});
 			expect(typo.isError).toBe(true);
@@ -83,7 +96,7 @@ describe("MCP server boundary (WU-1, D8)", () => {
 			);
 
 			const crossTool = await client.callTool({
-				name: "webpage-to-markdown",
+				name: "convert-web-url",
 				arguments: { url: "https://example.com", branch: "main" },
 			});
 			expect(crossTool.isError).toBe(true);
@@ -98,6 +111,7 @@ describe("MCP server boundary (WU-1, D8)", () => {
 			const serverInfo = client.getServerVersion();
 			expect(serverInfo?.name).toBe("mcp-markdownify-server");
 			expect(serverInfo?.title).toBe("Markdownify MCP");
+			expect(serverInfo?.version).toBe("2.0.0");
 			expect(serverInfo?.description?.length ?? 0).toBeGreaterThan(20);
 			expect(serverInfo?.websiteUrl).toBe(
 				"https://github.com/zcaceres/markdownify-mcp",
@@ -105,14 +119,28 @@ describe("MCP server boundary (WU-1, D8)", () => {
 
 			const instructions = client.getInstructions();
 			expect(instructions).toBeDefined();
-			expect(instructions).toContain("webpage-to-markdown");
+			expect(instructions).toContain("convert-web-url");
 			expect(instructions).toContain("MD_ALLOWED_PATHS");
 
 			const listed = await client.listTools();
-			const audit = toolContractAudit(listed.tools, CLASSIC_OPEN_WORLD_BY_TOOL);
+			const audit = toolContractAudit(listed.tools, COMPACT_OPEN_WORLD_BY_TOOL);
 			expect(audit.issues).toEqual([]);
 			expect(audit.ok).toBe(true);
 		});
+
+		await withClient(
+			async (client) => {
+				expect(client.getInstructions()).toContain("webpage-to-markdown");
+				const listed = await client.listTools();
+				const audit = toolContractAudit(
+					listed.tools,
+					CLASSIC_OPEN_WORLD_BY_TOOL,
+				);
+				expect(audit.issues).toEqual([]);
+				expect(audit.ok).toBe(true);
+			},
+			{ toolset: "classic" },
+		);
 	});
 
 	test("advertises 1-hour public cacheHints on 2026-07-28 server/discover and tools/list wire responses (MC-2, D48)", async () => {
@@ -185,7 +213,7 @@ describe("MCP server boundary (WU-1, D8)", () => {
 	test("returns structured isError: true when tool arguments are omitted", async () => {
 		await withClient(async (client) => {
 			const res = await client.callTool({
-				name: "webpage-to-markdown",
+				name: "convert-web-url",
 			});
 			expect(res.isError).toBe(true);
 			expect(firstText(res)).toBe("Error: URL is required for this tool");
@@ -195,14 +223,14 @@ describe("MCP server boundary (WU-1, D8)", () => {
 	test("routes web tool calls through validateWebRequest for whitespace and malformed URLs (WU-1, D8)", async () => {
 		await withClient(async (client) => {
 			const blank = await client.callTool({
-				name: "webpage-to-markdown",
+				name: "convert-web-url",
 				arguments: { url: "   " },
 			});
 			expect(blank.isError).toBe(true);
 			expect(firstText(blank)).toBe("Error: URL is required for this tool");
 
 			const bad = await client.callTool({
-				name: "webpage-to-markdown",
+				name: "convert-web-url",
 				arguments: { url: "not-a-url" },
 			});
 			expect(bad.isError).toBe(true);
@@ -213,7 +241,7 @@ describe("MCP server boundary (WU-1, D8)", () => {
 	test("routes local file tools through validateLocalFileRequest for blank and relative paths (LF-1, LF-2, D18)", async () => {
 		await withClient(async (client) => {
 			const blank = await client.callTool({
-				name: "pdf-to-markdown",
+				name: "convert-local-file",
 				arguments: { filepath: "   " },
 			});
 			expect(blank.isError).toBe(true);
@@ -222,7 +250,7 @@ describe("MCP server boundary (WU-1, D8)", () => {
 			);
 
 			const rel = await client.callTool({
-				name: "pdf-to-markdown",
+				name: "convert-local-file",
 				arguments: { filepath: "report.pdf" },
 			});
 			expect(rel.isError).toBe(true);
@@ -250,7 +278,7 @@ describe("MCP server boundary (WU-1, D8)", () => {
 		});
 	});
 
-	test("routes git-repo-to-markdown through validateGitRepoRequest and stays enabled in HTTP mode (GR-1..GR-3, GR-8, D9, D29)", async () => {
+	test("routes convert-git-repo through validateGitRepoRequest and stays enabled in HTTP mode (GR-1..GR-3, GR-8, D9, D29)", async () => {
 		const savedAllowed = process.env.MD_ALLOWED_PATHS;
 		const savedOptOut = process.env.MCP_ALLOW_UNRESTRICTED_PATHS;
 		delete process.env.MD_ALLOWED_PATHS;
@@ -259,7 +287,7 @@ describe("MCP server boundary (WU-1, D8)", () => {
 			await withClient(
 				async (client) => {
 					const creds = await client.callTool({
-						name: "git-repo-to-markdown",
+						name: "convert-git-repo",
 						arguments: { url: "https://token@github.com/owner/repo" },
 					});
 					expect(creds.isError).toBe(true);
@@ -268,7 +296,7 @@ describe("MCP server boundary (WU-1, D8)", () => {
 					);
 
 					const badBranch = await client.callTool({
-						name: "git-repo-to-markdown",
+						name: "convert-git-repo",
 						arguments: {
 							url: "octocat/Hello-World",
 							branch: "--upload-pack=id",
@@ -301,7 +329,7 @@ describe("MCP server boundary (WU-1, D8)", () => {
 			await withClient(
 				async (client) => {
 					const pdfRes = await client.callTool({
-						name: "pdf-to-markdown",
+						name: "convert-local-file",
 						arguments: { filepath: "/data/report.pdf" },
 					});
 					expect(pdfRes.isError).toBe(true);
@@ -326,7 +354,7 @@ describe("MCP server boundary (WU-1, D8)", () => {
 			await withClient(
 				async (client) => {
 					const res = await client.callTool({
-						name: "pdf-to-markdown",
+						name: "convert-local-file",
 						arguments: { filepath: "/nonexistent/d23-opt-out-check.pdf" },
 					});
 					expect(res.isError).toBe(true);
@@ -340,7 +368,7 @@ describe("MCP server boundary (WU-1, D8)", () => {
 			await withClient(
 				async (client) => {
 					const res = await client.callTool({
-						name: "pdf-to-markdown",
+						name: "convert-local-file",
 						arguments: { filepath: "/nonexistent/d23-flag-check.pdf" },
 					});
 					expect(res.isError).toBe(true);
@@ -353,7 +381,7 @@ describe("MCP server boundary (WU-1, D8)", () => {
 			process.env.MD_ALLOWED_PATHS = "   ";
 			await withClient(async (client) => {
 				const res = await client.callTool({
-					name: "pdf-to-markdown",
+					name: "convert-local-file",
 					arguments: { filepath: "/data/report.pdf" },
 				});
 				expect(res.isError).toBe(true);

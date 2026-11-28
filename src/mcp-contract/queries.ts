@@ -50,13 +50,13 @@ export const expectedOpenWorldByToolset = (
 export const serverMetadata = (): ServerMetadata => ({
 	name: "mcp-markdownify-server",
 	title: "Markdownify MCP",
-	version: "1.2.0",
+	version: "2.0.0",
 	description:
 		"Single-operator, stateless MCP server for converting webpages, YouTube videos, Bing search pages, remote Git repositories, and local documents into Markdown.",
 	websiteUrl: "https://github.com/zcaceres/markdownify-mcp",
 });
 
-export const serverInstructions = (toolset: Toolset = "classic"): string => {
+export const serverInstructions = (toolset: Toolset = "compact"): string => {
 	if (toolset === "compact") {
 		return [
 			"Markdownify MCP (compact toolset) converts web URLs, remote Git repositories, and local files into Markdown on demand without modifying files or state.",

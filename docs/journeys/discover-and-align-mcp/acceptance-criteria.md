@@ -3,7 +3,7 @@
 An **MCP Client** (Anthropic Claude, Google Gemini, OpenAI ChatGPT / Agents SDK, or any MCP 2025/2026 client) discovers
 Markdownify MCP's server identity, instructions, cache hints, cross-provider tool metadata, and schemas, invokes tools
 with strict per-tool argument validation and typed structured outputs, and an **Operator** optionally selects between
-the default `classic` (11-tool) and `compact` (4-tool) **Toolset** ([plan](plan.md)).
+the default `compact` (4-tool) and opt-in `classic` (11-tool) **Toolset** ([plan](plan.md)).
 
 Rules that hold whichever journey is involved, and the decisions (D#), questions (U#) and invariants (I#) cited here,
 are in [`REQUIREMENTS.md`](../../../REQUIREMENTS.md). These criteria say what the **MCP Client** and **Operator** can
@@ -17,7 +17,7 @@ invariants it cites. Scenarios that share an id make up one criterion.
 1. **Discover server identity, instructions, and cache hints.** An MCP Client initializes or discovers the server and receives enriched `Implementation` metadata, concise server `instructions`, and `cacheHints` for static catalog responses.
 2. **Inspect cross-provider tool metadata & schemas.** An MCP Client calls `tools/list` and receives complete explicit `ToolAnnotations`, top-level `Tool.title`, 2–4 sentence tool descriptions with concise single-sentence non-empty parameter descriptions, and Gemini-safe flat `inputSchema` definitions.
 3. **Validate strict arguments & return typed structured outputs.** An MCP Client invokes tools with valid or malformed/unknown arguments and receives either full untruncated `Markdown Result` content paired with `structuredContent` matching `outputSchema`, or concise single-line `isError: true` errors without `structuredContent`.
-4. **Select Toolset & verify across Form Factors.** An Operator selects `classic` (default) or `compact` via Server Configuration, `tools/call` strictly enforces the active Toolset, and the 6-Form-Factor E2E harness validates the cross-provider contracts end to end.
+4. **Select Toolset & verify across Form Factors.** An Operator selects `compact` (default) or `classic` (opt-in) via Server Configuration, `tools/call` strictly enforces the active Toolset, and the 6-Form-Factor E2E harness validates the cross-provider contracts end to end.
 
 ## 1. Discover server identity, instructions, and cache hints
 
@@ -77,9 +77,9 @@ Scenario: Error responses omit structuredContent and preserve the single-line D8
 
 ```gherkin
 @MC-7 @D2 @D3 @D8 @D32 @D51 @D53
-Scenario: Operator configures classic (default) or compact Toolset via CLI flag or MCP_TOOLSET
-  Given Server Configuration parses --toolset=<classic|compact> and MCP_TOOLSET
-  When no toolset is provided (or MCP_TOOLSET is blank), classic (11 tools) is selected; when compact is provided (case- and whitespace-normalized), only the 4 capability tools (convert-web-url, convert-local-file, convert-git-repo, get-markdown-file) are exposed; invalid or empty CLI toolset values fail fast at startup (D2, D3, D32, D51, D53)
+Scenario: Operator configures compact (default) or classic (opt-in) Toolset via CLI flag or MCP_TOOLSET
+  Given Server Configuration parses --toolset=<compact|classic> and MCP_TOOLSET
+  When no toolset is provided (or MCP_TOOLSET is blank), compact (the 4 capability tools: convert-web-url, convert-local-file, convert-git-repo, get-markdown-file) is selected; when classic is provided (case- and whitespace-normalized), all 11 classic tools are exposed; invalid or empty CLI toolset values fail fast at startup (D2, D3, D32, D51, D53)
 
 @MC-7 @D8 @D9 @D47 @D49 @D51
 Scenario: Compact Toolset strictly enforces exposed tool names, annotations, HTTP D9 gating, and structured outputs
