@@ -36,7 +36,15 @@ bun run harness e2e --form=node-stdio --tool=webpage-to-markdown --url=https://w
 
 # Full 6-form-factor matrix (requires running Docker daemon and network access)
 bun run harness e2e --all
+
+# Compact Toolset verification across local Form Factors
+bun run harness e2e --form=node-stdio,bun-stdio,local-http --toolset=compact --category=local-binary
 ```
 
 Exit codes (`D41`): `0` = all checks passed, `1` = one or more server/contract `FAIL`s, `2` = zero `FAIL`s, one or more
 upstream `BLOCKED` targets. [VF-4, VF-7..VF-11]
+
+## CI Automation
+
+- **PR gate ([`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml)):** runs offline verification across all 6 Form Factors (`core`: lint, build, unit/HTTP/scenario tests, `node-stdio`/`bun-stdio`/`local-http` `local-binary` in `classic` + `compact`; `docker`: `docker-stdio`/`docker-http`; `npm-package`: packed tarball E2E).
+- **Scheduled & manual live E2E ([`.github/workflows/e2e-live.yml`](../../../.github/workflows/e2e-live.yml)):** runs weekly and on `workflow_dispatch` across all 6 Form Factors against live internet categories, honoring `D41` exit codes (`0` pass, `2` warning on upstream `BLOCKED`, `1` fail).

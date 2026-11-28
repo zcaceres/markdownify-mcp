@@ -2,39 +2,41 @@
 
 ![markdownify mcp logo](logo.jpg)
 
-Markdownify is a Model Context Protocol (MCP) server that converts various file types and web content to Markdown format. It provides a set of tools to transform PDFs, images, audio files, web pages, and more into easily readable and shareable Markdown text.
+Markdownify is a single-operator, stateless Model Context Protocol (MCP) server (built on MCP TypeScript SDK v2) that converts local files, web URLs, and public Git repositories to Markdown and retrieves existing Markdown files.
 
 <a href="https://glama.ai/mcp/servers/bn5q4b0ett"><img width="380" height="200" src="https://glama.ai/mcp/servers/bn5q4b0ett/badge" alt="Markdownify Server MCP server" /></a>
 
 ## Features
 
-- Convert multiple file types to Markdown:
-  - PDF
-  - Images
-  - Audio (with transcription)
-  - DOCX
-  - XLSX
-  - PPTX
-- Convert web content to Markdown:
+- **Convert local files to Markdown** (absolute or `~/` paths):
+  - PDF, DOCX, XLSX, PPTX
+  - Images (EXIF/metadata extraction without external vision LLMs)
+  - Audio (speech transcription via `markitdown[all]`, requires network speech recognition)
+- **Convert web content to Markdown** (public `http(s)` URLs with SSRF protection on every redirect hop):
+  - General webpages and hosted documents (PDF, DOCX, XLSX, PPTX, images, etc.)
   - YouTube video transcripts
   - Bing search results
-  - General web pages
-- Convert Git repositories to Markdown (via Repomix, with optional branch/tag/commit and Tree-sitter compression)
-- Retrieve existing Markdown files
+- **Convert public Git repositories to Markdown** via Repomix (`http(s)` URL or GitHub `owner/repo` shorthand, with optional branch/tag/commit and Tree-sitter `--compress`)
+- **Retrieve existing Markdown files** (`.md` / `.markdown`, case-insensitive, verbatim UTF-8 + resolved `realpath`)
+- **Cross-provider MCP alignment** (Anthropic Claude, Google Gemini, OpenAI ChatGPT / Agents SDK):
+  - Complete explicit `ToolAnnotations`, top-level `Tool.title`, server `instructions`, `Implementation` metadata, and static `cacheHints`
+  - Gemini-safe flat JSON Schema `inputSchema` with strict per-tool runtime argument validation
+  - Typed `outputSchema` and `structuredContent` alongside backwards-compatible `content` text blocks (untruncated; omitted on `isError: true`)
+  - Operator-selectable **Toolset**: default 11-tool `classic` surface or opt-in 4-tool `compact` surface (`--toolset=compact` / `MCP_TOOLSET=compact`)
 
 ## Getting Started
 
 Prerequisites:
 
-- [Bun](https://bun.sh/) for JavaScript dependency management and builds.
+- [Bun](https://bun.sh/) for JavaScript dependency management, builds, and tests.
 - Node.js 22 or later (also used by the Repomix CLI).
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) on `PATH` for locked Python setup.
-- Python 3.11–3.14. uv can install the development interpreter selected by `.python-version` if needed; Python 3.15 is not supported.
+- Python 3.11–3.14. `uv` can install the development interpreter selected by `.python-version` if needed; Python 3.15 is not supported.
 
 1. Clone this repository
 2. Install dependencies:
 
-   ```
+   ```sh
    bun install --frozen-lockfile
    ```
 
@@ -42,55 +44,35 @@ Prerequisites:
 
 3. Build the project:
 
-   ```
+   ```sh
    bun run build
    ```
-4. Start the server:
 
-   ```
+4. Start the server (runs over `stdio` by default):
+
+   ```sh
    bun start
    ```
 
-## Development
+## Usage with MCP Clients (stdio)
 
-- Use `bun run dev` to start the TypeScript compiler in watch mode
-- Modify `src/server.ts` to customize server behavior
-- Add or modify tools in `src/tools.ts`
+Add Markdownify MCP to your desktop or CLI MCP client configuration (Claude Desktop, Claude Code, Gemini CLI, Codex CLI, etc.):
 
-### Updating dependencies
-
-Normal installs consume the committed lockfiles; they do not upgrade packages.
-
-- JavaScript: update the intended ranges in `package.json`, run `bun update --ignore-scripts`, then commit `package.json` and `bun.lock`.
-- Python: update `pyproject.toml` as needed, run `uv lock --upgrade`, then commit `pyproject.toml` and `uv.lock`. Both the local `all` and Docker `pdf` profiles are resolved in this one lockfile.
-- Verify with `uv lock --check`, `node preinstall.js`, `bun run build`, `bun test`, and `bun run harness docker` (or `bash scripts/docker-smoke-test.sh`) when Docker is available.
-
-## Usage with Desktop App
-
-To integrate this server with a desktop app, add the following to your app's server configuration:
-
-```js
+```json
 {
-  "mcpServers": {
-    "markdownify": {
-      "command": "node",
-      "args": [
-        "{ABSOLUTE PATH TO FILE HERE}/dist/index.js"
-      ]
-    }
-  }
+	"mcpServers": {
+		"markdownify": {
+			"command": "node",
+			"args": ["{ABSOLUTE PATH TO REPO}/dist/index.js"],
+			"env": {
+				"MD_ALLOWED_PATHS": "/path/to/allowed/docs"
+			}
+		}
+	}
 }
 ```
 
-### Environment variables
-
-All paths default to sensible values; override only when the defaults don't fit your install layout.
-
-| Variable           | Default                                                              | Purpose                                                                                                                                                                                                                                                                                                               |
-| ------------------ | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MARKITDOWN_PATH`  | `<project>/.venv/bin/markitdown`, then `markitdown` on `PATH`        | Absolute path to the `markitdown` executable. Set this when you've installed markitdown system-wide (e.g. `pipx install "markitdown[pdf]"`) instead of using the bundled venv.                                                                                                                                        |
-| `REPOMIX_PATH`     | `<project>/node_modules/.bin/repomix`, then `repomix` on `PATH`      | Absolute path to the `repomix` executable used by `git-repo-to-markdown`.                                                                                                                                                                                                                                             |
-| `MD_ALLOWED_PATHS` | unset (unrestricted in `stdio`; local file tools disabled in `http`) | Path-delimiter-separated list (`:` on POSIX, `;` on Windows) of directories the server is allowed to read. When set, all file-input tools (`pdf-to-markdown`, `get-markdown-file`, etc.) reject paths outside these directories. If explicitly set to an empty or delimiter-only value, local file tools fail closed. |
+Pass `"--toolset=compact"` in `args` (or set `"MCP_TOOLSET": "compact"` in `env`) to expose the 4-tool compact Toolset instead of the default 11 classic tools. `MD_ALLOWED_PATHS` is optional in `stdio` mode (unrestricted when unset), and recommended whenever you want to bound local filesystem reads.
 
 ## Usage with HTTP (Streamable HTTP transport)
 
@@ -106,21 +88,40 @@ Or via environment variables:
 MCP_TRANSPORT=http MCP_PORT=3000 MD_ALLOWED_PATHS=/path/to/docs bun dist/index.js
 ```
 
-| Flag / Env                                                    | Default                                 | Purpose                                                                                                                                                                                                                           |
-| ------------------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--transport=stdio\|http` / `MCP_TRANSPORT`                   | `stdio`                                 | Transport mode.                                                                                                                                                                                                                   |
-| `--host=HOST` / `MCP_HOST`                                    | `127.0.0.1`                             | Bind address for HTTP mode. Defaults to loopback only.                                                                                                                                                                            |
-| `--port=N` / `MCP_PORT`                                       | `3000`                                  | Port for HTTP mode (ignored in `stdio` mode).                                                                                                                                                                                     |
-| `MCP_ALLOWED_HOSTS`                                           | loopback hosts when bound to loopback   | Comma-separated list of allowed `Host` headers (DNS-rebinding protection).                                                                                                                                                        |
-| `MCP_ALLOWED_ORIGINS`                                         | loopback origins when bound to loopback | Comma-separated list of allowed browser `Origin` headers.                                                                                                                                                                         |
-| `--allow-unrestricted-paths` / `MCP_ALLOW_UNRESTRICTED_PATHS` | `false`                                 | Opt out of HTTP fail-closed local file tool blocking when `MD_ALLOWED_PATHS` is unset. Set `MCP_ALLOW_UNRESTRICTED_PATHS=true` or pass `--allow-unrestricted-paths`.                                                              |
-| `--toolset=classic\|compact` / `MCP_TOOLSET`                  | `classic`                               | Active MCP tool catalog: `classic` exposes all 11 stable tools; `compact` exposes 4 capability-aligned tools (`convert-web-url`, `convert-local-file`, `convert-git-repo`, `get-markdown-file`) to reduce tool-definition tokens. |
+### Server Configuration Flags & Environment Variables
 
-> **Security note:** The HTTP transport has no built-in authentication. When `MD_ALLOWED_PATHS` is unset in HTTP mode, local file-input tools fail closed unless you explicitly opt out with `--allow-unrestricted-paths` or `MCP_ALLOW_UNRESTRICTED_PATHS=true`. Keep `--host=127.0.0.1` for local use, or place the server behind an authenticating reverse proxy with `MCP_ALLOWED_HOSTS` / `MCP_ALLOWED_ORIGINS` configured.
+CLI flags take precedence over environment variables. Enum values (`--transport`, `--toolset`, `MCP_TRANSPORT`, `MCP_TOOLSET`) are trimmed and lowercased; unknown flags or invalid values fail fast at startup.
+
+| Flag / Env                                                    | Default                                 | Purpose                                                                                                                                                                                                    |
+| ------------------------------------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--transport=stdio\|http` / `MCP_TRANSPORT`                   | `stdio`                                 | Transport mode (`stdio` or stateless Streamable HTTP on `/mcp` and `/`).                                                                                                                                   |
+| `--host=HOST` / `MCP_HOST`                                    | `127.0.0.1`                             | Bind address for HTTP mode. Defaults to loopback only.                                                                                                                                                     |
+| `--port=N` / `MCP_PORT`                                       | `3000`                                  | Port for HTTP mode (`1`–`65535`; ignored in `stdio` mode).                                                                                                                                                 |
+| `--allowed-hosts=H1,H2` / `MCP_ALLOWED_HOSTS`                 | loopback hosts when bound to loopback   | Comma-separated list of allowed `Host` headers (DNS-rebinding protection; returns HTTP 403 on mismatch).                                                                                                   |
+| `--allowed-origins=O1,O2` / `MCP_ALLOWED_ORIGINS`             | loopback origins when bound to loopback | Comma-separated list of allowed browser `Origin` headers (returns HTTP 403 on mismatch).                                                                                                                   |
+| `--allow-unrestricted-paths` / `MCP_ALLOW_UNRESTRICTED_PATHS` | `false`                                 | Opt out of HTTP fail-closed local file blocking when `MD_ALLOWED_PATHS` is unset.                                                                                                                          |
+| `--toolset=classic\|compact` / `MCP_TOOLSET`                  | `classic`                               | Active **Toolset**: `classic` exposes all 11 tools; `compact` exposes 4 capability-aligned tools (`convert-web-url`, `convert-local-file`, `convert-git-repo`, `get-markdown-file`) to save prompt tokens. |
+
+> **Security note:** The HTTP transport has no built-in authentication. When `MD_ALLOWED_PATHS` is unset in HTTP mode, local file-input tools (`*-to-markdown`, `convert-local-file`, and `get-markdown-file`) fail closed with `isError: true` unless you explicitly opt out with `--allow-unrestricted-paths` or `MCP_ALLOW_UNRESTRICTED_PATHS=true`, while Web URL and Git Repository tools remain available. Keep `--host=127.0.0.1` for local use, or place the server behind an authenticating reverse proxy with `MCP_ALLOWED_HOSTS` / `MCP_ALLOWED_ORIGINS` configured.
+
+### Paths & Conversion Limit Environment Variables
+
+All paths and limits default to sensible bounds; override only when needed.
+
+| Variable                   | Default                                                              | Purpose                                                                                                                                                                                                                                           |
+| -------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MARKITDOWN_PATH`          | `<project>/.venv/bin/markitdown`, then `markitdown` on `PATH`        | Absolute path to the `markitdown` executable (for example when using `pipx install "markitdown[pdf]"` instead of the bundled `.venv`).                                                                                                            |
+| `REPOMIX_PATH`             | `<project>/node_modules/.bin/repomix`, then `repomix` on `PATH`      | Absolute path to the `repomix` executable used by `git-repo-to-markdown` / `convert-git-repo`.                                                                                                                                                    |
+| `MD_ALLOWED_PATHS`         | unset (unrestricted in `stdio`; local file tools disabled in `http`) | Path-delimiter-separated list (`:` on POSIX, `;` on Windows) of directories allowed for local reads (enforced after `~` expansion and `realpath` symlink resolution). Setting an empty or delimiter-only value fails closed for local file tools. |
+| `MD_FETCH_TIMEOUT_MS`      | `30000`                                                              | Per-request Web URL HTTP fetch timeout in milliseconds.                                                                                                                                                                                           |
+| `MD_MAX_DOWNLOAD_BYTES`    | `26214400` (25 MB)                                                   | Maximum downloaded response size in bytes for Web URL conversions.                                                                                                                                                                                |
+| `MD_MAX_REDIRECTS`         | `10`                                                                 | Maximum HTTP redirects followed per Web URL conversion (each hop is SSRF-validated).                                                                                                                                                              |
+| `MD_MARKITDOWN_TIMEOUT_MS` | `60000`                                                              | Subprocess timeout in milliseconds for `markitdown` conversions.                                                                                                                                                                                  |
+| `MD_REPOMIX_TIMEOUT_MS`    | `120000`                                                             | Subprocess timeout in milliseconds for `repomix` Git repository packing.                                                                                                                                                                          |
 
 ## Usage with Docker
 
-Build and run:
+Build and run over `stdio`:
 
 ```sh
 docker build -t markdownify-mcp .
@@ -130,27 +131,38 @@ docker run --rm -i \
   markdownify-mcp
 ```
 
-Notes for the Docker MCP catalog (`mcp/markdownify`):
+Or run over Streamable HTTP:
+
+```sh
+docker run --rm \
+  -p 127.0.0.1:3000:3000 \
+  -v "$HOME/Documents:/data:ro" \
+  -e MD_ALLOWED_PATHS=/data \
+  -e MCP_ALLOWED_HOSTS=127.0.0.1:3000,localhost:3000 \
+  markdownify-mcp --transport=http --host=0.0.0.0 --port=3000
+```
+
+Notes for Docker (`Dockerfile` / `mcp/markdownify`):
 
 - Mount any host directories you want the server to read into the container, then pass the **container** paths to the tools (e.g. `/data/foo.pdf`, not `/Users/you/Documents/foo.pdf`).
-- Set `MD_ALLOWED_PATHS` to the colon-separated list of mounted directories so the server enforces a read boundary that matches the bind mount.
-- The Docker image installs only the locked `pdf` profile (`uv sync --locked --extra pdf`), not the full `all` profile. Audio transcription and image OCR (`audio-to-markdown`, `image-to-markdown`) require the `[all]` extras and will fail in the slim image. Use the local install (`bun install --frozen-lockfile`) for the full feature set.
+- Set `MD_ALLOWED_PATHS` to the colon-separated list of mounted directories so the server enforces a read boundary matching the bind mount.
+- The Docker image installs the slim locked `pdf` profile (`uv sync --locked --extra pdf`) rather than `all`. PDFs, webpages, Git repositories, Markdown retrieval, and image metadata work in the slim image, while Office documents (`docx-to-markdown`, `xlsx-to-markdown`, `pptx-to-markdown`) and audio transcription (`audio-to-markdown`) require `markitdown[all]` and return an actionable error pointing to the full local install (`bun install --frozen-lockfile`).
 
 ## Available Tools
 
-- `youtube-to-markdown`: Convert YouTube videos to Markdown
-- `pdf-to-markdown`: Convert PDF files to Markdown
-- `bing-search-to-markdown`: Convert Bing search results to Markdown
-- `webpage-to-markdown`: Convert web pages to Markdown
-- `image-to-markdown`: Convert images to Markdown with metadata
-- `audio-to-markdown`: Convert audio files to Markdown with transcription
-- `docx-to-markdown`: Convert DOCX files to Markdown
-- `xlsx-to-markdown`: Convert XLSX files to Markdown
-- `pptx-to-markdown`: Convert PPTX files to Markdown
-- `git-repo-to-markdown`: Convert a remote Git repository (URL or GitHub `owner/repo` shorthand) into a single Markdown document
-- `get-markdown-file`: Retrieve an existing Markdown file. File extension must end with: *.md, *.markdown.
+### Classic Toolset (default, `--toolset=classic`)
 
-  OPTIONAL: set `MD_ALLOWED_PATHS` to restrict every file-input tool to a list of directories, e.g. `MD_ALLOWED_PATHS=/data/in:/data/out bun start`.
+- `youtube-to-markdown`: Convert YouTube videos to Markdown
+- `pdf-to-markdown`: Convert local PDF files to Markdown
+- `bing-search-to-markdown`: Convert Bing search result pages to Markdown
+- `webpage-to-markdown`: Convert public `http(s)` webpages and hosted documents to Markdown
+- `image-to-markdown`: Convert local images to Markdown with metadata (returns empty text when no metadata is present without an external vision LLM)
+- `audio-to-markdown`: Convert local audio files to Markdown with speech transcription (requires `markitdown[all]` and network access for Google Speech Recognition)
+- `docx-to-markdown`: Convert local DOCX files to Markdown (requires `markitdown[all]`)
+- `xlsx-to-markdown`: Convert local XLSX files to Markdown (requires `markitdown[all]`)
+- `pptx-to-markdown`: Convert local PPTX files to Markdown (requires `markitdown[all]`)
+- `git-repo-to-markdown`: Convert a public remote Git repository (`http(s)` URL or GitHub `owner/repo` shorthand) into a single Markdown document (optional `branch` and `compress`)
+- `get-markdown-file`: Retrieve an existing local `.md` or `.markdown` file (case-insensitive) verbatim along with its resolved `realpath`
 
 ### Compact Toolset (`--toolset=compact` / `MCP_TOOLSET=compact`)
 
@@ -158,8 +170,59 @@ For lower token overhead across Anthropic, Gemini, and OpenAI hosts, pass `--too
 
 - `convert-web-url`: Convert any public `http(s)` webpage, YouTube video, Bing search page, or hosted document to Markdown
 - `convert-local-file`: Convert any local non-Markdown file (PDF, DOCX, XLSX, PPTX, image, audio) to Markdown
-- `convert-git-repo`: Convert a public remote Git repository (URL or GitHub `owner/repo` shorthand) into a single Markdown document
-- `get-markdown-file`: Retrieve an existing local `.md` or `.markdown` file verbatim with its resolved path
+- `convert-git-repo`: Convert a public remote Git repository (`http(s)` URL or GitHub `owner/repo` shorthand) into a single Markdown document
+- `get-markdown-file`: Retrieve an existing local `.md` or `.markdown` file verbatim with its resolved `realpath`
+
+### Key Tool Behavior & Limits
+
+- **Strict argument validation:** Every tool validates arguments strictly against the active Toolset and rejects unknown/cross-tool keys (e.g. `file_path` instead of `filepath`) or unexposed tool names with a single-line `isError: true` error.
+- **Structured outputs:** Successful calls return full untruncated Markdown in both `content` text blocks and `structuredContent` (`{ markdown }` for conversions; `{ path, markdown }` for `get-markdown-file`). Error responses (`isError: true`) omit `structuredContent`.
+- **Local paths:** All local file tools and `get-markdown-file` require absolute or `~/` paths (bare relative paths are rejected), validate `MD_ALLOWED_PATHS` after `realpath` resolution before checking existence, and verify the target is a readable regular file.
+- **Web URLs:** Non-`http(s)` schemes and private/loopback/link-local/reserved IPs are blocked on the initial URL and every redirect hop. Non-2xx responses fail with the HTTP status code, and unconverted raw HTML (such as client-only JS SPAs) fails cleanly.
+
+## Development & Testing
+
+```sh
+bun run dev                        # TypeScript compiler in watch mode
+bun run lint                       # Biome lint + format check (bun run format to auto-fix)
+bun run build                      # Typecheck and compile to dist/
+bun test                           # Run Bun unit, boundary, HTTP, and scenario tests
+bun run harness                    # Interactive mock DD harness (type help)
+bun run harness run scenarios      # Replay all deterministic mock scenarios
+bun run harness live scenarios/live # Run live checks against real local tools/fs
+bun run harness docker             # Build and verify slim Docker stdio + HTTP container
+```
+
+### Multi-Form-Factor End-to-End Verification
+
+Verify the server as a real MCP SDK client across all six Form Factors (`node-stdio`, `bun-stdio`, `local-http`, `docker-stdio`, `docker-http`, `npm-package`) and both Toolsets (`classic` and `compact`):
+
+```sh
+# Fast local stdio run across curated corpus categories with output previews
+bun run harness e2e --form=node-stdio --preview
+
+# Offline local binaries across local stdio & HTTP in compact Toolset mode
+bun run harness e2e --form=node-stdio,bun-stdio,local-http --toolset=compact --category=local-binary
+
+# Ad-hoc probe against any URL or local file
+bun run harness e2e --form=node-stdio --tool=webpage-to-markdown --url=https://www.iana.org/domains/reserved
+bun run harness e2e --form=node-stdio --tool=get-markdown-file --file=/path/to/README.md
+
+# Full 6-Form-Factor matrix (requires Docker daemon and outbound network)
+bun run harness e2e --all
+```
+
+Exit codes: `0` = all passed, `1` = one or more `FAIL`s, `2` = zero `FAIL`s with one or more upstream `BLOCKED` targets (rate limits / bot walls).
+
+GitHub Actions runs offline 6-Form-Factor verification on every PR ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) and full real-internet 6-Form-Factor verification weekly / on-demand ([`.github/workflows/e2e-live.yml`](.github/workflows/e2e-live.yml)).
+
+### Updating Dependencies
+
+Normal installs consume the committed lockfiles; they do not upgrade packages.
+
+- JavaScript: update the intended ranges in `package.json`, run `bun update --ignore-scripts`, then commit `package.json` and `bun.lock`.
+- Python: update `pyproject.toml` as needed, run `uv lock --upgrade`, then commit `pyproject.toml` and `uv.lock`. Both the local `all` and Docker `pdf` profiles are resolved in this one lockfile.
+- Verify with `uv lock --check`, `node preinstall.js`, `bun run lint`, `bun run build`, `bun test`, `bun run harness run scenarios`, and `bun run harness docker` (or `bash scripts/docker-smoke-test.sh`) when Docker is available.
 
 ## Contributing
 
