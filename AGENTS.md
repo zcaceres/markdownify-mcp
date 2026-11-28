@@ -72,6 +72,8 @@ bun run harness exec [--live] "<command>"  # run a single harness command and ex
 bun run harness run <file|folder>          # replay deterministic mock scenarios (.txt, excludes .live.txt)
 bun run harness run <…> --write            # accept what mock scenarios print now (see The harness → Scenarios)
 bun run harness live <file|folder>         # run variance-tolerant live checks (.live.txt) against real systems
+bun run harness docker                     # build and verify slim Docker image over stdio and Streamable HTTP
+bun run harness e2e [--all|--form=...]     # verify real MCP transports across 6 Form Factors (--toolset=classic|compact)
 bun run build                              # tsc && chmod +x dist/*.js (typechecks src and builds)
 bun test                                   # run Bun test suite, including every mock scenario
 bun run lint                               # biome check .  (bun run format to fix)
