@@ -51,9 +51,10 @@ noun marked _(derived)_ is computed from others, never stored, and its entry say
 - **Startup Diagnostic** _(derived)_: an informational notice or warning emitted on HTTP server startup describing the active File Access Policy or non-loopback host binding (D5, D9, D23, D24, D33, D36).
 - **Temporary File:** a transient file written in a private random temp directory during Web URL download and deleted after conversion completes or fails (D5).
 - **Form Factor:** one of the six supported MCP runtime and packaging targets (`node-stdio`, `bun-stdio`, `local-http`, `docker-stdio`, `docker-http`, `npm-package`), defined by its runtime, MCP transport, and Python dependency profile (`full` vs `slim-pdf`) (D4, D37, D44, D46).
-- **Verification Corpus:** the versioned manifest (`corpus/manifest.json`) and real binary fixtures (`src/sample-data/`) defining curated real-internet and local inputs across all 11 MCP tools (D38, D42, D46).
+- **Verification Corpus:** the versioned manifest (`corpus/manifest.json`) and real binary fixtures (`src/sample-data/`) defining curated real-internet inputs and offline `local-binary` inputs (PDF, DOCX, XLSX, PPTX, JPG, MD; `audio-to-markdown` / `test.wav` is excluded from offline `local-binary` and verified separately when network speech recognition is available) (D38, D42, D44, D46).
 - **Verification Case:** a single input target in the Verification Corpus (or an ad-hoc CLI probe) specifying tool, arguments, category, per-profile expectations (`full` vs `slim-pdf`), and optional upstream `BLOCKED` matchers (D38, D39, D44, D46).
-- **Verification Report** _(derived)_: the structured summary of `PASS`, `FAIL`, and `BLOCKED` outcomes, durations, and diagnostics computed across executed Form Factors and Verification Cases, rendered as human-readable text or JSON (D39, D40, D41, D46).
+- **Verification Report** _(derived)_: the structured summary of `PASS`, `FAIL`, and `BLOCKED` outcomes (across Verification Corpus categories plus `"ad-hoc"`, `"contract"`, and `"transport"` checks), durations, and diagnostics computed across executed Form Factors and Verification Cases, rendered as human-readable text or JSON (D39, D40, D41, D46, D54).
+- **Tool Contract Audit** _(derived)_: the pass/fail summary and list of contract issues computed by checking a Toolset's tool definitions against D47, D48, D49, and D52 cross-provider rules (D47, D48, D49, D52, D55).
 
 ### Verbs
 
@@ -61,6 +62,8 @@ noun marked _(derived)_ is computed from others, never stored, and its entry say
 - **retrieve:** read an existing Markdown File directly and return its path and contents as a Markdown Result (D3, D5).
 - **validate:** check external inputs, paths, URLs, redirect targets, repository identifiers, branch names, and HTTP headers at the system boundary before acting (D5, D6, D8).
 - **serve:** run the MCP server over `stdio` or stateless Streamable HTTP according to Server Configuration (D1, D5, D6).
+- **verify:** execute Verification Cases (or ad-hoc probes) and transport/contract checks against one or more Form Factors as a real MCP Client and produce a Verification Report (D37, D39, D40, D46, D55).
+- **audit:** inspect an active Toolset's definitions against cross-provider MCP contract rules to produce a Tool Contract Audit (D47, D48, D49, D52, D55).
 
 ## External Systems
 
@@ -82,7 +85,7 @@ D#.
 ### MCP Tool Surface & Error Contract
 
 - The server exposes the 11 stable MCP tools (`youtube-to-markdown`, `pdf-to-markdown`, `bing-search-to-markdown`, `webpage-to-markdown`, `image-to-markdown`, `audio-to-markdown`, `docx-to-markdown`, `xlsx-to-markdown`, `pptx-to-markdown`, `git-repo-to-markdown`, `get-markdown-file`) as the default `classic` Toolset, or the 4 capability-aligned tools (`convert-web-url`, `convert-local-file`, `convert-git-repo`, `get-markdown-file`) when configured with `--toolset=compact` / `MCP_TOOLSET=compact`, keeping project documentation in sync with them (D3, D51).
-- Every exposed tool declares top-level `title`, all four explicit `ToolAnnotations` booleans (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`), 2–4 sentence tool and parameter descriptions, a Gemini-safe flat `inputSchema` (without `additionalProperties`, `$schema`, `$ref`, `$defs`), and a JSON Schema `outputSchema`; the server advertises `Implementation` metadata, `instructions`, and `cacheHints` for `tools/list` and `server/discover` (D47, D48, D49, D52).
+- Every exposed tool declares top-level `title`, all four explicit `ToolAnnotations` booleans (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`), 2–4 sentence tool descriptions and concise single-sentence non-empty parameter descriptions, a Gemini-safe flat `inputSchema` (without `additionalProperties`, `$schema`, `$ref`, `$defs`), and a JSON Schema `outputSchema`; the server advertises `Implementation` metadata, `instructions`, and `cacheHints` for `tools/list` and `server/discover` (D47, D48, D49, D52).
 - Every tool validates its inputs strictly per tool at the boundary (rejecting unknown keys and invalid types) and returns a structured MCP tool error (`isError: true`, omitting `structuredContent`) for invalid arguments, unexposed tools, policy rejections, or runtime conversion failures; successful calls return untruncated Markdown in both `content` text blocks and matching `structuredContent` (D8, D49, D50, D51, D52).
 
 ### Local File & Markdown Retrieval
@@ -327,7 +330,7 @@ for an undecided rule and will change with it.
 
 ### D44. Profile-aware E2E expectations and transport security checks
 
-- **Decided (2026-11-27):** Each Verification Case declares expected behavior per Python profile (`full` with `markitdown[all]` vs `slim-pdf` with `markitdown[pdf]`, so real binary `.docx`/`.xlsx`/`.pptx`/`.wav` fixtures expect `PASS` on local `full` Form Factors and `isError: true` with the `D22` hint on `slim-pdf` Docker Form Factors). HTTP Form Factors (`local-http`, `docker-http`) additionally verify `Host`/`Origin` 403 guards (`I5`), 404/405 `Allow: POST` (`D33`), and `D9` fail-closed local file blocking when `MD_ALLOWED_PATHS` is unset.
+- **Decided (2026-11-27):** Each Verification Case declares expected behavior per Python profile (`full` with `markitdown[all]` vs `slim-pdf` with `markitdown[pdf]`). Offline `local-binary` Verification Cases cover PDF, DOCX, XLSX, PPTX, JPG, and MD (so real binary `.docx`/`.xlsx`/`.pptx` fixtures expect `PASS` on local `full` Form Factors and `isError: true` with the `D22` hint on `slim-pdf` Docker Form Factors), while `audio-to-markdown` (`src/sample-data/test.wav`) is excluded from offline `local-binary` because `markitdown[all]`'s `AudioConverter` invokes Google Speech Recognition over the network and is verified separately when network speech recognition is available. HTTP Form Factors (`local-http`, `docker-http`) additionally verify `Host`/`Origin` 403 guards (`I5`), 404/405 `Allow: POST` (`D33`), and `D9` fail-closed local file blocking when `MD_ALLOWED_PATHS` is unset.
 
 ### D45. Filterable E2E harness CLI and guaranteed resource cleanup
 
@@ -343,7 +346,7 @@ for an undecided rule and will change with it.
 
 ### D48. Server `instructions`, `Implementation` metadata, rich tool descriptions, and `tools/list` cache hints
 
-- **Decided (2026-11-27):** Provide concise server-level `instructions` on `Server` (cross-tool routing guidance, local-path and HTTP-mode rules, and capability caveats), enrich `Server` `Implementation` metadata (`title`, `description`, `websiteUrl`), expand every tool and parameter description to 2–4 concise sentences covering what it does, when to use it vs. sibling tools, and key limits (JS-rendered SPAs, slim Docker `pdf` profile, image metadata-only limit), and advertise `cacheHints: { ttlMs: 3_600_000, cacheScope: "public" }` on `tools/list` and `server/discover` for 2026-07-28 MCP clients.
+- **Decided (2026-11-27):** Provide concise server-level `instructions` on `Server` (cross-tool routing guidance, local-path and HTTP-mode rules, and capability caveats), enrich `Server` `Implementation` metadata (`title`, `description`, `websiteUrl`), expand every tool description to 2–4 concise sentences covering what it does, when to use it vs. sibling tools, and key limits (JS-rendered SPAs, slim Docker `pdf` profile, image metadata-only limit) while giving every parameter a concise single-sentence non-empty description, and advertise `cacheHints: { ttlMs: 3_600_000, cacheScope: "public" }` on `tools/list` and `server/discover` for 2026-07-28 MCP clients.
 
 ### D49. Typed `outputSchema` and `structuredContent` alongside `content` text
 
@@ -364,6 +367,14 @@ for an undecided rule and will change with it.
 ### D53. Normalize enum Server Configuration values (`transport`, `toolset`)
 
 - **Decided (2026-11-27):** Trim surrounding whitespace and lowercase enum Server Configuration values (`MCP_TRANSPORT`, `MCP_TOOLSET`, `--transport=`, `--toolset=`), matching `MCP_ALLOW_UNRESTRICTED_PATHS` normalization (D23). Empty or whitespace-only `MCP_TRANSPORT` / `MCP_TOOLSET` environment variables fall back to their defaults (`stdio`, `classic`), while explicit empty CLI flags (`--transport=`, `--toolset=`) fail fast with a clear configuration error (D32, D51).
+
+### D54. Explicit non-corpus `CaseOutcome` categories (`contract`, `transport`)
+
+- **Decided (2026-11-27):** `CaseOutcome["category"]` declares explicit non-corpus categories `"contract"` (for `tools-list-11` / `tools-list-4` and `mcp-contract-audit`) and `"transport"` (for `provision`, `http-routing-404-405`, `http-host-origin-403`, and `http-d9-fail-closed`) alongside `VerificationCategory` and `"ad-hoc"`, rather than overloading `"static-web"` or `"local-binary"`.
+
+### D55. Verification & MCP contract audit vocabulary (`verify`, `Tool Contract Audit`, `audit`)
+
+- **Decided (2026-11-27):** Add verb **verify**, derived noun **Tool Contract Audit** _(derived)_, and verb **audit** to Terminology so verification runs and cross-provider tool contract checks share canonical vocabulary across requirements, specs, harness commands, and code (D37, D39, D40, D46, D47, D48, D49, D52).
 
 ## Undecided Questions
 

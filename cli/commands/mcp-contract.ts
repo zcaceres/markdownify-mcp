@@ -2,14 +2,12 @@ import type { Toolset } from "../../src/mcp-contract/nouns.ts";
 import {
 	auditToolCatalog,
 	expectedOpenWorldByToolset,
+	formatStructuredToolResult,
 	serverCacheHints,
 	serverInstructions,
 	serverMetadata,
 } from "../../src/mcp-contract/queries.ts";
-import {
-	formatStructuredToolResult,
-	validateToolArguments,
-} from "../../src/mcp-contract/verbs.ts";
+import { validateToolArguments } from "../../src/mcp-contract/verbs.ts";
 import { err, ok } from "../../src/shared/types.ts";
 import { toolsForToolset } from "../../src/tools.ts";
 import type { Command } from "../command.ts";

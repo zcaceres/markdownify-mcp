@@ -1,8 +1,8 @@
 # Slice 01: Metadata, Instructions, Cache Hints, and Strict Schemas
 
 Tracer bullet for **Discover & Align MCP**. Establishes the `src/mcp-contract/` context, enriches server identity,
-instructions, cache hints, complete `ToolAnnotations`, top-level `Tool.title`, 2–4 sentence tool/parameter
-descriptions, and Gemini-safe wire `inputSchema` with per-tool Zod `.strict()` runtime argument validation.
+instructions, cache hints, complete `ToolAnnotations`, top-level `Tool.title`, 2–4 sentence tool descriptions with
+concise single-sentence non-empty parameter descriptions, and Gemini-safe wire `inputSchema` with per-tool Zod `.strict()` runtime argument validation.
 
 - **Journey:** [Discover & Align MCP](../../acceptance-criteria.md) ([plan](../../plan.md))
 - **Criteria covered:** `MC-1`, `MC-2`, `MC-3`, `MC-4`, `MC-5`
@@ -35,7 +35,7 @@ descriptions, and Gemini-safe wire `inputSchema` with per-tool Zod `.strict()` r
 
 ## Vocabulary
 
-Uses Terminology from `REQUIREMENTS.md`: **MCP Client**, **Operator**, **Toolset**, **Markdown Result**, **Allowed Paths**, **File Access Policy**, **Local File**, **Web URL**, **Git Repository**, **Markdown File**.
+Uses Terminology from `REQUIREMENTS.md`: **MCP Client**, **Operator**, **Toolset**, **Tool Contract Audit** _(derived)_, **Markdown Result**, **Allowed Paths**, **File Access Policy**, **Local File**, **Web URL**, **Git Repository**, **Markdown File**, **audit**.
 
 ## Reads and writes
 

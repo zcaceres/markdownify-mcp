@@ -4,7 +4,7 @@ import { access, mkdtemp, readdir, rm } from "node:fs/promises";
 import http from "node:http";
 import net from "node:net";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, delimiter, dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import {
 	Client,
@@ -16,7 +16,7 @@ import type {
 	FormFactor,
 } from "../../src/e2e-verification/nouns.ts";
 import type { Toolset } from "../../src/mcp-contract/nouns.ts";
-import { resolveMarkitdownPath } from "../../src/utils.ts";
+import { expandHome, resolveMarkitdownPath } from "../../src/utils.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -25,6 +25,7 @@ export type ProvisionContext = {
 	readonly sampleDir: string;
 	readonly dockerImage: string;
 	readonly toolset: Toolset;
+	readonly adHocFilePath?: string;
 	readonly noBuild: boolean;
 	readonly reuseVenv: boolean;
 	readonly builtDockerImages: Set<string>;
@@ -33,10 +34,37 @@ export type ProvisionContext = {
 export type ActiveFormFactor = {
 	readonly formFactor: FormFactor;
 	readonly sampleDirPath: string;
+	readonly adHocTargetPath?: string;
 	readonly client: Client;
 	readonly runHttpGuardChecks?: () => Promise<CaseOutcome[]>;
 	readonly close: () => Promise<void>;
 };
+
+const resolveAdHocFile = (
+	adHocFilePath?: string,
+):
+	| {
+			readonly resolvedPath: string;
+			readonly dir: string;
+			readonly name: string;
+	  }
+	| undefined => {
+	if (!adHocFilePath) return undefined;
+	const resolvedPath = resolve(expandHome(adHocFilePath));
+	return {
+		resolvedPath,
+		dir: dirname(resolvedPath),
+		name: basename(resolvedPath),
+	};
+};
+
+const buildLocalAllowedPaths = (
+	sampleDir: string,
+	extraDir?: string,
+): string =>
+	extraDir && extraDir !== sampleDir
+		? [sampleDir, extraDir].join(delimiter)
+		: sampleDir;
 
 const getFreeLoopbackPort = (): Promise<number> =>
 	new Promise((resolve, reject) => {
@@ -133,6 +161,7 @@ const waitForHttpMcpReady = async (
 const runHttpSecurityProbes = async (
 	formFactor: FormFactor,
 	port: number,
+	toolset: Toolset,
 	verifyD9FailClosed: () => Promise<{ ok: boolean; detail: string }>,
 ): Promise<CaseOutcome[]> => {
 	const outcomes: CaseOutcome[] = [];
@@ -156,7 +185,7 @@ const runHttpSecurityProbes = async (
 	outcomes.push({
 		formFactor,
 		caseId: "http-routing-404-405",
-		category: "static-web",
+		category: "transport",
 		tool: "http-guard",
 		status: routingOk ? "PASS" : "FAIL",
 		durationMs: Date.now() - t0,
@@ -190,7 +219,7 @@ const runHttpSecurityProbes = async (
 	outcomes.push({
 		formFactor,
 		caseId: "http-host-origin-403",
-		category: "static-web",
+		category: "transport",
 		tool: "http-guard",
 		status: guardsOk ? "PASS" : "FAIL",
 		durationMs: Date.now() - t1,
@@ -204,8 +233,8 @@ const runHttpSecurityProbes = async (
 	outcomes.push({
 		formFactor,
 		caseId: "http-d9-fail-closed",
-		category: "local-binary",
-		tool: "pdf-to-markdown",
+		category: "transport",
+		tool: toolset === "compact" ? "convert-local-file" : "pdf-to-markdown",
 		status: d9.ok ? "PASS" : "FAIL",
 		durationMs: Date.now() - t2,
 		detail: d9.detail,
@@ -264,6 +293,7 @@ const connectStdioFormFactor = async (
 	env: Record<string, string>,
 	sampleDirPath: string,
 	extraClose?: () => Promise<void>,
+	adHocTargetPath?: string,
 ): Promise<ActiveFormFactor> => {
 	const transport = new StdioClientTransport({
 		command,
@@ -285,6 +315,7 @@ const connectStdioFormFactor = async (
 	return {
 		formFactor,
 		sampleDirPath,
+		...(adHocTargetPath !== undefined ? { adHocTargetPath } : {}),
 		client,
 		close: async () => {
 			await client.close().catch(() => {});
@@ -298,6 +329,8 @@ export const provisionFormFactor = async (
 	ctx: ProvisionContext,
 ): Promise<ActiveFormFactor> => {
 	const distEntry = join(ctx.projectRoot, "dist", "index.js");
+	const adHoc = resolveAdHocFile(ctx.adHocFilePath);
+	const localAllowedPaths = buildLocalAllowedPaths(ctx.sampleDir, adHoc?.dir);
 
 	if (formFactor === "node-stdio" || formFactor === "bun-stdio") {
 		await access(distEntry);
@@ -306,8 +339,10 @@ export const provisionFormFactor = async (
 			formFactor,
 			bin,
 			[distEntry, `--toolset=${ctx.toolset}`],
-			envRecord({ MD_ALLOWED_PATHS: ctx.sampleDir }),
+			envRecord({ MD_ALLOWED_PATHS: localAllowedPaths }),
 			ctx.sampleDir,
+			undefined,
+			adHoc?.resolvedPath,
 		);
 	}
 
@@ -325,7 +360,7 @@ export const provisionFormFactor = async (
 				`--toolset=${ctx.toolset}`,
 			],
 			{
-				env: envRecord({ MD_ALLOWED_PATHS: ctx.sampleDir }),
+				env: envRecord({ MD_ALLOWED_PATHS: localAllowedPaths }),
 				stdio: ["ignore", "ignore", "pipe"],
 			},
 		);
@@ -358,9 +393,10 @@ export const provisionFormFactor = async (
 		return {
 			formFactor,
 			sampleDirPath: ctx.sampleDir,
+			...(adHoc ? { adHocTargetPath: adHoc.resolvedPath } : {}),
 			client,
 			runHttpGuardChecks: () =>
-				runHttpSecurityProbes(formFactor, port, async () => {
+				runHttpSecurityProbes(formFactor, port, ctx.toolset, async () => {
 					const d9Port = await getFreeLoopbackPort();
 					const d9Stderr: string[] = [];
 					const d9Env = envRecord({
@@ -423,6 +459,8 @@ export const provisionFormFactor = async (
 
 	if (formFactor === "docker-stdio") {
 		await ensureDockerBuilt(ctx);
+		const adHocMountArgs = adHoc ? ["-v", `${adHoc.dir}:/adhoc:ro`] : [];
+		const dockerAllowedPaths = adHoc ? "/data:/adhoc" : "/data";
 		return connectStdioFormFactor(
 			formFactor,
 			"docker",
@@ -432,14 +470,17 @@ export const provisionFormFactor = async (
 				"-i",
 				"-v",
 				`${ctx.sampleDir}:/data:ro`,
+				...adHocMountArgs,
 				"-e",
-				"MD_ALLOWED_PATHS=/data",
+				`MD_ALLOWED_PATHS=${dockerAllowedPaths}`,
 				"-e",
 				`MCP_TOOLSET=${ctx.toolset}`,
 				ctx.dockerImage,
 			],
 			envRecord({}),
 			"/data",
+			undefined,
+			adHoc ? `/adhoc/${adHoc.name}` : undefined,
 		);
 	}
 
@@ -448,6 +489,8 @@ export const provisionFormFactor = async (
 		const port = await getFreeLoopbackPort();
 		const containerName = `markdownify-e2e-http-${randomUUID().slice(0, 8)}`;
 		const stderrChunks: string[] = [];
+		const adHocMountArgs = adHoc ? ["-v", `${adHoc.dir}:/adhoc:ro`] : [];
+		const dockerAllowedPaths = adHoc ? "/data:/adhoc" : "/data";
 		const child = spawn(
 			"docker",
 			[
@@ -459,8 +502,9 @@ export const provisionFormFactor = async (
 				`127.0.0.1:${port}:3000`,
 				"-v",
 				`${ctx.sampleDir}:/data:ro`,
+				...adHocMountArgs,
 				"-e",
-				"MD_ALLOWED_PATHS=/data",
+				`MD_ALLOWED_PATHS=${dockerAllowedPaths}`,
 				"-e",
 				`MCP_ALLOWED_HOSTS=127.0.0.1:${port},localhost:${port},127.0.0.1,localhost`,
 				ctx.dockerImage,
@@ -507,9 +551,10 @@ export const provisionFormFactor = async (
 		return {
 			formFactor,
 			sampleDirPath: "/data",
+			...(adHoc ? { adHocTargetPath: `/adhoc/${adHoc.name}` } : {}),
 			client,
 			runHttpGuardChecks: () =>
-				runHttpSecurityProbes(formFactor, port, async () => {
+				runHttpSecurityProbes(formFactor, port, ctx.toolset, async () => {
 					const d9Port = await getFreeLoopbackPort();
 					const d9Name = `markdownify-e2e-d9-${randomUUID().slice(0, 8)}`;
 					const d9Stderr: string[] = [];
@@ -609,7 +654,7 @@ export const provisionFormFactor = async (
 		await access(binPath);
 
 		const extraEnv: Record<string, string | undefined> = {
-			MD_ALLOWED_PATHS: ctx.sampleDir,
+			MD_ALLOWED_PATHS: localAllowedPaths,
 			MCP_TOOLSET: ctx.toolset,
 			...(ctx.reuseVenv
 				? { MARKITDOWN_PATH: resolveMarkitdownPath(ctx.projectRoot) }
@@ -625,6 +670,7 @@ export const provisionFormFactor = async (
 			async () => {
 				await rm(tempDir, { recursive: true, force: true }).catch(() => {});
 			},
+			adHoc?.resolvedPath,
 		);
 	} catch (error) {
 		await rm(tempDir, { recursive: true, force: true }).catch(() => {});

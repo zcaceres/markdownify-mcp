@@ -16,7 +16,7 @@ backwards-compatible `content` text blocks on successful `tools/call` responses 
 - Declaring Gemini-safe JSON Schema `outputSchema` on every tool in `src/tools.ts`:
   - Conversion tools: `{ type: "object", properties: { markdown: { type: "string", description: "..." } }, required: ["markdown"] }` (`D49`).
   - `get-markdown-file`: `{ type: "object", properties: { path: { type: "string", description: "..." }, markdown: { type: "string", description: "..." } }, required: ["path", "markdown"] }` (`D49`).
-- Adding `formatStructuredToolResult(result)` in `src/mcp-contract/verbs.ts` returning backwards-compatible `content` text blocks plus matching `structuredContent` without truncating Markdown (`D49`, `D50`).
+- Adding `formatStructuredToolResult(result)` in `src/mcp-contract/queries.ts` returning backwards-compatible `content` text blocks plus matching `structuredContent` without truncating Markdown (`D49`, `D50`).
 - Wiring `src/server.ts` to use `formatStructuredToolResult` on success and keep `structuredContent` omitted on `isError: true` (`D8`, `D49`).
 - Extending `auditToolCatalog` in `src/mcp-contract/queries.ts` to verify every tool declares a valid, Gemini-safe `outputSchema` (`D49`, `D52`).
 - Adding `mcp format-result <text> [path=<p>]` in `cli/commands/mcp-contract.ts` and scenario `scenarios/discover-and-align-mcp/02-structured-outputs.txt`.
@@ -32,13 +32,14 @@ Uses Terminology from `REQUIREMENTS.md`: **MCP Client**, **Markdown Result**, **
 
 ## Verbs
 
-| Function                             | Rule                                                                                                                                                                                                                                                                                                                                                                                                                                      | Exact error message           |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| `formatStructuredToolResult(result)` | Formats a `MarkdownResult` (`{ text, path? }`) into `{ content, structuredContent, isError: false }` without truncating `text` (`D49`, `D50`). When `path` is present (`get-markdown-file`), emits `content: [{ type: "text", text: "Output file: <path>" }, { type: "text", text }]` and `structuredContent: { path, markdown: text }`. Otherwise emits `content: [{ type: "text", text }]` and `structuredContent: { markdown: text }`. | _(infallible pure formatter)_ |
+_(No new verbs in this slice; `validateToolArguments` remains in `src/mcp-contract/verbs.ts`.)_
 
-## Queries
+## Queries (`src/mcp-contract/queries.ts`)
 
-- `auditToolCatalog` _(extended)_: also verifies every tool has an `outputSchema` with `type: "object"`, string `properties.markdown`, `required` including `"markdown"` (and `"path"` for `get-markdown-file`), and no Gemini-incompatible schema keywords (`additionalProperties`, `$schema`, `$ref`, `$defs`).
+| Function                             | Definition                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `formatStructuredToolResult(result)` | Formats a `MarkdownResult` (`{ text, path? }`) into `{ content, structuredContent, isError: false }` without truncating `text` (`D49`, `D50`). When `path` is present (`get-markdown-file`), emits `content: [{ type: "text", text: "Output file: <path>" }, { type: "text", text }]` and `structuredContent: { path, markdown: text }`. Otherwise emits `content: [{ type: "text", text }]` and `structuredContent: { markdown: text }`. |
+| `auditToolCatalog` _(extended)_      | Also verifies every tool has an `outputSchema` with `type: "object"`, string `properties.markdown`, `required` including `"markdown"` (and `"path"` for `get-markdown-file`), and no Gemini-incompatible schema keywords (`additionalProperties`, `$schema`, `$ref`, `$defs`).                                                                                                                                                            |
 
 ## Harness commands
 

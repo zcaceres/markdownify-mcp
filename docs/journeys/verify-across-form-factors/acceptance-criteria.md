@@ -39,11 +39,11 @@ Scenario: Verification Corpus manifest is validated at the boundary and case fil
 ## 2. Provision & connect each selected Form Factor
 
 ```gherkin
-@VF-3 @D4 @D11 @D42
+@VF-3 @D4 @D11 @D42 @D44
 Scenario: Real minimal binary fixtures in src/sample-data/ convert accurately on markitdown[all] and surface D22 on slim Docker
-  Given `src/sample-data/` contains real minimal valid binary fixtures (`test.pdf`, `test.docx`, `test.xlsx`, `test.pptx`, `test.jpg`, `test.wav`, `test.md`)
-  When local full-profile tools convert them and slim Docker converts non-PDF binaries
-  Then full-profile conversions produce expected Markdown (or empty on visionless image per D16) and slim Docker rejects non-PDF Office/audio binaries with the D22 hint (D4, D11, D22, D42)
+  Given `src/sample-data/` contains real minimal valid binary fixtures (`test.pdf`, `test.docx`, `test.xlsx`, `test.pptx`, `test.jpg`, `test.md`, plus `test.wav` verified separately when network speech recognition is available)
+  When local full-profile tools convert offline `local-binary` fixtures and slim Docker converts non-PDF binaries
+  Then full-profile conversions produce expected Markdown (or empty on visionless image per D16) and slim Docker rejects non-PDF Office binaries with the D22 hint (D4, D11, D22, D42, D44)
 
 @VF-8 @D37 @D40 @D45
 Scenario: Local Form Factors (`node-stdio`, `bun-stdio`, `local-http`) connect via real MCP SDK transports
@@ -55,7 +55,7 @@ Scenario: Local Form Factors (`node-stdio`, `bun-stdio`, `local-http`) connect v
 Scenario: Docker Form Factors (`docker-stdio`, `docker-http`) verify the slim image over stdio and Streamable HTTP
   Given a running local Docker daemon
   When the Operator runs `bun run harness e2e --form=docker-stdio,docker-http` (or `bun run harness docker`)
-  Then the slim image builds (unless `--no-build`), verifies PDF conversion, Allowed Paths containment, `D22` slim-Docker hints on real binary Office/audio fixtures, and container HTTP guards on `docker-http`, and reports a clear error if Docker is unavailable (D4, D22, D34, D37, D44)
+  Then the slim image builds (unless `--no-build`), verifies PDF conversion, Allowed Paths containment, `D22` slim-Docker hints on real binary Office fixtures, and container HTTP guards on `docker-http`, and reports a clear error if Docker is unavailable (D4, D22, D34, D37, D44)
 
 @VF-10 @D37 @D43 @D45
 Scenario: `npm-package` Form Factor verifies `npm pack` installation and `mcp-markdownify-server` binary over stdio
@@ -83,21 +83,21 @@ Scenario: Profile-aware outcome classifier distinguishes PASS, FAIL, and BLOCKED
   When a tool invocation succeeds, fails with an expected profile error (such as D22 on `slim-pdf`), fails with an unexpected server error or timeout, or fails with a matching upstream bot-wall/rate-limit error
   Then expected profile matches classify as `PASS`, upstream bot-wall/rate-limit matches classify as `BLOCKED`, and unexpected errors, timeouts, transport errors, or contract mismatches classify as `FAIL` (D22, D39, D44)
 
-@VF-11 @D38 @D39 @D40 @D45
+@VF-11 @D16 @D38 @D39 @D40 @D45
 Scenario: Curated real-internet corpus and ad-hoc CLI probes execute end-to-end across all input categories
-  Given outbound network access and the curated `corpus/manifest.json` (static HTML/redirects/404, JS SPA unconverted HTML, hosted binaries, YouTube/Bing, multi-language Git repos, real local binaries) or an ad-hoc `--url=` / `--file=` probe
+  Given outbound network access and the curated `corpus/manifest.json` (static HTML/redirects/404, JS framework SSR conversion and unconverted raw-HTML rejection per D16, hosted binaries, YouTube/Bing, multi-language Git repos, offline local binaries) or an ad-hoc `--url=` / `--file=` probe
   When the Operator runs `bun run harness e2e` against the corpus or an ad-hoc target
-  Then every selected target runs through the real MCP tool boundary and records its classified outcome and duration in the Verification Report (D38, D39, D40, D45)
+  Then every selected target runs through the real MCP tool boundary and records its classified outcome and duration in the Verification Report (D16, D38, D39, D40, D45)
 ```
 
 ## 5. Tear down resources & emit Verification Report
 
 ```gherkin
-@VF-6 @D39 @D41 @D45 @D46
+@VF-6 @D39 @D41 @D45 @D46 @D54
 Scenario: Verification Report computes totals, renders text or JSON, and maps outcomes to three-state exit codes
-  Given a set of classified Verification Case outcomes
+  Given a set of classified Verification Case, ad-hoc, contract, and transport outcomes (D54)
   When the derived Verification Report is computed and rendered
-  Then exit code is `0` when all pass, `1` when any check is `FAIL`, and `2` when zero checks are `FAIL` and one or more checks are `BLOCKED`, with both human-readable and `--json` formats including totals and per-case diagnostics (D39, D41, D45, D46)
+  Then exit code is `0` when all pass, `1` when any check is `FAIL`, and `2` when zero checks are `FAIL` and one or more checks are `BLOCKED`, with both human-readable and `--json` formats including totals and per-case diagnostics (D39, D41, D45, D46, D54)
 
 @VF-7 @D45
 Scenario: Spawned servers, Docker containers, and temporary directories are always cleaned up on completion or failure

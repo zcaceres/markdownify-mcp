@@ -5,11 +5,12 @@ import {
 	auditToolCatalog,
 	CLASSIC_OPEN_WORLD_BY_TOOL,
 	COMPACT_OPEN_WORLD_BY_TOOL,
+	formatStructuredToolResult,
 	serverCacheHints,
 	serverInstructions,
 	serverMetadata,
 } from "./queries.js";
-import { formatStructuredToolResult, validateToolArguments } from "./verbs.js";
+import { validateToolArguments } from "./verbs.js";
 
 describe("mcp-contract metadata, instructions, and cacheHints (MC-1, MC-2, D48)", () => {
 	test("serverMetadata returns enriched Implementation fields", () => {

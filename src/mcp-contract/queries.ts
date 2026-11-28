@@ -2,6 +2,7 @@ import type { Tool } from "@modelcontextprotocol/server";
 import type {
 	ServerCacheHints,
 	ServerMetadata,
+	StructuredToolResult,
 	ToolContractAudit,
 	ToolContractIssue,
 	Toolset,
@@ -293,5 +294,33 @@ export const auditToolCatalog = (
 		ok: issues.length === 0,
 		toolCount: tools.length,
 		issues,
+	};
+};
+
+/** Format a successful MarkdownResult with backwards-compatible content text and typed structuredContent without truncation (D49, D50). */
+export const formatStructuredToolResult = (result: {
+	readonly text: string;
+	readonly path?: string;
+}): StructuredToolResult => {
+	if (result.path !== undefined) {
+		return {
+			content: [
+				{ type: "text", text: `Output file: ${result.path}` },
+				{ type: "text", text: result.text },
+			],
+			structuredContent: {
+				path: result.path,
+				markdown: result.text,
+			},
+			isError: false,
+		};
+	}
+
+	return {
+		content: [{ type: "text", text: result.text }],
+		structuredContent: {
+			markdown: result.text,
+		},
+		isError: false,
 	};
 };

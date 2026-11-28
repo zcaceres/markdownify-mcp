@@ -14,7 +14,7 @@ invariants it cites. Scenarios that share an id make up one criterion.
 ## Steps
 
 1. **Validate request, path shape, and Markdown extension.** The server validates the MCP Client's tool arguments, requires an absolute or `~`-prefixed file path, and requires a `.md` or `.markdown` extension case-insensitively.
-2. **Enforce file-access policy, Allowed Paths, and target extension.** The server enforces HTTP fail-closed disabling, `D24` empty `MD_ALLOWED_PATHS` refusal, and `Allowed Paths` containment after `~` expansion and `realpath` resolution before checking file existence, then verifies the `realpath` target also has a Markdown extension.
+2. **Enforce File Access Policy, Allowed Paths, and target extension.** The server enforces HTTP fail-closed disabling, `D24` empty `MD_ALLOWED_PATHS` refusal, and `Allowed Paths` containment after `~` expansion and `realpath` resolution before checking file existence, then verifies the `realpath` target also has a Markdown extension.
 3. **Verify target file and read verbatim.** The server verifies the resolved target exists, is a regular file, and is readable, then reads its UTF-8 contents verbatim without a separate input byte cap.
 4. **Return Markdown Result.** The server returns the derived Markdown Result (`path` set to the resolved `realpath` and verbatim `text`) or a structured MCP tool error.
 
@@ -40,7 +40,7 @@ Scenario: Uppercase and mixed-case Markdown extensions are accepted
   Then extension validation succeeds (D8, D26)
 ```
 
-## 2. Enforce file-access policy, Allowed Paths, and target extension
+## 2. Enforce File Access Policy, Allowed Paths, and target extension
 
 ```gherkin
 @RM-3 @D6 @D8 @D9 @D23
