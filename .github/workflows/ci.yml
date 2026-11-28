@@ -5,11 +5,16 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
 jobs:
-  ci:
+  core:
+    name: Lint, Build, Tests & Local E2E
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,12 +31,76 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
 
-      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Check Python lockfile
+        run: uv lock --check
 
-      - run: node preinstall.js
+      - name: Install JS dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
 
-      - run: bun run lint
+      - name: Provision locked Python venv
+        run: node preinstall.js
 
-      - run: bun run build
+      - name: Lint
+        run: bun run lint
 
-      - run: bun test --timeout 30000
+      - name: Build
+        run: bun run build
+
+      - name: Unit, server, HTTP & local-live tests
+        run: bun test --timeout 30000
+
+      - name: Replay deterministic mock scenarios
+        run: bun run harness run scenarios
+
+      - name: Local E2E (classic toolset, offline local-binary)
+        run: bun run harness e2e --form=node-stdio,bun-stdio,local-http --category=local-binary
+
+      - name: Local E2E (compact toolset, offline local-binary)
+        run: bun run harness e2e --form=node-stdio,local-http --toolset=compact --category=local-binary
+
+  docker:
+    name: Docker Slim Image & Container E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install JS dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Build slim Docker image & run smoke harness
+        run: bun run harness docker
+
+      - name: Container E2E (classic toolset, offline local-binary)
+        run: bun run harness e2e --form=docker-stdio,docker-http --no-build --category=local-binary
+
+      - name: Container E2E (compact toolset, offline local-binary)
+        run: bun run harness e2e --form=docker-stdio,docker-http --no-build --toolset=compact --category=local-binary
+
+  npm-package:
+    name: Packed npm Tarball E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v10.4.0
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install JS dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Build
+        run: bun run build
+
+      - name: Pack, install into fresh temp dir & verify over stdio
+        run: bun run harness e2e --form=npm-package --category=local-binary

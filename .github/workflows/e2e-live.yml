@@ -1,0 +1,97 @@
+name: E2E Live Internet Matrix
+
+on:
+  schedule:
+    # Weekly Monday at 06:00 UTC
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      toolset:
+        description: "MCP Toolset to verify"
+        required: false
+        default: "classic"
+        type: choice
+        options:
+          - classic
+          - compact
+      categories:
+        description: "Optional comma-separated corpus categories (empty = all)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-live:
+    name: 6-Form-Factor Real-Internet Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v10.4.0
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install JS dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Provision locked Python venv
+        run: node preinstall.js
+
+      - name: Build
+        run: bun run build
+
+      - name: Run 6-Form-Factor E2E Verification Corpus
+        id: e2e
+        env:
+          INPUT_TOOLSET: ${{ inputs.toolset || 'classic' }}
+          INPUT_CATEGORIES: ${{ inputs.categories || '' }}
+        run: |
+          args=(--all "--toolset=${INPUT_TOOLSET}" --json)
+          if [ -n "${INPUT_CATEGORIES}" ]; then
+            args+=("--category=${INPUT_CATEGORIES}")
+          fi
+
+          set +e
+          bun run harness e2e "${args[@]}" > e2e-live-report.json
+          code=$?
+          set -e
+
+          echo "exit_code=${code}" >> "$GITHUB_OUTPUT"
+          bun -e '
+            const fs = require("node:fs");
+            const report = JSON.parse(fs.readFileSync("e2e-live-report.json", "utf8"));
+            const summary = `### Live 6-Form-Factor E2E (${process.env.INPUT_TOOLSET})\n\n- **Total:** ${report.total}\n- **Pass:** ${report.passed}\n- **Fail:** ${report.failed}\n- **Blocked (upstream):** ${report.blocked}\n- **Exit code:** ${report.exitCode}\n`;
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+            console.log(summary);
+            for (const o of report.outcomes) {
+              if (o.status !== "PASS") {
+                console.log(`  ${o.status} [${o.formFactor}] ${o.caseId}: ${o.detail}`);
+              }
+            }
+          '
+
+          if [ "${code}" -eq 2 ]; then
+            echo "::warning title=Upstream BLOCKED targets::Zero server failures, but one or more external targets were blocked upstream (D41 exit code 2)."
+            exit 0
+          fi
+          exit "${code}"
+
+      - name: Upload JSON Verification Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-live-report-${{ inputs.toolset || 'classic' }}
+          path: e2e-live-report.json
+          retention-days: 14
