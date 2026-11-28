@@ -1,8 +1,8 @@
 # Serve & Configure Server: Acceptance Criteria
 
 An **Operator** configures CLI flags and environment variables and serves Markdownify MCP over `stdio`, stateless
-Streamable HTTP, or the slim Docker container, and an **MCP Client** discovers all 11 tools and invokes them under HTTP
-`Host` and `Origin` guards ([plan](plan.md)).
+Streamable HTTP, or the slim Docker container, and an **MCP Client** discovers the active **Toolset** (`compact` 4-tool
+default or opt-in `classic` 11-tool mode) and invokes tools under HTTP `Host` and `Origin` guards ([plan](plan.md)).
 
 Rules that hold whichever journey is involved, and the decisions (D#), questions (U#) and invariants (I#) cited here,
 are in [`REQUIREMENTS.md`](../../../REQUIREMENTS.md). These criteria say what the **Operator** and **MCP Client** can
@@ -15,17 +15,17 @@ invariants it cites. Scenarios that share an id make up one criterion.
 
 1. **Parse Server Configuration.** The server parses CLI flags and `MCP_*` environment variables (CLI flags override env vars) and fails fast on invalid values or unknown CLI flags.
 2. **Start transport & emit Startup Diagnostics.** The server selects `stdio` (default) or Streamable HTTP (`127.0.0.1:3000` default) and emits accurate Startup Diagnostics for File Access Policy and non-loopback binding.
-3. **Guard HTTP requests & serve stateless MCP.** Streamable HTTP routes `POST /mcp` and `POST /` exclusively, validates `Host` and `Origin` headers (HTTP 403), rejects non-POST methods (HTTP 405), and serves stateless MCP `tools/list` (all 11 tools) and `tools/call`.
+3. **Guard HTTP requests & serve stateless MCP.** Streamable HTTP routes `POST /mcp` and `POST /` exclusively, validates `Host` and `Origin` headers (HTTP 403), rejects non-POST methods (HTTP 405), and serves stateless MCP `tools/list` (active Toolset, defaulting to 4 `compact` tools) and `tools/call`.
 4. **Verify packaged container runtime.** The Operator verifies the slim Docker image (`Dockerfile`) over MCP stdio via `bun run harness docker`.
 
 ## 1. Parse Server Configuration
 
 ```gherkin
-@SC-1 @D1 @D2 @D6 @D23
-Scenario: Default configuration selects stdio on 127.0.0.1:3000 and CLI flags override environment variables
+@SC-1 @D1 @D2 @D6 @D23 @D51
+Scenario: Default configuration selects stdio on 127.0.0.1:3000 with compact Toolset and CLI flags override environment variables
   Given no CLI flags or MCP_* environment variables are set
   When the server parses Server Configuration
-  Then transport is "stdio", host is "127.0.0.1", port is 3000, and allowUnrestrictedPaths is false (D1, D2, D23)
+  Then transport is "stdio", host is "127.0.0.1", port is 3000, allowUnrestrictedPaths is false, and toolset is "compact" (D1, D2, D23, D51)
 
 @SC-1 @D2 @D6 @D23 @D51 @D53
 Scenario: CLI flags take precedence over MCP_* environment variables
@@ -53,11 +53,11 @@ Scenario: HTTP Startup Diagnostics accurately reflect File Access Policy and non
 ## 3. Guard HTTP requests & serve stateless MCP
 
 ```gherkin
-@SC-3 @D1 @D3 @D8
-Scenario: MCP server exposes all 11 stable tools and returns structured errors on unknown tools or invalid arguments
+@SC-3 @D1 @D3 @D8 @D51
+Scenario: MCP server exposes the active Toolset and returns structured errors on unknown tools or invalid arguments
   Given a connected MCP Client over stdio or Streamable HTTP
   When the client calls tools/list and invokes an unknown tool or invalid argument type
-  Then tools/list returns all 11 stable tools (D3) and invalid calls return concise single-line isError: true responses (D8)
+  Then tools/list returns the 4 compact tools by default (or all 11 classic tools when opted in per D3, D51) and invalid calls return concise single-line isError: true responses (D8, D51)
 
 @SC-4 @D1 @D33
 Scenario: Streamable HTTP routes POST /mcp and POST / exclusively
@@ -77,19 +77,19 @@ Scenario: Streamable HTTP enforces Origin header browser CSRF protection
   When a request arrives without an Origin, with a loopback Origin, or with a disallowed cross-origin Origin
   Then omitted Origins are allowed, loopback Origins are allowed on loopback bind, and disallowed Origins are rejected with JSON-RPC HTTP 403 (D33, I5)
 
-@SC-8 @D1 @D3 @D9 @D23 @I5
+@SC-8 @D1 @D3 @D9 @D23 @D51 @I5
 Scenario: Live Streamable HTTP server handles real HTTP requests on an ephemeral loopback port
   Given a live Streamable HTTP server listening on 127.0.0.1:0
   When an HTTP client sends POST /mcp and POST / tools/list, invalid Host/Origin requests, and local-file tool calls without MD_ALLOWED_PATHS
-  Then tools/list succeeds with all 11 tools, bad Host/Origin returns HTTP 403, and local file tools fail closed with isError: true (D3, D9, I5)
+  Then tools/list succeeds with the active Toolset (4 compact tools by default, or 11 classic tools when opted in), bad Host/Origin returns HTTP 403, and local file tools fail closed with isError: true (D3, D9, D51, I5)
 ```
 
 ## 4. Verify packaged container runtime
 
 ```gherkin
-@SC-9 @D4 @D11 @D22 @D34 @I2
+@SC-9 @D4 @D11 @D22 @D34 @D51 @I2
 Scenario: Slim Docker image converts PDFs, enforces Allowed Paths, and surfaces D22 hint via harness docker
   Given Docker is available and the Operator runs "bun run harness docker" (or "bash scripts/docker-smoke-test.sh")
   When the harness builds Dockerfile and communicates with the container over MCP StdioClientTransport with src/sample-data mounted at /data and MD_ALLOWED_PATHS=/data
-  Then pdf-to-markdown /data/test.pdf succeeds, pdf-to-markdown /etc/passwd is blocked by Allowed Paths, and a format requiring markitdown[all] fails with the D22 slim-Docker hint (D4, D11, D22, D34, I2)
+  Then the 4 default compact tools are exposed, convert-local-file /data/test.pdf succeeds, convert-local-file /etc/passwd is blocked by Allowed Paths, and converting /data/test.docx fails with the D22 slim-Docker hint (D4, D11, D22, D34, D51, I2)
 ```

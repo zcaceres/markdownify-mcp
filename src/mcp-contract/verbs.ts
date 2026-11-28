@@ -55,7 +55,7 @@ export const formatZodError = (error: z.ZodError): string => {
 export const validateToolArguments = (
 	toolName: string,
 	rawArgs: unknown,
-	toolset: Toolset = "classic",
+	toolset: Toolset = "compact",
 ): Result<ValidatedToolArguments, string> => {
 	const registry =
 		toolset === "compact"

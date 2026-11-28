@@ -9,12 +9,13 @@ import {
 	parseCliArgs,
 } from "./http";
 import {
+	CLASSIC_OPEN_WORLD_BY_TOOL,
 	COMPACT_OPEN_WORLD_BY_TOOL,
 	toolContractAudit,
 } from "./mcp-contract/queries";
 
 describe("parseCliArgs", () => {
-	test("defaults to stdio transport on 127.0.0.1:3000", () => {
+	test("defaults to stdio transport on 127.0.0.1:3000 with compact toolset", () => {
 		expect(parseCliArgs([], {})).toEqual({
 			transport: "stdio",
 			port: 3000,
@@ -22,7 +23,7 @@ describe("parseCliArgs", () => {
 			allowedHosts: [],
 			allowedOrigins: [],
 			allowUnrestrictedPaths: false,
-			toolset: "classic",
+			toolset: "compact",
 		});
 	});
 
@@ -237,7 +238,7 @@ describe("Streamable HTTP server", () => {
 		>;
 	}
 
-	test("handles MCP tools/list POST on /mcp and / with all 11 stable tools (SC-3, SC-8, D3)", async () => {
+	test("handles MCP tools/list POST on /mcp and / with default 4 compact tools (SC-3, SC-8, D51)", async () => {
 		const port = await listen();
 		const payload = JSON.stringify({
 			jsonrpc: "2.0",
@@ -247,17 +248,10 @@ describe("Streamable HTTP server", () => {
 		});
 
 		const expectedTools = [
-			"audio-to-markdown",
-			"bing-search-to-markdown",
-			"docx-to-markdown",
+			"convert-git-repo",
+			"convert-local-file",
+			"convert-web-url",
 			"get-markdown-file",
-			"git-repo-to-markdown",
-			"image-to-markdown",
-			"pdf-to-markdown",
-			"pptx-to-markdown",
-			"webpage-to-markdown",
-			"xlsx-to-markdown",
-			"youtube-to-markdown",
 		];
 
 		for (const reqPath of ["/mcp", "/"]) {
@@ -271,9 +265,13 @@ describe("Streamable HTTP server", () => {
 			});
 			expect(res.status).toBe(200);
 			const parsed = parseMcpJsonRpc(res.body);
-			const result = parsed.result as { tools?: Array<{ name: string }> };
-			const names = (result.tools ?? []).map((t) => t.name).sort();
+			const result = parsed.result as { tools?: Tool[] };
+			const listedTools = result.tools ?? [];
+			const names = listedTools.map((t) => t.name).sort();
 			expect(names).toEqual(expectedTools);
+			const audit = toolContractAudit(listedTools, COMPACT_OPEN_WORLD_BY_TOOL);
+			expect(audit.issues).toEqual([]);
+			expect(audit.ok).toBe(true);
 		}
 	});
 
@@ -368,7 +366,7 @@ describe("Streamable HTTP server", () => {
 
 		try {
 			const port = await listen();
-			const pdfResult = await callOverHttp(port, "pdf-to-markdown", {
+			const pdfResult = await callOverHttp(port, "convert-local-file", {
 				filepath: "/data/report.pdf",
 			});
 			expect(pdfResult.isError).toBe(true);
@@ -390,9 +388,9 @@ describe("Streamable HTTP server", () => {
 
 			await closeServer();
 
-			// Compact Toolset over live HTTP exposes only the 4 capability tools passing full audit (MC-7, D51)
-			const compactPort = await listen({ toolset: "compact" });
-			const compactListRes = await rawRequest(compactPort, {
+			// Opt-in Classic Toolset over live HTTP exposes all 11 format-specific tools passing full audit (MC-7, D3, D51)
+			const classicPort = await listen({ toolset: "classic" });
+			const classicListRes = await rawRequest(classicPort, {
 				path: "/mcp",
 				headers: {
 					"Content-Type": "application/json",
@@ -405,30 +403,41 @@ describe("Streamable HTTP server", () => {
 					params: {},
 				}),
 			});
-			expect(compactListRes.status).toBe(200);
-			const compactParsed = parseMcpJsonRpc(compactListRes.body);
-			const compactTools =
-				(compactParsed.result as { tools?: Tool[] }).tools ?? [];
-			expect(compactTools.map((t) => t.name).sort()).toEqual([
-				"convert-git-repo",
-				"convert-local-file",
-				"convert-web-url",
+			expect(classicListRes.status).toBe(200);
+			const classicParsed = parseMcpJsonRpc(classicListRes.body);
+			const classicTools =
+				(classicParsed.result as { tools?: Tool[] }).tools ?? [];
+			expect(classicTools.map((t) => t.name).sort()).toEqual([
+				"audio-to-markdown",
+				"bing-search-to-markdown",
+				"docx-to-markdown",
 				"get-markdown-file",
+				"git-repo-to-markdown",
+				"image-to-markdown",
+				"pdf-to-markdown",
+				"pptx-to-markdown",
+				"webpage-to-markdown",
+				"xlsx-to-markdown",
+				"youtube-to-markdown",
 			]);
-			const compactAudit = toolContractAudit(
-				compactTools,
-				COMPACT_OPEN_WORLD_BY_TOOL,
+			const classicAudit = toolContractAudit(
+				classicTools,
+				CLASSIC_OPEN_WORLD_BY_TOOL,
 			);
-			expect(compactAudit.issues).toEqual([]);
-			expect(compactAudit.ok).toBe(true);
+			expect(classicAudit.issues).toEqual([]);
+			expect(classicAudit.ok).toBe(true);
 
 			await closeServer();
 
 			// D23 opt-out passes the HTTP fail-closed gate and reaches filesystem validation
 			const optOutPort = await listen({ allowUnrestrictedPaths: true });
-			const optOutResult = await callOverHttp(optOutPort, "pdf-to-markdown", {
-				filepath: "/nonexistent/http-d23-check.pdf",
-			});
+			const optOutResult = await callOverHttp(
+				optOutPort,
+				"convert-local-file",
+				{
+					filepath: "/nonexistent/http-d23-check.pdf",
+				},
+			);
 			expect(optOutResult.isError).toBe(true);
 			expect(optOutResult.content?.[0]?.text).toContain("File does not exist:");
 		} finally {

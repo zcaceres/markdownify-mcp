@@ -27,7 +27,7 @@ export type CreateServerOptions = {
 
 export function createServer(options: CreateServerOptions = {}) {
 	const transport = options.transport ?? "stdio";
-	const toolset: Toolset = options.toolset ?? "classic";
+	const toolset: Toolset = options.toolset ?? "compact";
 	const server = new Server(serverMetadata(), {
 		capabilities: {
 			tools: {},

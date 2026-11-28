@@ -10,17 +10,10 @@ const execFileAsync = promisify(execFile);
 const SLIM_DOCKER_HINT_SUBSTRING = "rather than the slim Docker pdf profile";
 
 const EXPECTED_TOOL_NAMES = [
-	"audio-to-markdown",
-	"bing-search-to-markdown",
-	"docx-to-markdown",
+	"convert-git-repo",
+	"convert-local-file",
+	"convert-web-url",
 	"get-markdown-file",
-	"git-repo-to-markdown",
-	"image-to-markdown",
-	"pdf-to-markdown",
-	"pptx-to-markdown",
-	"webpage-to-markdown",
-	"xlsx-to-markdown",
-	"youtube-to-markdown",
 ] as const;
 
 export type DockerHarnessArgs = {
@@ -89,7 +82,7 @@ export const runDockerChecks = async (
 ): Promise<DockerCheckResult[]> => {
 	const results: DockerCheckResult[] = [];
 
-	// 1. tools/list returns all 11 stable MCP tools (D3)
+	// 1. tools/list returns the default 4 compact MCP tools (D51)
 	const listed = await client.listTools();
 	const actualNames = listed.tools.map((t) => t.name).sort();
 	const expectedNames = [...EXPECTED_TOOL_NAMES].sort();
@@ -97,22 +90,22 @@ export const runDockerChecks = async (
 		actualNames.length === expectedNames.length &&
 		actualNames.every((name, idx) => name === expectedNames[idx]);
 	results.push({
-		name: "tools/list exposes all 11 stable tools (D3)",
+		name: "tools/list exposes default 4 compact tools (D51)",
 		ok: toolsMatch,
 		detail: toolsMatch
 			? `${actualNames.length} tools`
 			: `expected ${expectedNames.join(", ")}, got ${actualNames.join(", ")}`,
 	});
 
-	// 2. pdf-to-markdown converts /data/test.pdf (D4, D11, D34)
+	// 2. convert-local-file converts /data/test.pdf (D4, D11, D34, D51)
 	const pdfRes = await client.callTool({
-		name: "pdf-to-markdown",
+		name: "convert-local-file",
 		arguments: { filepath: "/data/test.pdf" },
 	});
 	const pdfText = extractText(pdfRes);
 	const pdfOk = pdfRes.isError !== true && pdfText.includes("Test PDF content");
 	results.push({
-		name: "pdf-to-markdown converts /data/test.pdf (D4, D11, D34)",
+		name: "convert-local-file converts /data/test.pdf (D4, D11, D34)",
 		ok: pdfOk,
 		detail: pdfOk
 			? "matched 'Test PDF content'"
@@ -121,7 +114,7 @@ export const runDockerChecks = async (
 
 	// 3. MD_ALLOWED_PATHS=/data blocks /etc/passwd (I2, D34)
 	const blockedRes = await client.callTool({
-		name: "pdf-to-markdown",
+		name: "convert-local-file",
 		arguments: { filepath: "/etc/passwd" },
 	});
 	const blockedText = extractText(blockedRes);
@@ -138,7 +131,7 @@ export const runDockerChecks = async (
 
 	// 4. [all]-only format surfaces D22 slim-Docker hint on real binary test.docx (D4, D22, D34, D42)
 	const slimRes = await client.callTool({
-		name: "docx-to-markdown",
+		name: "convert-local-file",
 		arguments: { filepath: "/data/test.docx" },
 	});
 	const slimText = extractText(slimRes);
@@ -147,7 +140,7 @@ export const runDockerChecks = async (
 		slimText.includes("markitdown[all]") &&
 		slimText.includes(SLIM_DOCKER_HINT_SUBSTRING);
 	results.push({
-		name: "docx-to-markdown surfaces D22 slim-Docker markitdown[all] hint (D4, D22, D34)",
+		name: "convert-local-file surfaces D22 slim-Docker markitdown[all] hint on test.docx (D4, D22, D34)",
 		ok: slimOk,
 		detail: slimOk
 			? "matched D22 slim-Docker hint"

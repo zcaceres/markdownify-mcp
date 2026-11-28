@@ -1,26 +1,26 @@
 # Slice 01: E2E Verification Domain and Corpus (VF-1, VF-2, VF-5, VF-6)
 
-# VF-1 (D37, D43, D45): defaults select node-stdio, --all selects all 6 Form Factors, filters and ad-hoc probes parse cleanly
+# VF-1 (D37, D43, D45, D51): defaults select node-stdio + compact toolset, --all selects all 6 Form Factors, filters and ad-hoc probes parse cleanly
 > e2e parse
 form-factors: node-stdio
 categories: (all)
 cases: (all)
 ad-hoc: (none)
-flags: toolset=classic json=false preview=false no-build=false reuse-venv=false
+flags: toolset=compact json=false preview=false no-build=false reuse-venv=false
 
-> e2e parse --all --category=static-web,git-repo --toolset=compact --json --preview --no-build --reuse-venv
+> e2e parse --all --category=static-web,git-repo --toolset=classic --json --preview --no-build --reuse-venv
 form-factors: node-stdio, bun-stdio, local-http, docker-stdio, docker-http, npm-package
 categories: static-web, git-repo
 cases: (all)
 ad-hoc: (none)
-flags: toolset=compact json=true preview=true no-build=true reuse-venv=true
+flags: toolset=classic json=true preview=true no-build=true reuse-venv=true
 
-> e2e parse --form=local-http,docker-http --tool=webpage-to-markdown --url=https://example.com
+> e2e parse --form=local-http,docker-http --tool=convert-web-url --url=https://example.com
 form-factors: local-http, docker-http
 categories: (all)
 cases: (all)
-ad-hoc: webpage-to-markdown url=https://example.com
-flags: toolset=classic json=false preview=false no-build=false reuse-venv=false
+ad-hoc: convert-web-url url=https://example.com
+flags: toolset=compact json=false preview=false no-build=false reuse-venv=false
 
 # VF-1 (D45): unknown flags, unknown Form Factors/categories, conflicting --url + --file, and missing --tool fail fast
 > e2e parse --bogus

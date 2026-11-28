@@ -32,13 +32,13 @@ bun run harness e2e --form=node-stdio --preview
 bun run harness e2e --form=local-http --category=static-web,hosted-binary --json
 
 # Ad-hoc exploratory probe against any URL or local file
-bun run harness e2e --form=node-stdio --tool=webpage-to-markdown --url=https://www.iana.org/domains/reserved --json
+bun run harness e2e --form=node-stdio --tool=convert-web-url --url=https://www.iana.org/domains/reserved --json
 
 # Full 6-form-factor matrix (requires running Docker daemon and network access)
 bun run harness e2e --all
 
-# Compact Toolset verification across local Form Factors
-bun run harness e2e --form=node-stdio,bun-stdio,local-http --toolset=compact --category=local-binary
+# Opt-in classic Toolset verification across local Form Factors
+bun run harness e2e --form=node-stdio,bun-stdio,local-http --toolset=classic --category=local-binary
 ```
 
 Exit codes (`D41`): `0` = all checks passed, `1` = one or more server/contract `FAIL`s, `2` = zero `FAIL`s, one or more

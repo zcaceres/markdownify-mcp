@@ -10,7 +10,7 @@ import {
 } from "./verbs.js";
 
 describe("parseServerConfiguration (SC-1, SC-2, MC-7, D1, D2, D23, D32, D51)", () => {
-	test("defaults to stdio on 127.0.0.1:3000 with classic toolset and allows CLI flags to override env vars", () => {
+	test("defaults to stdio on 127.0.0.1:3000 with compact toolset and allows CLI flags to override env vars", () => {
 		expect(parseServerConfiguration([], {})).toEqual(
 			ok({
 				transport: "stdio",
@@ -19,7 +19,7 @@ describe("parseServerConfiguration (SC-1, SC-2, MC-7, D1, D2, D23, D32, D51)", (
 				allowedHosts: [],
 				allowedOrigins: [],
 				allowUnrestrictedPaths: false,
-				toolset: "classic",
+				toolset: "compact",
 			}),
 		);
 
@@ -30,7 +30,7 @@ describe("parseServerConfiguration (SC-1, SC-2, MC-7, D1, D2, D23, D32, D51)", (
 					"--port=4123",
 					"--host=localhost",
 					"--allow-unrestricted-paths",
-					"--toolset=compact",
+					"--toolset=classic",
 				],
 				{
 					MCP_TRANSPORT: "stdio",
@@ -38,7 +38,7 @@ describe("parseServerConfiguration (SC-1, SC-2, MC-7, D1, D2, D23, D32, D51)", (
 					MCP_HOST: "0.0.0.0",
 					MCP_ALLOWED_HOSTS: "mcp.example.com, localhost:4123",
 					MCP_ALLOWED_ORIGINS: "https://app.example.com",
-					MCP_TOOLSET: "classic",
+					MCP_TOOLSET: "compact",
 				},
 			),
 		).toEqual(
@@ -49,36 +49,36 @@ describe("parseServerConfiguration (SC-1, SC-2, MC-7, D1, D2, D23, D32, D51)", (
 				allowedHosts: ["mcp.example.com", "localhost:4123"],
 				allowedOrigins: ["https://app.example.com"],
 				allowUnrestrictedPaths: true,
-				toolset: "compact",
+				toolset: "classic",
 			}),
 		);
 
 		expect(
-			parseServerConfiguration([], { MCP_TOOLSET: "compact" }),
+			parseServerConfiguration([], { MCP_TOOLSET: "classic" }),
 		).toMatchObject({
 			ok: true,
-			value: { toolset: "compact" },
+			value: { toolset: "classic" },
 		});
 
 		// D53: enum env vars and CLI flags are trimmed & lowercased; blank env vars fall back to defaults
 		expect(
 			parseServerConfiguration([], {
 				MCP_TRANSPORT: "  HTTP  ",
-				MCP_TOOLSET: " COMPACT ",
+				MCP_TOOLSET: " CLASSIC ",
 			}),
 		).toMatchObject({
 			ok: true,
-			value: { transport: "http", toolset: "compact" },
+			value: { transport: "http", toolset: "classic" },
 		});
 
 		expect(
-			parseServerConfiguration(["--transport= STDIO ", "--toolset= Classic "], {
+			parseServerConfiguration(["--transport= STDIO ", "--toolset= Compact "], {
 				MCP_TRANSPORT: "http",
-				MCP_TOOLSET: "compact",
+				MCP_TOOLSET: "classic",
 			}),
 		).toMatchObject({
 			ok: true,
-			value: { transport: "stdio", toolset: "classic" },
+			value: { transport: "stdio", toolset: "compact" },
 		});
 
 		expect(
@@ -88,7 +88,7 @@ describe("parseServerConfiguration (SC-1, SC-2, MC-7, D1, D2, D23, D32, D51)", (
 			}),
 		).toMatchObject({
 			ok: true,
-			value: { transport: "stdio", toolset: "classic" },
+			value: { transport: "stdio", toolset: "compact" },
 		});
 	});
 

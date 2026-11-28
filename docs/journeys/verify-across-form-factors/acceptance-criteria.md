@@ -16,7 +16,7 @@ invariants it cites. Scenarios that share an id make up one criterion.
 
 1. **Parse E2E options & load Verification Corpus.** The harness parses CLI flags (failing fast on unknown flags or invalid selections) and validates `corpus/manifest.json`.
 2. **Provision & connect each selected Form Factor.** The harness starts each selected Form Factor (including real binary `src/sample-data/` fixtures, Docker builds/containers, or `npm pack` temp installs) and connects a real MCP SDK client.
-3. **Run Form Factor transport & security checks.** The harness verifies all 11 stable MCP tools on `tools/list` plus HTTP `Host`/`Origin`, routing, and fail-closed `File Access Policy` guards on HTTP Form Factors.
+3. **Run Form Factor transport & security checks.** The harness verifies the active Toolset (`compact` 4-tool default or opt-in `classic` 11-tool mode) on `tools/list` plus HTTP `Host`/`Origin`, routing, and fail-closed `File Access Policy` guards on HTTP Form Factors.
 4. **Execute Verification Cases & classify outcomes.** The harness runs curated corpus cases or ad-hoc probes against real internet and binary inputs, evaluates profile-aware expectations (`full` vs `slim-pdf`), enforces per-case timeouts, and classifies each outcome as `PASS`, `FAIL`, or `BLOCKED`.
 5. **Tear down resources & emit Verification Report.** The harness cleans up every spawned server, container, and temporary directory, renders text or JSON output, and exits `0`, `1`, or `2`.
 
@@ -67,11 +67,11 @@ Scenario: `npm-package` Form Factor verifies `npm pack` installation and `mcp-ma
 ## 3. Run Form Factor transport & security checks
 
 ```gherkin
-@VF-4 @D3 @D9 @D33 @D37 @D44 @I2 @I5
-Scenario: Every Form Factor verifies all 11 tools and HTTP Form Factors verify Host/Origin, routing, and D9 fail-closed policy
+@VF-4 @D3 @D9 @D33 @D37 @D44 @D51 @I2 @I5
+Scenario: Every Form Factor verifies the active Toolset and HTTP Form Factors verify Host/Origin, routing, and D9 fail-closed policy
   Given a provisioned Form Factor transport
   When Form Factor transport and security checks run
-  Then `tools/list` exposes all 11 stable tools (D3), `Allowed Paths` blocks out-of-bounds reads (I2), and HTTP Form Factors (`local-http`, `docker-http`) additionally verify HTTP 404/405 (`Allow: POST`, D33), HTTP 403 on bad `Host`/`Origin` (I5), and `D9` fail-closed local file refusal when `MD_ALLOWED_PATHS` is unset (D44)
+  Then `tools/list` exposes the active Toolset (4 compact tools by default or all 11 classic tools when `--toolset=classic`, D3, D51), `Allowed Paths` blocks out-of-bounds reads (I2), and HTTP Form Factors (`local-http`, `docker-http`) additionally verify HTTP 404/405 (`Allow: POST`, D33), HTTP 403 on bad `Host`/`Origin` (I5), and `D9` fail-closed local file refusal when `MD_ALLOWED_PATHS` is unset (D44)
 ```
 
 ## 4. Execute Verification Cases & classify outcomes

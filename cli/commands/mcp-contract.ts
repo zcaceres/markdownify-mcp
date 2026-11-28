@@ -13,8 +13,8 @@ import { toolsForToolset } from "../../src/tools.ts";
 import type { Command } from "../command.ts";
 
 const parseToolsetArg = (raw: string | undefined): Toolset | undefined => {
-	if (raw === undefined || raw === "classic") return "classic";
-	if (raw === "compact") return "compact";
+	if (raw === undefined || raw === "compact") return "compact";
+	if (raw === "classic") return "classic";
 	return undefined;
 };
 
@@ -67,7 +67,7 @@ export const mcp: Command = {
 			if (!toolName || remaining.length === 0) {
 				return err(`usage: ${mcp.usage}`);
 			}
-			let toolset: Toolset = "classic";
+			let toolset: Toolset = "compact";
 			const last = remaining[remaining.length - 1];
 			let jsonParts = remaining;
 			if (last?.startsWith("toolset=")) {

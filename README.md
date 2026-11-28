@@ -22,7 +22,9 @@ Markdownify is a single-operator, stateless Model Context Protocol (MCP) server 
   - Complete explicit `ToolAnnotations`, top-level `Tool.title`, server `instructions`, `Implementation` metadata, and static `cacheHints`
   - Gemini-safe flat JSON Schema `inputSchema` with strict per-tool runtime argument validation
   - Typed `outputSchema` and `structuredContent` alongside backwards-compatible `content` text blocks (untruncated; omitted on `isError: true`)
-  - Operator-selectable **Toolset**: default 11-tool `classic` surface or opt-in 4-tool `compact` surface (`--toolset=compact` / `MCP_TOOLSET=compact`)
+  - Operator-selectable **Toolset**: default 4-tool `compact` surface (`convert-web-url`, `convert-local-file`, `convert-git-repo`, `get-markdown-file`) or opt-in 11-tool `classic` surface (`--toolset=classic` / `MCP_TOOLSET=classic`)
+
+> **Upgrading from v1.x (v2.0 breaking changes):** v2.0 defaults to the 4-tool `compact` Toolset (pass `--toolset=classic` or set `MCP_TOOLSET=classic` to restore the 11 v1 tool names), fails closed on local file tools in HTTP mode unless `MD_ALLOWED_PATHS` or `--allow-unrestricted-paths` is set, requires absolute or `~/` file paths, and rejects unknown/cross-tool argument keys strictly.
 
 ## Getting Started
 
@@ -72,7 +74,7 @@ Add Markdownify MCP to your desktop or CLI MCP client configuration (Claude Desk
 }
 ```
 
-Pass `"--toolset=compact"` in `args` (or set `"MCP_TOOLSET": "compact"` in `env`) to expose the 4-tool compact Toolset instead of the default 11 classic tools. `MD_ALLOWED_PATHS` is optional in `stdio` mode (unrestricted when unset), and recommended whenever you want to bound local filesystem reads.
+Markdownify MCP defaults to the 4-tool `compact` Toolset. Pass `"--toolset=classic"` in `args` (or set `"MCP_TOOLSET": "classic"` in `env`) to expose the 11 format-specific classic tools for legacy v1 clients. `MD_ALLOWED_PATHS` is optional in `stdio` mode (unrestricted when unset), and recommended whenever you want to bound local filesystem reads.
 
 ## Usage with HTTP (Streamable HTTP transport)
 
@@ -92,15 +94,15 @@ MCP_TRANSPORT=http MCP_PORT=3000 MD_ALLOWED_PATHS=/path/to/docs bun dist/index.j
 
 CLI flags take precedence over environment variables. Enum values (`--transport`, `--toolset`, `MCP_TRANSPORT`, `MCP_TOOLSET`) are trimmed and lowercased; unknown flags or invalid values fail fast at startup.
 
-| Flag / Env                                                    | Default                                 | Purpose                                                                                                                                                                                                    |
-| ------------------------------------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--transport=stdio\|http` / `MCP_TRANSPORT`                   | `stdio`                                 | Transport mode (`stdio` or stateless Streamable HTTP on `/mcp` and `/`).                                                                                                                                   |
-| `--host=HOST` / `MCP_HOST`                                    | `127.0.0.1`                             | Bind address for HTTP mode. Defaults to loopback only.                                                                                                                                                     |
-| `--port=N` / `MCP_PORT`                                       | `3000`                                  | Port for HTTP mode (`1`–`65535`; ignored in `stdio` mode).                                                                                                                                                 |
-| `--allowed-hosts=H1,H2` / `MCP_ALLOWED_HOSTS`                 | loopback hosts when bound to loopback   | Comma-separated list of allowed `Host` headers (DNS-rebinding protection; returns HTTP 403 on mismatch).                                                                                                   |
-| `--allowed-origins=O1,O2` / `MCP_ALLOWED_ORIGINS`             | loopback origins when bound to loopback | Comma-separated list of allowed browser `Origin` headers (returns HTTP 403 on mismatch).                                                                                                                   |
-| `--allow-unrestricted-paths` / `MCP_ALLOW_UNRESTRICTED_PATHS` | `false`                                 | Opt out of HTTP fail-closed local file blocking when `MD_ALLOWED_PATHS` is unset.                                                                                                                          |
-| `--toolset=classic\|compact` / `MCP_TOOLSET`                  | `classic`                               | Active **Toolset**: `classic` exposes all 11 tools; `compact` exposes 4 capability-aligned tools (`convert-web-url`, `convert-local-file`, `convert-git-repo`, `get-markdown-file`) to save prompt tokens. |
+| Flag / Env                                                    | Default                                 | Purpose                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--transport=stdio\|http` / `MCP_TRANSPORT`                   | `stdio`                                 | Transport mode (`stdio` or stateless Streamable HTTP on `/mcp` and `/`).                                                                                                                                                                      |
+| `--host=HOST` / `MCP_HOST`                                    | `127.0.0.1`                             | Bind address for HTTP mode. Defaults to loopback only.                                                                                                                                                                                        |
+| `--port=N` / `MCP_PORT`                                       | `3000`                                  | Port for HTTP mode (`1`–`65535`; ignored in `stdio` mode).                                                                                                                                                                                    |
+| `MCP_ALLOWED_HOSTS`                                           | loopback hosts when bound to loopback   | Comma-separated list of allowed `Host` headers (DNS-rebinding protection; returns HTTP 403 on mismatch).                                                                                                                                      |
+| `MCP_ALLOWED_ORIGINS`                                         | loopback origins when bound to loopback | Comma-separated list of allowed browser `Origin` headers (returns HTTP 403 on mismatch).                                                                                                                                                      |
+| `--allow-unrestricted-paths` / `MCP_ALLOW_UNRESTRICTED_PATHS` | `false`                                 | Opt out of HTTP fail-closed local file blocking when `MD_ALLOWED_PATHS` is unset.                                                                                                                                                             |
+| `--toolset=compact\|classic` / `MCP_TOOLSET`                  | `compact`                               | Active **Toolset**: `compact` (default) exposes 4 capability-aligned tools (`convert-web-url`, `convert-local-file`, `convert-git-repo`, `get-markdown-file`) to save prompt tokens; `classic` (opt-in) exposes all 11 format-specific tools. |
 
 > **Security note:** The HTTP transport has no built-in authentication. When `MD_ALLOWED_PATHS` is unset in HTTP mode, local file-input tools (`*-to-markdown`, `convert-local-file`, and `get-markdown-file`) fail closed with `isError: true` unless you explicitly opt out with `--allow-unrestricted-paths` or `MCP_ALLOW_UNRESTRICTED_PATHS=true`, while Web URL and Git Repository tools remain available. Keep `--host=127.0.0.1` for local use, or place the server behind an authenticating reverse proxy with `MCP_ALLOWED_HOSTS` / `MCP_ALLOWED_ORIGINS` configured.
 
@@ -150,7 +152,18 @@ Notes for Docker (`Dockerfile` / `mcp/markdownify`):
 
 ## Available Tools
 
-### Classic Toolset (default, `--toolset=classic`)
+### Compact Toolset (default, `--toolset=compact`)
+
+By default, Markdownify MCP exposes 4 capability-aligned tools designed for minimal token overhead across Anthropic, Gemini, and OpenAI hosts:
+
+- `convert-web-url`: Convert any public `http(s)` webpage, YouTube video, Bing search page, or hosted document to Markdown
+- `convert-local-file`: Convert any local non-Markdown file (PDF, DOCX, XLSX, PPTX, image, audio) to Markdown
+- `convert-git-repo`: Convert a public remote Git repository (`http(s)` URL or GitHub `owner/repo` shorthand) into a single Markdown document (optional `branch` and `compress`)
+- `get-markdown-file`: Retrieve an existing local `.md` or `.markdown` file (case-insensitive) verbatim along with its resolved `realpath`
+
+### Classic Toolset (opt-in, `--toolset=classic` / `MCP_TOOLSET=classic`)
+
+For backwards compatibility with v1 clients or format-specific tool routing, pass `--toolset=classic` (or set `MCP_TOOLSET=classic`) to expose the 11 format-specific tools:
 
 - `youtube-to-markdown`: Convert YouTube videos to Markdown
 - `pdf-to-markdown`: Convert local PDF files to Markdown
@@ -163,15 +176,6 @@ Notes for Docker (`Dockerfile` / `mcp/markdownify`):
 - `pptx-to-markdown`: Convert local PPTX files to Markdown (requires `markitdown[all]`)
 - `git-repo-to-markdown`: Convert a public remote Git repository (`http(s)` URL or GitHub `owner/repo` shorthand) into a single Markdown document (optional `branch` and `compress`)
 - `get-markdown-file`: Retrieve an existing local `.md` or `.markdown` file (case-insensitive) verbatim along with its resolved `realpath`
-
-### Compact Toolset (`--toolset=compact` / `MCP_TOOLSET=compact`)
-
-For lower token overhead across Anthropic, Gemini, and OpenAI hosts, pass `--toolset=compact` (or `MCP_TOOLSET=compact`) to expose 4 capability-aligned tools instead of the 11 classic tools:
-
-- `convert-web-url`: Convert any public `http(s)` webpage, YouTube video, Bing search page, or hosted document to Markdown
-- `convert-local-file`: Convert any local non-Markdown file (PDF, DOCX, XLSX, PPTX, image, audio) to Markdown
-- `convert-git-repo`: Convert a public remote Git repository (`http(s)` URL or GitHub `owner/repo` shorthand) into a single Markdown document
-- `get-markdown-file`: Retrieve an existing local `.md` or `.markdown` file verbatim with its resolved `realpath`
 
 ### Key Tool Behavior & Limits
 
@@ -201,11 +205,11 @@ Verify the server as a real MCP SDK client across all six Form Factors (`node-st
 # Fast local stdio run across curated corpus categories with output previews
 bun run harness e2e --form=node-stdio --preview
 
-# Offline local binaries across local stdio & HTTP in compact Toolset mode
-bun run harness e2e --form=node-stdio,bun-stdio,local-http --toolset=compact --category=local-binary
+# Offline local binaries across local stdio & HTTP in opt-in classic Toolset mode
+bun run harness e2e --form=node-stdio,bun-stdio,local-http --toolset=classic --category=local-binary
 
 # Ad-hoc probe against any URL or local file
-bun run harness e2e --form=node-stdio --tool=webpage-to-markdown --url=https://www.iana.org/domains/reserved
+bun run harness e2e --form=node-stdio --tool=convert-web-url --url=https://www.iana.org/domains/reserved
 bun run harness e2e --form=node-stdio --tool=get-markdown-file --file=/path/to/README.md
 
 # Full 6-Form-Factor matrix (requires Docker daemon and outbound network)

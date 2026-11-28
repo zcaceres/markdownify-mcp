@@ -8,7 +8,7 @@ port: 3000
 allowed-hosts: (default)
 allowed-origins: (default)
 allow-unrestricted-paths: false
-toolset: classic
+toolset: compact
 
 > config set MCP_TRANSPORT stdio
 config MCP_TRANSPORT = stdio
@@ -29,7 +29,7 @@ port: 4123
 allowed-hosts: mcp.example.com, localhost:4123
 allowed-origins: https://app.example.com
 allow-unrestricted-paths: true
-toolset: classic
+toolset: compact
 
 # SC-2 (D2, D32): unknown CLI flags, positional args, bad transport, bad port, and empty host fail fast
 > serve config --transprot=http

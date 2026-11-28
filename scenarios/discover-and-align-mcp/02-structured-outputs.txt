@@ -2,6 +2,9 @@
 
 # MC-6 (D49): every tool passes audit including outputSchema validation
 > mcp audit
+ok: audited 4 tools (0 issues)
+
+> mcp audit classic
 ok: audited 11 tools (0 issues)
 
 # MC-6 (D49, D50): conversion result returns content text + structuredContent { markdown } without truncation
