@@ -9,14 +9,12 @@ import { Markdownify, type MarkdownResult } from "./Markdownify.js";
 import { validateMarkdownRetrievalRequest } from "./markdown-retrieval/verbs.js";
 import type { Toolset } from "./mcp-contract/nouns.js";
 import {
+	formatStructuredToolResult,
 	serverCacheHints,
 	serverInstructions,
 	serverMetadata,
 } from "./mcp-contract/queries.js";
-import {
-	formatStructuredToolResult,
-	validateToolArguments,
-} from "./mcp-contract/verbs.js";
+import { validateToolArguments } from "./mcp-contract/verbs.js";
 import * as tools from "./tools.js";
 import { expandHome } from "./utils.js";
 import { validateWebRequest } from "./web-conversion/verbs.js";

@@ -114,7 +114,7 @@ export const checkFileAccess = async (
 	}
 };
 
-export const verifyReadableFile = (
+export const validateReadableFile = (
 	resolvedPath: string,
 	stat: FileStat,
 ): Result<void, string> => {

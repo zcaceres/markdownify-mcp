@@ -1,10 +1,6 @@
 import { z } from "zod";
 import { err, ok, type Result } from "../shared/types.js";
-import type {
-	StructuredToolResult,
-	Toolset,
-	ValidatedToolArguments,
-} from "./nouns.js";
+import type { Toolset, ValidatedToolArguments } from "./nouns.js";
 
 const UrlOnlySchema = z.strictObject({
 	url: z.string().optional(),
@@ -83,32 +79,4 @@ export const validateToolArguments = (
 	}
 
 	return ok(parsed.data);
-};
-
-/** Format a successful MarkdownResult with backwards-compatible content text and typed structuredContent without truncation (D49, D50). */
-export const formatStructuredToolResult = (result: {
-	readonly text: string;
-	readonly path?: string;
-}): StructuredToolResult => {
-	if (result.path !== undefined) {
-		return {
-			content: [
-				{ type: "text", text: `Output file: ${result.path}` },
-				{ type: "text", text: result.text },
-			],
-			structuredContent: {
-				path: result.path,
-				markdown: result.text,
-			},
-			isError: false,
-		};
-	}
-
-	return {
-		content: [{ type: "text", text: result.text }],
-		structuredContent: {
-			markdown: result.text,
-		},
-		isError: false,
-	};
 };

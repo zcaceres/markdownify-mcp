@@ -2,6 +2,7 @@ import type { Tool } from "@modelcontextprotocol/server";
 import type {
 	ServerCacheHints,
 	ServerMetadata,
+	StructuredToolResult,
 	ToolContractAudit,
 	ToolContractIssue,
 	Toolset,
@@ -110,8 +111,8 @@ const scanForbiddenSchemaKeys = (
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null && !Array.isArray(value);
 
-/** Audit a Tool catalog against cross-provider Anthropic, Gemini, and OpenAI contracts (D47, D48, D52). */
-export const auditToolCatalog = (
+/** Compute a derived Tool Contract Audit for a Toolset against cross-provider contracts (D47, D48, D49, D52, D55). */
+export const toolContractAudit = (
 	tools: readonly Tool[],
 	expectedOpenWorldByName: Readonly<Record<string, boolean>>,
 ): ToolContractAudit => {
@@ -293,5 +294,33 @@ export const auditToolCatalog = (
 		ok: issues.length === 0,
 		toolCount: tools.length,
 		issues,
+	};
+};
+
+/** Format a successful MarkdownResult with backwards-compatible content text and typed structuredContent without truncation (D49, D50). */
+export const formatStructuredToolResult = (result: {
+	readonly text: string;
+	readonly path?: string;
+}): StructuredToolResult => {
+	if (result.path !== undefined) {
+		return {
+			content: [
+				{ type: "text", text: `Output file: ${result.path}` },
+				{ type: "text", text: result.text },
+			],
+			structuredContent: {
+				path: result.path,
+				markdown: result.text,
+			},
+			isError: false,
+		};
+	}
+
+	return {
+		content: [{ type: "text", text: result.text }],
+		structuredContent: {
+			markdown: result.text,
+		},
+		isError: false,
 	};
 };

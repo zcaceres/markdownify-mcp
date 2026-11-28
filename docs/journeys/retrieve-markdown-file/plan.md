@@ -24,7 +24,7 @@ D27**) or a structured MCP tool error (`isError: true`, **D8**).
 ## Contexts, verbs and queries
 
 Where this journey lives in the code. Shared pure local file-access primitives (`FileAccessPolicy`, `FileStat`,
-`isAbsoluteOrHomePath`, `resolveFileAccessPolicy`, `checkFileAccess`, `verifyReadableFile`) move to
+`isAbsoluteOrHomePath`, `resolveFileAccessPolicy`, `checkFileAccess`, `validateReadableFile`) move to
 `src/shared/local-access.ts` (re-exported by `src/local-file-conversion/` so bounded contexts never import each other).
 
 | Context                   | Nouns                                                            | Verbs                                                                             | Queries          | Harness commands      |

@@ -4,9 +4,9 @@ import { resolve } from "node:path";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import {
-	auditToolCatalog,
 	CLASSIC_OPEN_WORLD_BY_TOOL,
 	COMPACT_OPEN_WORLD_BY_TOOL,
+	toolContractAudit,
 } from "./mcp-contract/queries.js";
 import { createServer } from "./server.js";
 
@@ -109,7 +109,7 @@ describe("MCP server boundary (WU-1, D8)", () => {
 			expect(instructions).toContain("MD_ALLOWED_PATHS");
 
 			const listed = await client.listTools();
-			const audit = auditToolCatalog(listed.tools, CLASSIC_OPEN_WORLD_BY_TOOL);
+			const audit = toolContractAudit(listed.tools, CLASSIC_OPEN_WORLD_BY_TOOL);
 			expect(audit.issues).toEqual([]);
 			expect(audit.ok).toBe(true);
 		});
@@ -388,7 +388,7 @@ describe("MCP server boundary (WU-1, D8)", () => {
 						"convert-web-url",
 						"get-markdown-file",
 					]);
-					const audit = auditToolCatalog(
+					const audit = toolContractAudit(
 						listed.tools,
 						COMPACT_OPEN_WORLD_BY_TOOL,
 					);

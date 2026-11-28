@@ -15,7 +15,7 @@ invariants it cites. Scenarios that share an id make up one criterion.
 ## Steps
 
 1. **Discover server identity, instructions, and cache hints.** An MCP Client initializes or discovers the server and receives enriched `Implementation` metadata, concise server `instructions`, and `cacheHints` for static catalog responses.
-2. **Inspect cross-provider tool metadata & schemas.** An MCP Client calls `tools/list` and receives complete explicit `ToolAnnotations`, top-level `Tool.title`, 2–4 sentence tool and parameter descriptions, and Gemini-safe flat `inputSchema` definitions.
+2. **Inspect cross-provider tool metadata & schemas.** An MCP Client calls `tools/list` and receives complete explicit `ToolAnnotations`, top-level `Tool.title`, 2–4 sentence tool descriptions with concise single-sentence non-empty parameter descriptions, and Gemini-safe flat `inputSchema` definitions.
 3. **Validate strict arguments & return typed structured outputs.** An MCP Client invokes tools with valid or malformed/unknown arguments and receives either full untruncated `Markdown Result` content paired with `structuredContent` matching `outputSchema`, or concise single-line `isError: true` errors without `structuredContent`.
 4. **Select Toolset & verify across Form Factors.** An Operator selects `classic` (default) or `compact` via Server Configuration, `tools/call` strictly enforces the active Toolset, and the 6-Form-Factor E2E harness validates the cross-provider contracts end to end.
 
@@ -38,11 +38,11 @@ Scenario: Server advertises static public cacheHints for tools/list and server/d
 ## 2. Inspect cross-provider tool metadata & schemas
 
 ```gherkin
-@MC-3 @D3 @D47 @D48
+@MC-3 @D3 @D47 @D48 @D55
 Scenario: Every exposed tool declares top-level title, all four explicit ToolAnnotations booleans, and rich multi-sentence descriptions
   Given an MCP Client calls tools/list on Markdownify MCP
-  When each returned Tool definition is audited
-  Then every tool declares top-level title matching annotations.title, explicit readOnlyHint (true), destructiveHint (false), idempotentHint (true), and openWorldHint (true for remote/network tools, false for local filesystem tools), plus 2-4 sentence descriptions explaining usage, sibling tools, and key limits (D3, D47, D48)
+  When each returned Tool definition is audited into a Tool Contract Audit (D55)
+  Then every tool declares top-level title matching annotations.title, explicit readOnlyHint (true), destructiveHint (false), idempotentHint (true), and openWorldHint (true for remote/network tools, false for local filesystem tools), plus 2-4 sentence tool descriptions explaining usage, sibling tools, and key limits and concise single-sentence non-empty parameter descriptions (D3, D47, D48, D55)
 
 @MC-4 @D52
 Scenario: Every tool name, parameter name, and wire inputSchema is compatible with Anthropic, Gemini, and OpenAI

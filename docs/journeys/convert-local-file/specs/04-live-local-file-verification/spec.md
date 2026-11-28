@@ -49,9 +49,9 @@ Exercise the **Convert Local File** journey end-to-end against the real host fil
 
 ## Verbs (`src/local-file-conversion/verbs.ts`)
 
-| Function                                 | Rule                                                                                        | Error                                |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------ |
-| `verifyReadableFile(resolvedPath, stat)` | Rejects non-regular files (`not-a-file`) alongside missing, directory, and unreadable (D17) | `Path is not a regular file: <path>` |
+| Function                                   | Rule                                                                                        | Error                                |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `validateReadableFile(resolvedPath, stat)` | Rejects non-regular files (`not-a-file`) alongside missing, directory, and unreadable (D17) | `Path is not a regular file: <path>` |
 
 ## Queries (`src/local-file-conversion/queries.ts`)
 
@@ -70,7 +70,7 @@ _(None.)_
 
 ## Tests
 
-- **Domain unit test** (`src/local-file-conversion/local-file-conversion.test.ts`): `verifyReadableFile` rejects `{ kind: "not-a-file" }`.
+- **Domain unit test** (`src/local-file-conversion/local-file-conversion.test.ts`): `validateReadableFile` rejects `{ kind: "not-a-file" }`.
 - **Live integration tests** (`src/integrations/live.test.ts`): `statRealLocalFile` (`file`, `directory`, `missing`, `unreadable` via `chmod 0o000` and `EACCES` on `statSync`, `not-a-file` via `/dev/null` on POSIX), live symlink escape refusal and in-bounds symlink conversion via `createLiveWorld`, and replaying `scenarios/live/convert-local-file.live.txt`.
 - **Live runner & REPL tests** (`cli/live.test.ts`): `parseLive` expands `{{REPO_ROOT}}` variables, and piped stdin into `bun run harness --live` exits cleanly without `ERR_USE_AFTER_CLOSE`.
 - **Live suite:** `scenarios/live/convert-local-file.live.txt`.

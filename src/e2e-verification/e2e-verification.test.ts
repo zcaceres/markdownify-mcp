@@ -7,11 +7,14 @@ import {
 	VERIFICATION_CATEGORIES,
 	type VerificationCase,
 } from "./nouns.js";
-import { formatVerificationReport, verificationReport } from "./queries.js";
+import {
+	describeFormFactor,
+	formatVerificationReport,
+	mapToolToToolset,
+	verificationReport,
+} from "./queries.js";
 import {
 	classifyCaseOutcome,
-	describeFormFactor,
-	mapToolToToolset,
 	parseE2eOptions,
 	parseVerificationCorpus,
 	selectVerificationCases,
@@ -285,6 +288,15 @@ describe("parseVerificationCorpus & selectVerificationCases (VF-2, D3, D38, D44)
 		for (const expectedCategory of VERIFICATION_CATEGORIES) {
 			expect(categories.has(expectedCategory)).toBe(true);
 		}
+		const spaCases = parsed.value.cases.filter(
+			(c) => c.category === "spa-html",
+		);
+		expect(spaCases.some((c) => c.expectByProfile.full.kind === "ok")).toBe(
+			true,
+		);
+		expect(spaCases.some((c) => c.expectByProfile.full.kind === "error")).toBe(
+			true,
+		);
 	});
 });
 
@@ -353,6 +365,60 @@ describe("classifyCaseOutcome & verificationReport (VF-5, VF-6, D22, D39, D41, D
 			timedOut: true,
 		});
 		expect(timedOut.status).toBe("FAIL");
+
+		const hostedDocxCase: VerificationCase = {
+			id: "hosted-docx",
+			category: "hosted-binary",
+			tool: "webpage-to-markdown",
+			args: { url: "https://example.com/test.docx" },
+			expectByProfile: {
+				full: { kind: "ok" },
+				"slim-pdf": {
+					kind: "error",
+					contains: ["markitdown[all]"],
+				},
+			},
+			blockedPatterns: ["429", "Too Many Requests"],
+		};
+		const blockedOnExpectedError = classifyCaseOutcome(
+			"docker-stdio",
+			hostedDocxCase,
+			{
+				isError: true,
+				text: "Error: Error processing to Markdown: HTTP 429 Too Many Requests",
+				hasOutputPath: false,
+				durationMs: 42,
+			},
+		);
+		expect(blockedOnExpectedError.status).toBe("BLOCKED");
+		expect(blockedOnExpectedError.detail).toContain("429");
+	});
+
+	test("supports explicit non-corpus contract and transport categories (D54)", () => {
+		const contractOutcome: CaseOutcome = {
+			formFactor: "node-stdio",
+			caseId: "mcp-contract-audit",
+			category: "contract",
+			tool: "tools/list",
+			status: "PASS",
+			durationMs: 5,
+			detail: "verified contracts",
+		};
+		const transportOutcome: CaseOutcome = {
+			formFactor: "local-http",
+			caseId: "http-host-origin-403",
+			category: "transport",
+			tool: "http-guard",
+			status: "PASS",
+			durationMs: 8,
+			detail: "verified 403 guards",
+		};
+		const report = verificationReport([contractOutcome, transportOutcome]);
+		expect(report.exitCode).toBe(0);
+		expect(report.outcomes.map((o) => o.category)).toEqual([
+			"contract",
+			"transport",
+		]);
 	});
 
 	test("computes three-state exit codes (0, 1, 2) and formats text & JSON reports", () => {

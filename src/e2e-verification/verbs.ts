@@ -5,20 +5,20 @@ import {
 	type AdHocProbe,
 	type CaseExecutionOutput,
 	type CaseOutcome,
+	CLASSIC_MCP_TOOLS,
+	type ClassicMcpTool,
 	COMPACT_MCP_TOOLS,
 	type CompactMcpTool,
 	type E2eMcpTool,
 	type E2eOptions,
 	FORM_FACTORS,
 	type FormFactor,
-	type FormFactorDescriptor,
-	STABLE_MCP_TOOLS,
-	type StableMcpTool,
 	VERIFICATION_CATEGORIES,
 	type VerificationCase,
 	type VerificationCategory,
 	type VerificationCorpus,
 } from "./nouns.js";
+import { describeFormFactor } from "./queries.js";
 
 const SUPPORTED_E2E_FLAGS =
 	"--form=, --all, --category=, --case=, --toolset=, --tool=, --url=, --file=, --branch=, --compress, --json, --preview, --no-build, --reuse-venv";
@@ -31,63 +31,11 @@ const isFormFactor = (value: string): value is FormFactor =>
 const isVerificationCategory = (value: string): value is VerificationCategory =>
 	(VERIFICATION_CATEGORIES as readonly string[]).includes(value);
 
-const isStableMcpTool = (value: string): value is StableMcpTool =>
-	(STABLE_MCP_TOOLS as readonly string[]).includes(value);
+const isClassicMcpTool = (value: string): value is ClassicMcpTool =>
+	(CLASSIC_MCP_TOOLS as readonly string[]).includes(value);
 
 const isCompactMcpTool = (value: string): value is CompactMcpTool =>
 	(COMPACT_MCP_TOOLS as readonly string[]).includes(value);
-
-export const mapToolToToolset = (
-	tool: E2eMcpTool,
-	toolset: Toolset,
-): E2eMcpTool => {
-	if (toolset === "classic") return tool;
-	switch (tool) {
-		case "youtube-to-markdown":
-		case "bing-search-to-markdown":
-		case "webpage-to-markdown":
-		case "convert-web-url":
-			return "convert-web-url";
-		case "pdf-to-markdown":
-		case "image-to-markdown":
-		case "audio-to-markdown":
-		case "docx-to-markdown":
-		case "xlsx-to-markdown":
-		case "pptx-to-markdown":
-		case "convert-local-file":
-			return "convert-local-file";
-		case "git-repo-to-markdown":
-		case "convert-git-repo":
-			return "convert-git-repo";
-		case "get-markdown-file":
-			return "get-markdown-file";
-		default: {
-			const exhaustive: never = tool;
-			return exhaustive;
-		}
-	}
-};
-
-export const describeFormFactor = (
-	formFactor: FormFactor,
-): FormFactorDescriptor => {
-	switch (formFactor) {
-		case "node-stdio":
-		case "bun-stdio":
-		case "npm-package":
-			return { id: formFactor, transport: "stdio", profile: "full" };
-		case "local-http":
-			return { id: formFactor, transport: "http", profile: "full" };
-		case "docker-stdio":
-			return { id: formFactor, transport: "stdio", profile: "slim-pdf" };
-		case "docker-http":
-			return { id: formFactor, transport: "http", profile: "slim-pdf" };
-		default: {
-			const exhaustive: never = formFactor;
-			return exhaustive;
-		}
-	}
-};
 
 const splitCsv = (raw: string): string[] =>
 	raw
@@ -211,7 +159,7 @@ export const parseE2eOptions = (
 		const validTool =
 			toolset === "compact"
 				? isCompactMcpTool(toolRaw)
-				: isStableMcpTool(toolRaw);
+				: isClassicMcpTool(toolRaw);
 		if (!validTool) {
 			return err(`Unknown tool "${toolRaw}"`);
 		}
@@ -266,14 +214,14 @@ const VerificationCaseSchema = z.object({
 	tool: z
 		.string()
 		.superRefine((val, ctx) => {
-			if (!isStableMcpTool(val)) {
+			if (!isClassicMcpTool(val)) {
 				ctx.addIssue({
 					code: "custom",
 					message: `Unknown tool "${val}"`,
 				});
 			}
 		})
-		.transform((val) => val as StableMcpTool),
+		.transform((val) => val as ClassicMcpTool),
 	args: z.record(z.string(), z.union([z.string(), z.boolean()])),
 	timeoutMs: z.number().int().positive().optional(),
 	expectByProfile: z.object({
@@ -487,6 +435,17 @@ export const classifyCaseOutcome = (
 
 	for (const needle of expected.contains ?? []) {
 		if (!output.text.includes(needle)) {
+			const matchedPattern = findBlockedPattern(
+				output.text,
+				testCase.blockedPatterns,
+			);
+			if (matchedPattern) {
+				return {
+					...base,
+					status: "BLOCKED",
+					detail: `matched upstream blocked pattern "${matchedPattern}"`,
+				};
+			}
 			return {
 				...base,
 				status: "FAIL",

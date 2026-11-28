@@ -1,4 +1,65 @@
-import type { CaseOutcome, VerificationReport } from "./nouns.js";
+import type { Toolset } from "../mcp-contract/nouns.js";
+import type {
+	CaseOutcome,
+	E2eMcpTool,
+	FormFactor,
+	FormFactorDescriptor,
+	VerificationReport,
+} from "./nouns.js";
+
+/** Pure lookup mapping any classic or compact tool onto the active Toolset (D51). */
+export const mapToolToToolset = (
+	tool: E2eMcpTool,
+	toolset: Toolset,
+): E2eMcpTool => {
+	if (toolset === "classic") return tool;
+	switch (tool) {
+		case "youtube-to-markdown":
+		case "bing-search-to-markdown":
+		case "webpage-to-markdown":
+		case "convert-web-url":
+			return "convert-web-url";
+		case "pdf-to-markdown":
+		case "image-to-markdown":
+		case "audio-to-markdown":
+		case "docx-to-markdown":
+		case "xlsx-to-markdown":
+		case "pptx-to-markdown":
+		case "convert-local-file":
+			return "convert-local-file";
+		case "git-repo-to-markdown":
+		case "convert-git-repo":
+			return "convert-git-repo";
+		case "get-markdown-file":
+			return "get-markdown-file";
+		default: {
+			const exhaustive: never = tool;
+			return exhaustive;
+		}
+	}
+};
+
+/** Pure lookup describing a Form Factor's transport and Python dependency profile (D37, D44). */
+export const describeFormFactor = (
+	formFactor: FormFactor,
+): FormFactorDescriptor => {
+	switch (formFactor) {
+		case "node-stdio":
+		case "bun-stdio":
+		case "npm-package":
+			return { id: formFactor, transport: "stdio", profile: "full" };
+		case "local-http":
+			return { id: formFactor, transport: "http", profile: "full" };
+		case "docker-stdio":
+			return { id: formFactor, transport: "stdio", profile: "slim-pdf" };
+		case "docker-http":
+			return { id: formFactor, transport: "http", profile: "slim-pdf" };
+		default: {
+			const exhaustive: never = formFactor;
+			return exhaustive;
+		}
+	}
+};
 
 /** Derived Verification Report (D39, D41, D46): counts and three-state exit code 0 / 1 / 2. */
 export const verificationReport = (

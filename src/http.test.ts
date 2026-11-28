@@ -9,8 +9,8 @@ import {
 	parseCliArgs,
 } from "./http";
 import {
-	auditToolCatalog,
 	COMPACT_OPEN_WORLD_BY_TOOL,
+	toolContractAudit,
 } from "./mcp-contract/queries";
 
 describe("parseCliArgs", () => {
@@ -415,7 +415,7 @@ describe("Streamable HTTP server", () => {
 				"convert-web-url",
 				"get-markdown-file",
 			]);
-			const compactAudit = auditToolCatalog(
+			const compactAudit = toolContractAudit(
 				compactTools,
 				COMPACT_OPEN_WORLD_BY_TOOL,
 			);

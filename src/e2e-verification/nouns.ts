@@ -30,7 +30,7 @@ export const VERIFICATION_CATEGORIES = [
 
 export type VerificationCategory = (typeof VERIFICATION_CATEGORIES)[number];
 
-export const STABLE_MCP_TOOLS = [
+export const CLASSIC_MCP_TOOLS = [
 	"youtube-to-markdown",
 	"pdf-to-markdown",
 	"bing-search-to-markdown",
@@ -44,7 +44,7 @@ export const STABLE_MCP_TOOLS = [
 	"get-markdown-file",
 ] as const;
 
-export type StableMcpTool = (typeof STABLE_MCP_TOOLS)[number];
+export type ClassicMcpTool = (typeof CLASSIC_MCP_TOOLS)[number];
 
 export const COMPACT_MCP_TOOLS = [
 	"convert-web-url",
@@ -55,7 +55,7 @@ export const COMPACT_MCP_TOOLS = [
 
 export type CompactMcpTool = (typeof COMPACT_MCP_TOOLS)[number];
 
-export type E2eMcpTool = StableMcpTool | CompactMcpTool;
+export type E2eMcpTool = ClassicMcpTool | CompactMcpTool;
 
 export type CaseExpectation =
 	| {
@@ -122,7 +122,7 @@ export type CaseExecutionOutput = {
 export type CaseOutcome = {
 	readonly formFactor: FormFactor;
 	readonly caseId: string;
-	readonly category: VerificationCategory | "ad-hoc";
+	readonly category: VerificationCategory | "ad-hoc" | "contract" | "transport";
 	readonly tool: string;
 	readonly status: OutcomeStatus;
 	readonly durationMs: number;

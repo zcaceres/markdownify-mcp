@@ -18,7 +18,7 @@ bun run harness     # interactive (mock)
 | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `scenarios/discover-and-align-mcp/01-metadata-and-strict-schemas.txt` | Server identity/instructions/cacheHints, cross-provider `ToolAnnotations` + Gemini-safe schema audit, and per-tool strict arg validation [MC-1..MC-5]          |
 | `scenarios/discover-and-align-mcp/02-structured-outputs.txt`          | `outputSchema` audit, backwards-compatible `content` + typed `structuredContent` formatting (`{ markdown }` / `{ path, markdown }`), untruncated output [MC-6] |
-| `scenarios/discover-and-align-mcp/03-compact-toolset.txt`             | `--toolset=` / `MCP_TOOLSET` Server Configuration, 4-tool `compact` catalog audit, and strict active-Toolset enforcement [MC-7]                                |
+| `scenarios/discover-and-align-mcp/03-compact-toolset.txt`             | `--toolset=` / `MCP_TOOLSET` Server Configuration, 4-tool `compact` Toolset audit, and strict active-Toolset enforcement [MC-7]                                |
 
 ```bash
 bun run harness run scenarios/discover-and-align-mcp

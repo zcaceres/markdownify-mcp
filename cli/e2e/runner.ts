@@ -9,19 +9,19 @@ import type {
 } from "../../src/e2e-verification/nouns.ts";
 import {
 	formatVerificationReport,
+	mapToolToToolset,
 	verificationReport,
 } from "../../src/e2e-verification/queries.ts";
 import {
 	classifyCaseOutcome,
-	mapToolToToolset,
 	parseE2eOptions,
 	parseVerificationCorpus,
 	selectVerificationCases,
 } from "../../src/e2e-verification/verbs.ts";
 import type { Toolset } from "../../src/mcp-contract/nouns.ts";
 import {
-	auditToolCatalog,
 	expectedOpenWorldByToolset,
+	toolContractAudit,
 } from "../../src/mcp-contract/queries.ts";
 import { toolsForToolset } from "../../src/tools.ts";
 import { type ActiveFormFactor, provisionFormFactor } from "./drivers.ts";
@@ -74,6 +74,13 @@ const executeCaseWithTimeout = async (
 	const timeoutMs = testCase.timeoutMs ?? DEFAULT_CASE_TIMEOUT_MS;
 	const started = Date.now();
 	const expandedArgs = expandCaseArgs(testCase.args, active.sampleDirPath);
+	if (
+		testCase.id.startsWith("ad-hoc:") &&
+		typeof expandedArgs.filepath === "string" &&
+		active.adHocTargetPath !== undefined
+	) {
+		expandedArgs.filepath = active.adHocTargetPath;
+	}
 	const invokedTool = mapToolToToolset(testCase.tool, toolset);
 
 	let timer: ReturnType<typeof setTimeout> | undefined;
@@ -188,19 +195,19 @@ const checkToolsAndContracts = async (
 			{
 				formFactor: active.formFactor,
 				caseId,
-				category: "static-web",
+				category: "contract",
 				tool: "tools/list",
 				status: listOk ? "PASS" : "FAIL",
 				durationMs: Date.now() - started,
 				detail: listOk
 					? toolset === "compact"
 						? "exposes all 4 compact MCP tools (D51)"
-						: "exposes all 11 stable MCP tools (D3)"
+						: "exposes all 11 classic MCP tools (D3)"
 					: `expected ${expected.join(", ")}, got ${actual.join(", ")}`,
 			},
 		];
 
-		const audit = auditToolCatalog(
+		const audit = toolContractAudit(
 			listed.tools,
 			expectedOpenWorldByToolset(toolset),
 		);
@@ -222,7 +229,7 @@ const checkToolsAndContracts = async (
 		outcomes.push({
 			formFactor: active.formFactor,
 			caseId: "mcp-contract-audit",
-			category: "static-web",
+			category: "contract",
 			tool: "tools/list",
 			status: allIssues.length === 0 ? "PASS" : "FAIL",
 			durationMs: Date.now() - started,
@@ -237,8 +244,8 @@ const checkToolsAndContracts = async (
 		return [
 			{
 				formFactor: active.formFactor,
-				caseId: "tools-list-11",
-				category: "static-web",
+				caseId,
+				category: "contract",
 				tool: "tools/list",
 				status: "FAIL",
 				durationMs: Date.now() - started,
@@ -295,6 +302,9 @@ export const runE2eHarness = async (
 				sampleDir,
 				dockerImage,
 				toolset: options.toolset,
+				...(options.adHoc?.filePath !== undefined
+					? { adHocFilePath: options.adHoc.filePath }
+					: {}),
 				noBuild: options.noBuild,
 				reuseVenv: options.reuseVenv,
 				builtDockerImages,
@@ -303,7 +313,7 @@ export const runE2eHarness = async (
 			outcomes.push({
 				formFactor,
 				caseId: "provision",
-				category: "static-web",
+				category: "transport",
 				tool: "transport",
 				status: "FAIL",
 				durationMs: 0,

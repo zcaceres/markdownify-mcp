@@ -69,7 +69,7 @@ Scenario: repomix exceeding MD_REPOMIX_TIMEOUT_MS is aborted and invalid timeout
 Scenario: git-repo-to-markdown remains available in HTTP mode when Allowed Paths is unset
   Given the server runs in HTTP mode with MD_ALLOWED_PATHS unset (local file tools disabled per D9)
   When an MCP Client calls git-repo-to-markdown
-  Then the server does not block the request under local file-access policy (D6, D9)
+  Then the server does not block the request under local File Access Policy (D6, D9, D35)
 ```
 
 ## 4. Return Markdown Result

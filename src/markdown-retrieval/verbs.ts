@@ -2,7 +2,7 @@ import path from "node:path";
 import {
 	checkFileAccess,
 	isAbsoluteOrHomePath,
-	verifyReadableFile,
+	validateReadableFile,
 } from "../shared/local-access.js";
 import { err, ok, type Result } from "../shared/types.js";
 import {
@@ -72,7 +72,7 @@ export const retrieveMarkdownFile = async (
 	}
 
 	const stat = await ports.statFile(realTarget);
-	const verified = verifyReadableFile(realTarget, stat);
+	const verified = validateReadableFile(realTarget, stat);
 	if (!verified.ok) {
 		return verified;
 	}

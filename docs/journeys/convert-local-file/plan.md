@@ -15,7 +15,7 @@ The designs, flows, tickets and documents behind this journey, from its design s
 
 An **MCP Client** calls one of the 6 local file conversion tools (`pdf-to-markdown`, `image-to-markdown`,
 `audio-to-markdown`, `docx-to-markdown`, `xlsx-to-markdown`, `pptx-to-markdown`) with `{ filepath }`. The server
-validates the request and requires an absolute or `~`-prefixed path, checks the file-access policy (failing closed
+validates the request and requires an absolute or `~`-prefixed path, checks the **File Access Policy** (**D35**, failing closed
 when disabled in HTTP mode) and `Allowed Paths` containment via `realpath` **before** touching file existence, verifies
 the target exists and is a readable regular file, invokes `markitdown` via `execFile` within `MD_MARKITDOWN_TIMEOUT_MS`
 (preserving HTML-prefixed text, normalizing whitespace-only output to `""`, and adding a `markitdown[all]` vs Docker
@@ -27,9 +27,9 @@ MCP tool error (`isError: true`).
 Where this journey lives in the code. Each noun is a type in the context's `nouns.ts`. Each verb is a function in its
 `verbs.ts`, and each derived noun a function in its `queries.ts`.
 
-| Context                      | Nouns                                                                                                                                         | Verbs                                                                                                                                                               | Queries          | Harness commands                       |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------------------------------------- |
-| `src/local-file-conversion/` | `LocalFileTool`, `LocalFilePath`, `LocalFileConversionRequest`, `FileAccessPolicy`, `LocalFileConversionLimits`, `FileStat`, `MarkdownResult` | `validateLocalFileRequest`, `resolveFileAccessPolicy`, `checkFileAccess`, `verifyReadableFile`, `parseLocalFileLimits`, `formatMarkitdownError`, `convertLocalFile` | `markdownResult` | `convert <local-file-tool> [filepath]` |
+| Context                      | Nouns                                                                                                                                         | Verbs                                                                                                                                                                 | Queries          | Harness commands                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------------------------------------- |
+| `src/local-file-conversion/` | `LocalFileTool`, `LocalFilePath`, `LocalFileConversionRequest`, `FileAccessPolicy`, `LocalFileConversionLimits`, `FileStat`, `MarkdownResult` | `validateLocalFileRequest`, `resolveFileAccessPolicy`, `checkFileAccess`, `validateReadableFile`, `parseLocalFileLimits`, `formatMarkitdownError`, `convertLocalFile` | `markdownResult` | `convert <local-file-tool> [filepath]` |
 
 ## External systems
 

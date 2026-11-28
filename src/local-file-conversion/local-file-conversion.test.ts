@@ -10,7 +10,7 @@ import {
 	parseLocalFileLimits,
 	resolveFileAccessPolicy,
 	validateLocalFileRequest,
-	verifyReadableFile,
+	validateReadableFile,
 } from "./verbs.js";
 
 describe("validateLocalFileRequest (LF-1, LF-2, D3, D8, D18)", () => {
@@ -70,22 +70,22 @@ describe("validateLocalFileRequest (LF-1, LF-2, D3, D8, D18)", () => {
 	});
 });
 
-describe("verifyReadableFile (LF-5, D17)", () => {
+describe("validateReadableFile (LF-5, D17)", () => {
 	test("accepts regular readable files and rejects missing, directory, and unreadable targets", () => {
-		expect(verifyReadableFile("/data/ok.pdf", { kind: "file" })).toEqual(
+		expect(validateReadableFile("/data/ok.pdf", { kind: "file" })).toEqual(
 			ok(undefined),
 		);
 		expect(
-			verifyReadableFile("/data/missing.pdf", { kind: "missing" }),
+			validateReadableFile("/data/missing.pdf", { kind: "missing" }),
 		).toEqual(err("File does not exist: /data/missing.pdf"));
-		expect(verifyReadableFile("/data/dir", { kind: "directory" })).toEqual(
+		expect(validateReadableFile("/data/dir", { kind: "directory" })).toEqual(
 			err("Path is a directory, not a file: /data/dir"),
 		);
-		expect(verifyReadableFile("/dev/null", { kind: "not-a-file" })).toEqual(
+		expect(validateReadableFile("/dev/null", { kind: "not-a-file" })).toEqual(
 			err("Path is not a regular file: /dev/null"),
 		);
 		expect(
-			verifyReadableFile("/data/locked.pdf", { kind: "unreadable" }),
+			validateReadableFile("/data/locked.pdf", { kind: "unreadable" }),
 		).toEqual(err("File is not readable: /data/locked.pdf"));
 	});
 });

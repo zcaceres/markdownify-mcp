@@ -16,7 +16,7 @@ holds only for the prototype's stand-in until that question is decided.
 ## Steps
 
 1. **Validate request & path shape.** The server validates the MCP Client's tool arguments and requires an absolute or `~`-prefixed file path.
-2. **Enforce file-access policy & Allowed Paths.** The server enforces HTTP fail-closed file disabling and `Allowed Paths` containment after `~` expansion and `realpath` resolution before checking file existence.
+2. **Enforce File Access Policy & Allowed Paths.** The server enforces HTTP fail-closed file disabling and `Allowed Paths` containment after `~` expansion and `realpath` resolution before checking file existence.
 3. **Verify target file.** The server verifies the resolved path exists, is a regular file, and is readable before spawning `markitdown`.
 4. **Convert via `markitdown`.** The server runs `markitdown` via `execFile` within its timeout and buffer limits, normalizes empty output, preserves HTML-prefixed text, and adds an actionable hint on missing optional dependencies.
 5. **Return Markdown Result.** The server returns the derived Markdown Result text (no path) or a structured MCP tool error.
@@ -37,7 +37,7 @@ Scenario: Bare relative file path is refused while absolute and tilde-prefixed p
   Then it refuses the request without touching the filesystem (D18)
 ```
 
-## 2. Enforce file-access policy & Allowed Paths
+## 2. Enforce File Access Policy & Allowed Paths
 
 ```gherkin
 @LF-3 @D6 @D8 @D9 @D23

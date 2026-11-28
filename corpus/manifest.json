@@ -120,6 +120,25 @@
 			]
 		},
 		{
+			"id": "spa-raw-html-rejected",
+			"category": "spa-html",
+			"tool": "webpage-to-markdown",
+			"args": {
+				"url": "https://raw.githubusercontent.com/microsoft/markitdown/main/packages/markitdown/tests/test_files/test_blog.html"
+			},
+			"expectByProfile": {
+				"full": {
+					"kind": "error",
+					"contains": ["raw HTML that could not be converted to Markdown"]
+				},
+				"slim-pdf": {
+					"kind": "error",
+					"contains": ["raw HTML that could not be converted to Markdown"]
+				}
+			},
+			"blockedPatterns": ["429", "Too Many Requests"]
+		},
+		{
 			"id": "hosted-pdf",
 			"category": "hosted-binary",
 			"tool": "webpage-to-markdown",

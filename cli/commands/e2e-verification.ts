@@ -15,7 +15,7 @@ import {
 import { err, ok } from "../../src/shared/types.ts";
 import type { Command } from "../command.ts";
 
-const SAMPLE_CASES: Readonly<Record<string, VerificationCase>> = {
+const VERIFICATION_CASES: Readonly<Record<string, VerificationCase>> = {
 	"docx-binary": {
 		id: "docx-binary",
 		category: "local-binary",
@@ -61,7 +61,7 @@ const isFormFactor = (value: string): value is FormFactor =>
 export const e2e: Command = {
 	kind: "domain",
 	usage:
-		"e2e parse [flags...] | e2e validate-manifest <json> | e2e evaluate <form> <sampleCase> <ok|error|timeout> [text...] | e2e report [--json]",
+		"e2e parse [flags...] | e2e validate-corpus <json> | e2e classify <form> <case> <ok|error|timeout> [text...] | e2e report [--json] [--preview]",
 	summary:
 		"parse E2E options, validate Verification Corpus manifests, classify outcomes, and render Verification Reports",
 	run: async ([sub, ...rest], world) => {
@@ -89,9 +89,9 @@ export const e2e: Command = {
 			]);
 		}
 
-		if (sub === "validate-manifest") {
+		if (sub === "validate-corpus") {
 			const rawJson = rest.join(" ").trim();
-			if (!rawJson) return err("usage: e2e validate-manifest <json>");
+			if (!rawJson) return err("usage: e2e validate-corpus <json>");
 			let parsedJson: unknown;
 			try {
 				parsedJson = JSON.parse(rawJson);
@@ -107,11 +107,11 @@ export const e2e: Command = {
 			]);
 		}
 
-		if (sub === "evaluate") {
+		if (sub === "classify") {
 			const [formRaw, caseId, mode, ...textParts] = rest;
 			if (!formRaw || !caseId || !mode) {
 				return err(
-					"usage: e2e evaluate <form> <sampleCase> <ok|error|timeout> [text...]",
+					"usage: e2e classify <form> <case> <ok|error|timeout> [text...]",
 				);
 			}
 			if (!isFormFactor(formRaw)) {
@@ -119,12 +119,12 @@ export const e2e: Command = {
 					`Unknown Form Factor "${formRaw}". Supported values: ${FORM_FACTORS.join(", ")}`,
 				);
 			}
-			const sampleCase = SAMPLE_CASES[caseId];
-			if (!sampleCase) {
-				return err(`Unknown sample case "${caseId}"`);
+			const verificationCase = VERIFICATION_CASES[caseId];
+			if (!verificationCase) {
+				return err(`Unknown Verification Case "${caseId}"`);
 			}
 			const text = textParts.join(" ");
-			const outcome = classifyCaseOutcome(formRaw, sampleCase, {
+			const outcome = classifyCaseOutcome(formRaw, verificationCase, {
 				isError: mode === "error" || mode === "timeout",
 				text,
 				hasOutputPath: false,

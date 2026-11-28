@@ -27,9 +27,9 @@ exits `0` / `1` / `2` (**D41**).
 Where this journey lives in the code. Each noun is a type in `src/e2e-verification/nouns.ts`. Each verb is a function in
 `verbs.ts`, and each derived noun a function in `queries.ts`.
 
-| Context                 | Nouns                                                                                                                                              | Verbs                                                                                                                | Queries                                          | Harness commands                                                                                                 |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| `src/e2e-verification/` | `FormFactor`, `FormFactorDescriptor`, `PythonProfile`, `VerificationCorpus`, `VerificationCase`, `E2eOptions`, `CaseOutcome`, `VerificationReport` | `describeFormFactor`, `parseE2eOptions`, `parseVerificationCorpus`, `selectVerificationCases`, `classifyCaseOutcome` | `verificationReport`, `formatVerificationReport` | `e2e parse [flags...]`, `e2e validate-manifest <json>`, `e2e evaluate ...`, `e2e report [--json]`, `harness e2e` |
+| Context                 | Nouns                                                                                                                                                                                  | Verbs                                                                                          | Queries                                                                                    | Harness commands                                                                                                           |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `src/e2e-verification/` | `FormFactor`, `FormFactorDescriptor`, `PythonProfile`, `ClassicMcpTool`, `CompactMcpTool`, `VerificationCorpus`, `VerificationCase`, `E2eOptions`, `CaseOutcome`, `VerificationReport` | `parseE2eOptions`, `parseVerificationCorpus`, `selectVerificationCases`, `classifyCaseOutcome` | `describeFormFactor`, `mapToolToToolset`, `verificationReport`, `formatVerificationReport` | `e2e parse [flags...]`, `e2e validate-corpus <json>`, `e2e classify ...`, `e2e report [--json] [--preview]`, `harness e2e` |
 
 ## External systems
 
@@ -55,6 +55,7 @@ has a [spec](specs/).
    ([spec](specs/03-local-form-factors-and-corpus-runner/spec.md))
 4. **04-docker-and-npm-package-form-factors.** Implement `docker-stdio`, `docker-http` (slim `pdf` profile with `D22` checks and container HTTP `I5`/`D9`/`D33` guards), and `npm-package` (`npm pack` + temp install verifying `preinstall`/`uv sync` and `mcp-markdownify-server` bin, plus `--reuse-venv`). Covers VF-4, VF-7, VF-9, VF-10.
    ([spec](specs/04-docker-and-npm-package-form-factors/spec.md))
+5. **CI workflows (`.github/workflows/ci.yml` & `.github/workflows/e2e-live.yml`).** Offline PR CI runs `core`, `docker`, and `npm-package` Form Factor gates in parallel; weekly scheduled and `workflow_dispatch` live E2E runs the 6-Form-Factor matrix with `D41` exit code handling.
 
 ### Next
 
@@ -62,6 +63,5 @@ _(None — all planned slices for Verify Across Form Factors are complete.)_
 
 ## Deferred
 
-- Scheduled GitHub Actions CI matrix cron workflow (manual/agent-driven first).
 - Headless browser / Playwright SPA rendering (out of scope per D1, D4).
 - Authenticated or paywalled Web URL testing (deferred under U5).
