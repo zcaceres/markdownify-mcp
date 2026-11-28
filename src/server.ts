@@ -1,9 +1,4 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import {
-	type CallToolRequest,
-	CallToolRequestSchema,
-	ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
+import { type CallToolRequest, Server } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { validateGitRepoRequest } from "./git-repo-conversion/verbs.js";
 import {
@@ -66,120 +61,117 @@ export function createServer(options: CreateServerOptions = {}) {
 		}
 	};
 
-	server.setRequestHandler(ListToolsRequestSchema, async () => {
+	server.setRequestHandler("tools/list", async () => {
 		return {
 			tools: Object.values(tools),
 		};
 	});
 
-	server.setRequestHandler(
-		CallToolRequestSchema,
-		async (request: CallToolRequest) => {
-			const { name, arguments: args } = request.params;
+	server.setRequestHandler("tools/call", async (request: CallToolRequest) => {
+		const { name, arguments: args } = request.params;
 
-			try {
-				const validatedArgs = RequestPayloadSchema.parse(args ?? {});
-				let result: MarkdownResult;
-				switch (name) {
-					case tools.YouTubeToMarkdownTool.name:
-					case tools.BingSearchResultToMarkdownTool.name:
-					case tools.WebpageToMarkdownTool.name: {
-						const validatedWeb = validateWebRequest(name, validatedArgs.url);
-						if (!validatedWeb.ok) {
-							throw new Error(validatedWeb.error);
-						}
-						result = await Markdownify.toMarkdown({
-							url: validatedWeb.value.url,
-						});
-						break;
+		try {
+			const validatedArgs = RequestPayloadSchema.parse(args ?? {});
+			let result: MarkdownResult;
+			switch (name) {
+				case tools.YouTubeToMarkdownTool.name:
+				case tools.BingSearchResultToMarkdownTool.name:
+				case tools.WebpageToMarkdownTool.name: {
+					const validatedWeb = validateWebRequest(name, validatedArgs.url);
+					if (!validatedWeb.ok) {
+						throw new Error(validatedWeb.error);
 					}
-
-					case tools.PDFToMarkdownTool.name:
-					case tools.ImageToMarkdownTool.name:
-					case tools.AudioToMarkdownTool.name:
-					case tools.DocxToMarkdownTool.name:
-					case tools.XlsxToMarkdownTool.name:
-					case tools.PptxToMarkdownTool.name: {
-						const validatedFile = validateLocalFileRequest(
-							name,
-							validatedArgs.filepath,
-						);
-						if (!validatedFile.ok) {
-							throw new Error(validatedFile.error);
-						}
-						assertLocalFileAccessEnabled();
-						result = await Markdownify.toMarkdown({
-							filePath: validatedFile.value.filePath,
-						});
-						break;
-					}
-
-					case tools.GitRepoToMarkdownTool.name: {
-						const validatedRepo = validateGitRepoRequest(
-							validatedArgs.url,
-							validatedArgs.branch,
-							validatedArgs.compress,
-						);
-						if (!validatedRepo.ok) {
-							throw new Error(validatedRepo.error);
-						}
-						result = await Markdownify.fromRepo({
-							repoUrl: validatedRepo.value.repoUrl,
-							branch: validatedRepo.value.branch,
-							compress: validatedRepo.value.compress,
-						});
-						break;
-					}
-
-					case tools.GetMarkdownFileTool.name: {
-						const validatedMd = validateMarkdownRetrievalRequest(
-							validatedArgs.filepath,
-						);
-						if (!validatedMd.ok) {
-							throw new Error(validatedMd.error);
-						}
-						assertLocalFileAccessEnabled();
-						result = await Markdownify.get({
-							filePath: validatedMd.value.filePath,
-						});
-						break;
-					}
-
-					default:
-						throw new Error("Tool not found");
+					result = await Markdownify.toMarkdown({
+						url: validatedWeb.value.url,
+					});
+					break;
 				}
 
-				return {
-					content: [
-						...(result.path
-							? [{ type: "text" as const, text: `Output file: ${result.path}` }]
-							: []),
-						{ type: "text", text: result.text },
-					],
-					isError: false,
-				};
-			} catch (e) {
-				if (e instanceof z.ZodError) {
-					return {
-						content: [{ type: "text", text: `Error: ${formatZodError(e)}` }],
-						isError: true,
-					};
+				case tools.PDFToMarkdownTool.name:
+				case tools.ImageToMarkdownTool.name:
+				case tools.AudioToMarkdownTool.name:
+				case tools.DocxToMarkdownTool.name:
+				case tools.XlsxToMarkdownTool.name:
+				case tools.PptxToMarkdownTool.name: {
+					const validatedFile = validateLocalFileRequest(
+						name,
+						validatedArgs.filepath,
+					);
+					if (!validatedFile.ok) {
+						throw new Error(validatedFile.error);
+					}
+					assertLocalFileAccessEnabled();
+					result = await Markdownify.toMarkdown({
+						filePath: validatedFile.value.filePath,
+					});
+					break;
 				}
-				if (e instanceof Error) {
-					return {
-						content: [{ type: "text", text: `Error: ${e.message}` }],
-						isError: true,
-					};
-				} else {
-					console.error(e);
-					return {
-						content: [{ type: "text", text: `Error: Unknown error occurred` }],
-						isError: true,
-					};
+
+				case tools.GitRepoToMarkdownTool.name: {
+					const validatedRepo = validateGitRepoRequest(
+						validatedArgs.url,
+						validatedArgs.branch,
+						validatedArgs.compress,
+					);
+					if (!validatedRepo.ok) {
+						throw new Error(validatedRepo.error);
+					}
+					result = await Markdownify.fromRepo({
+						repoUrl: validatedRepo.value.repoUrl,
+						branch: validatedRepo.value.branch,
+						compress: validatedRepo.value.compress,
+					});
+					break;
 				}
+
+				case tools.GetMarkdownFileTool.name: {
+					const validatedMd = validateMarkdownRetrievalRequest(
+						validatedArgs.filepath,
+					);
+					if (!validatedMd.ok) {
+						throw new Error(validatedMd.error);
+					}
+					assertLocalFileAccessEnabled();
+					result = await Markdownify.get({
+						filePath: validatedMd.value.filePath,
+					});
+					break;
+				}
+
+				default:
+					throw new Error("Tool not found");
 			}
-		},
-	);
+
+			return {
+				content: [
+					...(result.path
+						? [{ type: "text" as const, text: `Output file: ${result.path}` }]
+						: []),
+					{ type: "text", text: result.text },
+				],
+				isError: false,
+			};
+		} catch (e) {
+			if (e instanceof z.ZodError) {
+				return {
+					content: [{ type: "text", text: `Error: ${formatZodError(e)}` }],
+					isError: true,
+				};
+			}
+			if (e instanceof Error) {
+				return {
+					content: [{ type: "text", text: `Error: ${e.message}` }],
+					isError: true,
+				};
+			} else {
+				console.error(e);
+				return {
+					content: [{ type: "text", text: `Error: Unknown error occurred` }],
+					isError: true,
+				};
+			}
+		}
+	});
 
 	return server;
 }

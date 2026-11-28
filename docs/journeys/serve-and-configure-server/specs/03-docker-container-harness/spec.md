@@ -11,7 +11,7 @@ DD harness (`bun run harness docker`):
 
 1. **Docker harness runner (`cli/docker.ts` — SC-9, D4, D11, D22, D34, I2):**
    - Builds `Dockerfile` (`docker build -t <image> .`, defaulting to `IMAGE` env var or `markdownify-mcp:harness`, with optional `--no-build` and `--image=<tag>`).
-   - Connects to `docker run --rm -i -v <repo>/src/sample-data:/data:ro -e MD_ALLOWED_PATHS=/data <image>` using `@modelcontextprotocol/sdk` `Client` + `StdioClientTransport`.
+   - Connects to `docker run --rm -i -v <repo>/src/sample-data:/data:ro -e MD_ALLOWED_PATHS=/data <image>` using `@modelcontextprotocol/client` `Client` + `StdioClientTransport`.
    - Verifies four checks against the live container:
      1. `tools/list` returns all 11 stable MCP tools (`D3`).
      2. `pdf-to-markdown /data/test.pdf` succeeds (`isError !== true`) and contains `"Test PDF content"` (`D4`, `D11`, `D34`).
